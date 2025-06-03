@@ -25,13 +25,36 @@ export default function ZoomLinkForm() {
   const [loading, setLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [existingZoomLink, setExistingZoomLink] = useState<ZoomLinkData | null>(null);
+  const [allZoomLinks, setAllZoomLinks] = useState<ZoomLinkData[]>([]);
+  const [currentZoomLink, setCurrentZoomLink] = useState<ZoomLinkData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     fetchBatches();
-    fetchExistingZoomLink();
+    fetchAllZoomLinks();
   }, []);
+
+  useEffect(() => {
+    // Update current zoom link when batch selection changes
+    if (selectedBatchId) {
+      const zoomLinkForBatch = allZoomLinks.find(
+        link => link.zoomLink.batchId === selectedBatchId
+      );
+      if (zoomLinkForBatch) {
+        setCurrentZoomLink(zoomLinkForBatch);
+        setUrl(zoomLinkForBatch.zoomLink.url);
+        setIsEditing(true);
+      } else {
+        setCurrentZoomLink(null);
+        setUrl('');
+        setIsEditing(false);
+      }
+    } else {
+      setCurrentZoomLink(null);
+      setUrl('');
+      setIsEditing(false);
+    }
+  }, [selectedBatchId, allZoomLinks]);
 
   const fetchBatches = async () => {
     setLoading(true);
@@ -51,28 +74,19 @@ export default function ZoomLinkForm() {
     }
   };
 
-  const fetchExistingZoomLink = async () => {
+  const fetchAllZoomLinks = async () => {
     try {
       const response = await fetch('/api/zoom-links');
       const data = await response.json();
       
-      if (data && data.zoomLink) {
-        setExistingZoomLink(data);
-        setUrl(data.zoomLink.url);
-        setSelectedBatchId(data.zoomLink.batchId);
-        setIsEditing(true);
+      if (Array.isArray(data)) {
+        setAllZoomLinks(data);
       } else {
-        setExistingZoomLink(null);
-        setUrl('');
-        setSelectedBatchId('');
-        setIsEditing(false);
+        setAllZoomLinks([]);
       }
     } catch (error) {
-      console.error('Error fetching existing zoom link:', error);
-      setExistingZoomLink(null);
-      setUrl('');
-      setSelectedBatchId('');
-      setIsEditing(false);
+      console.error('Error fetching zoom links:', error);
+      setAllZoomLinks([]);
     }
   };
 
@@ -100,9 +114,8 @@ export default function ZoomLinkForm() {
       const result = await response.json();
       
       if (response.ok) {
-        //alert(result.message);
-        // Refresh the zoom link data
-        await fetchExistingZoomLink();
+        // Refresh the zoom links data
+        await fetchAllZoomLinks();
       } else {
         alert(result.error || 'Failed to save zoom link');
       }
@@ -115,24 +128,28 @@ export default function ZoomLinkForm() {
   };
 
   const handleDelete = async () => {
+    if (!currentZoomLink || !selectedBatchId) {
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this zoom link?')) {
       return;
     }
 
     setDeleteLoading(true);
     try {
-      const response = await fetch('/api/zoom-links', {
+      const response = await fetch(`/api/zoom-links?batchId=${selectedBatchId}`, {
         method: 'DELETE',
       });
 
       const result = await response.json();
       
       if (response.ok) {
-        //alert(result.message);
-        // Reset form after successful deletion
+        // Refresh the zoom links data
+        await fetchAllZoomLinks();
+        // Reset current form state
         setUrl('');
-        setSelectedBatchId('');
-        setExistingZoomLink(null);
+        setCurrentZoomLink(null);
         setIsEditing(false);
       } else {
         alert(result.error || 'Failed to delete zoom link');
@@ -145,12 +162,8 @@ export default function ZoomLinkForm() {
     }
   };
 
-  const isBatchDisabled = (batchId: string) => {
-    // If editing, only allow the current batch or if no zoom link exists, allow all
-    if (isEditing) {
-      return batchId !== selectedBatchId;
-    }
-    return false;
+  const getBatchZoomLinkStatus = (batchId: string) => {
+    return allZoomLinks.find(link => link.zoomLink.batchId === batchId);
   };
 
   return (
@@ -159,21 +172,11 @@ export default function ZoomLinkForm() {
         {isEditing ? 'Edit Zoom Link' : 'Add Zoom Link'}
       </h2>
       
-      {isEditing && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-          <p className="text-blue-800 text-sm">
-            ℹ️ Only one zoom link can exist at a time. You can update the batch or URL, or delete the link.
-          </p>
-        </div>
-      )}
-
-      {!isEditing && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-green-800 text-sm">
-            ℹ️ No zoom link exists. You can create one for any batch.
-          </p>
-        </div>
-      )}
+      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+        <p className="text-blue-800 text-sm">
+          ℹ️ Each batch can have one zoom link. Select a batch to view, add, or edit its zoom link.
+        </p>
+      </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -191,18 +194,18 @@ export default function ZoomLinkForm() {
               required
             >
               <option value="">Select a batch...</option>
-              {batches.map((batch) => (
-                <option 
-                  key={batch.id} 
-                  value={batch.id}
-                  disabled={isBatchDisabled(batch.id)}
-                  className={isBatchDisabled(batch.id) ? 'text-gray-400 bg-gray-100' : ''}
-                >
-                  {batch.batchName}
-                  {isBatchDisabled(batch.id) ? ' (Disabled - Zoom link exists for another batch)' : ''}
-                  {isEditing && batch.id === selectedBatchId ? ' (Current)' : ''}
-                </option>
-              ))}
+              {batches.map((batch) => {
+                const hasZoomLink = getBatchZoomLinkStatus(batch.id);
+                return (
+                  <option 
+                    key={batch.id} 
+                    value={batch.id}
+                  >
+                    {batch.batchName}
+                    {hasZoomLink ? ' ✓ (Has zoom link)' : ' (No zoom link)'}
+                  </option>
+                );
+              })}
             </select>
           )}
         </div>
@@ -222,6 +225,17 @@ export default function ZoomLinkForm() {
           />
         </div>
 
+        {selectedBatchId && (
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+            <p className="text-gray-700 text-sm">
+              {isEditing 
+                ? `This batch currently has a zoom link. You can update it or delete it.`
+                : `This batch doesn't have a zoom link yet. You can create one.`
+              }
+            </p>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button
             type="submit"
@@ -231,7 +245,7 @@ export default function ZoomLinkForm() {
             {submitLoading ? 'Saving...' : (isEditing ? 'Update Zoom Link' : 'Add Zoom Link')}
           </button>
           
-          {isEditing && (
+          {isEditing && currentZoomLink && (
             <button
               type="button"
               onClick={handleDelete}
@@ -243,6 +257,31 @@ export default function ZoomLinkForm() {
           )}
         </div>
       </form>
+
+      {/* Show existing zoom links summary */}
+      {allZoomLinks.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-3">Existing Zoom Links</h3>
+          <div className="space-y-2">
+            {allZoomLinks.map((linkData) => (
+              <div key={linkData.zoomLink.id} className="p-3 bg-green-50 border border-green-200 rounded-md">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium text-green-800">{linkData.batch.batchName}</p>
+                    <p className="text-sm text-green-600 truncate">{linkData.zoomLink.url}</p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedBatchId(linkData.zoomLink.batchId)}
+                    className="text-blue-600 text-sm hover:underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

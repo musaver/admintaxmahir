@@ -21,6 +21,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     { name: 'Batches', href: '/batches', icon: '📦' },
     { name: 'Recordings', href: '/recordings', icon: '🎥' },
     { name: 'Orders', href: '/orders', icon: '🛒' },
+    { name: 'Attendance', href: '/attendance', icon: '📅' },
     { name: 'Admin Users', href: '/admins', icon: '👮' },
     { name: 'Admin Roles', href: '/roles', icon: '🔐' },
     { name: 'Admin Logs', href: '/logs', icon: '📋' },

@@ -12,6 +12,7 @@ export default function Dashboard() {
     { title: 'Courses', count: '0', link: '/courses' },
     { title: 'Orders', count: '0', link: '/orders' },
     { title: 'Admin Users', count: '0', link: '/admins' },
+    { title: 'Attendance', count: '0', link: '/attendance' },
   ];
 
   return (
@@ -19,7 +20,7 @@ export default function Dashboard() {
       <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
       
       {/* Existing Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {cards.map((card) => (
           <div 
             key={card.title} 

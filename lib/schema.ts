@@ -83,7 +83,7 @@ export const courses = mysqlTable("courses", {
   featured: int("featured").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
-  image: varchar("image", { length: 500 }),
+  image: varchar("image", { length: 255 }),
   price: int("price").notNull(),
   createdAt: datetime("createdAt").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updatedAt").default(sql`CURRENT_TIMESTAMP`),
@@ -94,10 +94,9 @@ export const batches = mysqlTable("batches", {
   id: varchar("id", { length: 255 }).primaryKey(),
   batchName: varchar("batchName", { length: 255 }).notNull(),
   courseId: varchar("courseId", { length: 255 }).notNull(),
-  startDate: datetime("startDate"),
-  endDate: datetime("endDate"),
-  capacity: int("capacity"),
-  image: varchar("image", { length: 500 }),
+  startDate: datetime("startDate").notNull(),
+  endDate: datetime("endDate").notNull(),
+  capacity: int("capacity").notNull(),
   description: text("description"),
   createdAt: datetime("createdAt").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updatedAt").default(sql`CURRENT_TIMESTAMP`),
@@ -168,16 +167,26 @@ export const recordings = mysqlTable("recordings", {
 
 // Zoom Links
 export const zoomLinks = mysqlTable("zoom_links", {
-  id: int("id").primaryKey().autoincrement(),
-  url: varchar("url", { length: 500 }).notNull(),
+  id: varchar("id", { length: 255 }).primaryKey(),
   batchId: varchar("batchId", { length: 255 }).notNull(),
-  createdAt: datetime("createdAt").default(sql`CURRENT_TIMESTAMP`),
+  url: varchar("url", { length: 500 }).notNull(),
   updatedAt: datetime("updatedAt").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Attendance
+export const attendance = mysqlTable("attendance", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  userId: varchar("userId", { length: 255 }).notNull(),
+  batchId: varchar("batchId", { length: 255 }).notNull(),
+  date: datetime("date").default(sql`CURRENT_TIMESTAMP`),
+  time: datetime("time").default(sql`CURRENT_TIMESTAMP`),
+  createdAt: datetime("createdAt").default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Relations
 export const usersRelations = relations(user, ({ many }) => ({
   orders: many(orders),
+  attendance: many(attendance),
 }));
 
 export const coursesRelations = relations(courses, ({ many }) => ({
@@ -190,6 +199,7 @@ export const batchesRelations = relations(batches, ({ one, many }) => ({
   orders: many(orders),
   recordings: many(recordings),
   zoomLinks: many(zoomLinks),
+  attendance: many(attendance),
 }));
 
 export const ordersRelations = relations(orders, ({ one }) => ({
@@ -217,4 +227,9 @@ export const recordingsRelations = relations(recordings, ({ one }) => ({
 
 export const zoomLinksRelations = relations(zoomLinks, ({ one }) => ({
   batch: one(batches, { fields: [zoomLinks.batchId], references: [batches.id] }),
+})); 
+
+export const attendanceRelations = relations(attendance, ({ one }) => ({
+  user: one(user, { fields: [attendance.userId], references: [user.id] }),
+  batch: one(batches, { fields: [attendance.batchId], references: [batches.id] }),
 })); 
