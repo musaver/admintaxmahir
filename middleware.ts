@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request });
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET 
+  });
 
   const isAuthPage = request.nextUrl.pathname.startsWith("/login");
   
@@ -16,15 +19,31 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/admins") ||
     request.nextUrl.pathname.startsWith("/roles") ||
     request.nextUrl.pathname.startsWith("/logs") ||
-    request.nextUrl.pathname === "/";  // Also protect the root path
+    request.nextUrl.pathname.startsWith("/attendance") ||
+    request.nextUrl.pathname.startsWith("/batches") ||
+    request.nextUrl.pathname.startsWith("/recordings") ||
+    request.nextUrl.pathname === "/";
+
+  // Debug logging (only in development)
+  if (process.env.NODE_ENV === "development") {
+    console.log("Middleware Debug:", {
+      path: request.nextUrl.pathname,
+      hasToken: !!token,
+      isAuthPage,
+      isProtectedPage,
+      token: token ? { id: token.id, email: token.email } : null
+    });
+  }
 
   if (token && isAuthPage) {
-    // ✅ Logged in user trying to access /auth → redirect to /dashboard
+    // ✅ Logged in user trying to access /login → redirect to /dashboard
+    console.log("Redirecting authenticated user to dashboard");
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   if (!token && isProtectedPage) {
     // ❌ Unauthenticated user trying to access protected page → redirect to /login
+    console.log("Redirecting unauthenticated user to login");
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -41,6 +60,9 @@ export const config = {
     "/orders/:path*", 
     "/admins/:path*", 
     "/roles/:path*", 
-    "/logs/:path*"
+    "/logs/:path*",
+    "/attendance/:path*",
+    "/batches/:path*",
+    "/recordings/:path*"
   ],
 };
