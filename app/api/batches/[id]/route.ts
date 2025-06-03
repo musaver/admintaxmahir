@@ -1,62 +1,71 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { batches } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const batch = await db.select().from(batches).where(eq(batches.id, params.id));
-    
-    if (batch.length === 0) {
+    const { id } = await params;
+    const batch = await db.query.batches.findFirst({
+      where: eq(batches.id, id),
+    });
+
+    if (!batch) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
     }
-    
-    return NextResponse.json(batch[0]);
+
+    return NextResponse.json(batch);
   } catch (error) {
-    console.error('Error fetching batch:', error);
-    return NextResponse.json({ error: 'Failed to fetch batch' }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: 'Failed to get batch' }, { status: 500 });
   }
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { batchName, courseId, startDate, endDate, capacity, description, image } = await request.json();
-    
-    await db.update(batches)
-      .set({
-        batchName,
-        courseId,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
-        capacity: capacity ? Number(capacity) : null,
-        description: description || null,
-        image: image || null,
-        updatedAt: new Date(),
-      })
-      .where(eq(batches.id, params.id));
-    
-    return NextResponse.json({ success: true });
+    const { id } = await params;
+    const data = await req.json();
+
+    await db
+      .update(batches)
+      .set(data)
+      .where(eq(batches.id, id));
+
+    const updatedBatch = await db.query.batches.findFirst({
+      where: eq(batches.id, id),
+    });
+
+    if (!updatedBatch) {
+      return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(updatedBatch);
   } catch (error) {
-    console.error('Error updating batch:', error);
+    console.error(error);
     return NextResponse.json({ error: 'Failed to update batch' }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await db.delete(batches).where(eq(batches.id, params.id));
-    return NextResponse.json({ success: true });
+    const { id } = await params;
+    
+    await db
+      .delete(batches)
+      .where(eq(batches.id, id));
+
+    return NextResponse.json({ message: 'Batch deleted successfully' });
   } catch (error) {
-    console.error('Error deleting batch:', error);
+    console.error(error);
     return NextResponse.json({ error: 'Failed to delete batch' }, { status: 500 });
   }
 } 

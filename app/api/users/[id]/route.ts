@@ -1,62 +1,71 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { user } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
-import bcrypt from 'bcrypt';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userData = await db.select().from(user).where(eq(user.id, params.id));
-    
-    if (userData.length === 0) {
+    const { id } = await params;
+    const foundUser = await db.query.user.findFirst({
+      where: eq(user.id, id),
+    });
+
+    if (!foundUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    
-    // Remove password from response
-    const { password, ...userWithoutPassword } = userData[0];
-    
-    return NextResponse.json(userWithoutPassword);
+
+    return NextResponse.json(foundUser);
   } catch (error) {
-    console.error('Error fetching user:', error);
-    return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: 'Failed to get user' }, { status: 500 });
   }
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { name, email, password } = await request.json();
-    
-    const updateData: any = {};
-    if (name) updateData.name = name;
-    if (email) updateData.email = email;
-    if (password) updateData.password = await bcrypt.hash(password, 10);
-    
-    await db.update(user)
-      .set(updateData)
-      .where(eq(user.id, params.id));
-    
-    return NextResponse.json({ success: true });
+    const { id } = await params;
+    const data = await req.json();
+
+    await db
+      .update(user)
+      .set(data)
+      .where(eq(user.id, id));
+
+    const updatedUser = await db.query.user.findFirst({
+      where: eq(user.id, id),
+    });
+
+    if (!updatedUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(updatedUser);
   } catch (error) {
-    console.error('Error updating user:', error);
+    console.error(error);
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await db.delete(user).where(eq(user.id, params.id));
-    return NextResponse.json({ success: true });
+    const { id } = await params;
+    
+    await db
+      .delete(user)
+      .where(eq(user.id, id));
+
+    return NextResponse.json({ message: 'User deleted successfully' });
   } catch (error) {
-    console.error('Error deleting user:', error);
+    console.error(error);
     return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 });
   }
 } 

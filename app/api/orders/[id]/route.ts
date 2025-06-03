@@ -1,58 +1,71 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { orders } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const order = await db.select().from(orders).where(eq(orders.id, params.id));
-    
-    if (order.length === 0) {
+    const { id } = await params;
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.id, id),
+    });
+
+    if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
-    
-    return NextResponse.json(order[0]);
+
+    return NextResponse.json(order);
   } catch (error) {
-    console.error('Error fetching order:', error);
-    return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: 'Failed to get order' }, { status: 500 });
   }
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { status, batchId } = await request.json();
-    
-    const updateData: any = { status };
-    if (batchId !== undefined) {
-      updateData.batchId = batchId || null;
+    const { id } = await params;
+    const data = await req.json();
+
+    await db
+      .update(orders)
+      .set(data)
+      .where(eq(orders.id, id));
+
+    const updatedOrder = await db.query.orders.findFirst({
+      where: eq(orders.id, id),
+    });
+
+    if (!updatedOrder) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
-    
-    await db.update(orders)
-      .set(updateData)
-      .where(eq(orders.id, params.id));
-    
-    return NextResponse.json({ success: true });
+
+    return NextResponse.json(updatedOrder);
   } catch (error) {
-    console.error('Error updating order:', error);
+    console.error(error);
     return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await db.delete(orders).where(eq(orders.id, params.id));
-    return NextResponse.json({ success: true });
+    const { id } = await params;
+    
+    await db
+      .delete(orders)
+      .where(eq(orders.id, id));
+
+    return NextResponse.json({ message: 'Order deleted successfully' });
   } catch (error) {
-    console.error('Error deleting order:', error);
+    console.error(error);
     return NextResponse.json({ error: 'Failed to delete order' }, { status: 500 });
   }
 } 

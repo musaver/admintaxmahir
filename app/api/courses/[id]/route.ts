@@ -1,58 +1,71 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { courses } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const course = await db.select().from(courses).where(eq(courses.id, params.id));
-    
-    if (course.length === 0) {
+    const { id } = await params;
+    const course = await db.query.courses.findFirst({
+      where: eq(courses.id, id),
+    });
+
+    if (!course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
-    
-    return NextResponse.json(course[0]);
+
+    return NextResponse.json(course);
   } catch (error) {
-    console.error('Error fetching course:', error);
-    return NextResponse.json({ error: 'Failed to fetch course' }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: 'Failed to get course' }, { status: 500 });
   }
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { title, description, price, image } = await request.json();
-    
-    await db.update(courses)
-      .set({
-        title,
-        description,
-        price: Number(price),
-        image: image || null,
-      })
-      .where(eq(courses.id, params.id));
-    
-    return NextResponse.json({ success: true });
+    const { id } = await params;
+    const data = await req.json();
+
+    await db
+      .update(courses)
+      .set(data)
+      .where(eq(courses.id, id));
+
+    const updatedCourse = await db.query.courses.findFirst({
+      where: eq(courses.id, id),
+    });
+
+    if (!updatedCourse) {
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(updatedCourse);
   } catch (error) {
-    console.error('Error updating course:', error);
+    console.error(error);
     return NextResponse.json({ error: 'Failed to update course' }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await db.delete(courses).where(eq(courses.id, params.id));
-    return NextResponse.json({ success: true });
+    const { id } = await params;
+    
+    await db
+      .delete(courses)
+      .where(eq(courses.id, id));
+
+    return NextResponse.json({ message: 'Course deleted successfully' });
   } catch (error) {
-    console.error('Error deleting course:', error);
+    console.error(error);
     return NextResponse.json({ error: 'Failed to delete course' }, { status: 500 });
   }
 } 

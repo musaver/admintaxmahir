@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { batches, courses } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
@@ -24,19 +24,23 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { batchName, courseId, startDate, endDate, capacity, description, image } = await request.json();
+    const { batchName, courseId, startDate, endDate, capacity, description } = await req.json();
+    
+    // Validate required fields
+    if (!batchName || !courseId || !startDate || !endDate || !capacity) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
     
     const newBatch = {
       id: uuidv4(),
       batchName,
       courseId,
-      startDate: startDate ? new Date(startDate) : null,
-      endDate: endDate ? new Date(endDate) : null,
-      capacity: capacity ? Number(capacity) : null,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      capacity: Number(capacity),
       description: description || null,
-      image: image || null,
     };
     
     await db.insert(batches).values(newBatch);

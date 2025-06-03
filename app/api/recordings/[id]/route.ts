@@ -1,64 +1,71 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { recordings } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const recording = await db.select().from(recordings).where(eq(recordings.id, params.id));
-    
-    if (recording.length === 0) {
+    const { id } = await params;
+    const recording = await db.query.recordings.findFirst({
+      where: eq(recordings.id, id),
+    });
+
+    if (!recording) {
       return NextResponse.json({ error: 'Recording not found' }, { status: 404 });
     }
-    
-    return NextResponse.json(recording[0]);
+
+    return NextResponse.json(recording);
   } catch (error) {
-    console.error('Error fetching recording:', error);
-    return NextResponse.json({ error: 'Failed to fetch recording' }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: 'Failed to get recording' }, { status: 500 });
   }
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { recordingTitle, batchId, recordingDateTime, recordingUrl, showToAllUsers } = await request.json();
-    
-    // Fix datetime handling - create proper Date object from local datetime input
-    const dateTimeWithSeconds = recordingDateTime.includes(':00') ? recordingDateTime : recordingDateTime + ':00';
-    const recordingDate = new Date(dateTimeWithSeconds);
-    
-    await db.update(recordings)
-      .set({
-        recordingTitle,
-        batchId,
-        recordingDateTime: recordingDate,
-        recordingUrl: recordingUrl || null,
-        showToAllUsers: showToAllUsers !== undefined ? showToAllUsers : true,
-        updatedAt: new Date(),
-      })
-      .where(eq(recordings.id, params.id));
-    
-    return NextResponse.json({ success: true });
+    const { id } = await params;
+    const data = await req.json();
+
+    await db
+      .update(recordings)
+      .set(data)
+      .where(eq(recordings.id, id));
+
+    const updatedRecording = await db.query.recordings.findFirst({
+      where: eq(recordings.id, id),
+    });
+
+    if (!updatedRecording) {
+      return NextResponse.json({ error: 'Recording not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(updatedRecording);
   } catch (error) {
-    console.error('Error updating recording:', error);
+    console.error(error);
     return NextResponse.json({ error: 'Failed to update recording' }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await db.delete(recordings).where(eq(recordings.id, params.id));
-    return NextResponse.json({ success: true });
+    const { id } = await params;
+    
+    await db
+      .delete(recordings)
+      .where(eq(recordings.id, id));
+
+    return NextResponse.json({ message: 'Recording deleted successfully' });
   } catch (error) {
-    console.error('Error deleting recording:', error);
+    console.error(error);
     return NextResponse.json({ error: 'Failed to delete recording' }, { status: 500 });
   }
 } 
