@@ -10,6 +10,10 @@ interface DashboardStats {
   orders: number;
   adminUsers: number;
   attendance: number;
+  dateRange?: {
+    startDate: string | null;
+    endDate: string | null;
+  };
 }
 
 export default function Dashboard() {
@@ -23,6 +27,8 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     fetchStats();
@@ -32,7 +38,13 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch('/api/dashboard/stats');
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`/api/dashboard/stats?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard statistics');
       }
@@ -44,6 +56,42 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDateFilterChange = () => {
+    fetchStats();
+  };
+
+  const clearFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    // Fetch stats without date filters
+    setTimeout(() => fetchStats(), 100);
+  };
+
+  const setPresetDates = (preset: string) => {
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    switch (preset) {
+      case 'today':
+        setStartDate(startOfToday.toISOString().split('T')[0]);
+        setEndDate(startOfToday.toISOString().split('T')[0]);
+        break;
+      case 'week':
+        const weekAgo = new Date(startOfToday);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        setStartDate(weekAgo.toISOString().split('T')[0]);
+        setEndDate(startOfToday.toISOString().split('T')[0]);
+        break;
+      case 'month':
+        const monthAgo = new Date(startOfToday);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        setStartDate(monthAgo.toISOString().split('T')[0]);
+        setEndDate(startOfToday.toISOString().split('T')[0]);
+        break;
+    }
+    setTimeout(() => fetchStats(), 100);
   };
   
   const cards = [
@@ -101,6 +149,85 @@ export default function Dashboard() {
           {loading ? 'Refreshing...' : '🔄 Refresh'}
         </button>
       </div>
+
+      {/* Date Filters */}
+      <div className="mb-6 p-6 bg-white rounded-xl shadow-lg border">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">📅 Filter by Date Range</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="flex items-end">
+            <button
+              onClick={handleDateFilterChange}
+              className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Apply Filter
+            </button>
+          </div>
+          
+          <div className="flex items-end">
+            <button
+              onClick={clearFilters}
+              className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+
+        {/* Preset Buttons */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setPresetDates('today')}
+            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+          >
+            Today
+          </button>
+          <button
+            onClick={() => setPresetDates('week')}
+            className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+          >
+            Last 7 Days
+          </button>
+          <button
+            onClick={() => setPresetDates('month')}
+            className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors"
+          >
+            Last 30 Days
+          </button>
+        </div>
+
+        {/* Active Filter Display */}
+        {(startDate || endDate) && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-700">
+              <span className="font-medium">Active Filter:</span> 
+              {startDate && ` From ${new Date(startDate).toLocaleDateString()}`}
+              {endDate && ` To ${new Date(endDate).toLocaleDateString()}`}
+              {!startDate && endDate && ` Up to ${new Date(endDate).toLocaleDateString()}`}
+            </p>
+          </div>
+        )}
+      </div>
       
       {error && (
         <div className="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
@@ -132,18 +259,6 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
-
-      {/* Statistics Summary */}
-      {!loading && !error && (
-        <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">📊 Quick Summary</h3>
-          <p className="text-gray-600">
-            Total system entities: <span className="font-bold text-blue-600">
-              {stats.users + stats.courses + stats.orders + stats.adminUsers + stats.attendance}
-            </span> records
-          </p>
-        </div>
-      )}
 
       {/* Zoom Link Section */}
       <div className="max-w-2xl">
