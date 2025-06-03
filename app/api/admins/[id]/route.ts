@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { adminUsers } from '@/lib/schema';
+import { adminUsers, adminRoles } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 
@@ -10,21 +10,31 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const admin = await db.query.adminUsers.findFirst({
-      where: eq(adminUsers.id, id),
-      with: {
-        role: true
-      }
-    });
+    const [adminData] = await db
+      .select({
+        admin: adminUsers,
+        role: {
+          id: adminRoles.id,
+          name: adminRoles.name,
+          permissions: adminRoles.permissions
+        }
+      })
+      .from(adminUsers)
+      .leftJoin(adminRoles, eq(adminUsers.roleId, adminRoles.id))
+      .where(eq(adminUsers.id, id))
+      .limit(1);
 
-    if (!admin) {
+    if (!adminData) {
       return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
     }
 
     // Don't return password
-    const { password, ...adminWithoutPassword } = admin;
+    const { password, ...adminWithoutPassword } = adminData.admin;
 
-    return NextResponse.json(adminWithoutPassword);
+    return NextResponse.json({
+      ...adminWithoutPassword,
+      role: adminData.role
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Failed to get admin' }, { status: 500 });
@@ -44,24 +54,50 @@ export async function PUT(
       data.password = await bcrypt.hash(data.password, 10);
     }
 
+    // If roleId is being updated, get the role name
+    if (data.roleId) {
+      const [roleData] = await db
+        .select()
+        .from(adminRoles)
+        .where(eq(adminRoles.id, data.roleId))
+        .limit(1);
+
+      if (roleData) {
+        data.role = roleData.name;
+      }
+    }
+
     await db
       .update(adminUsers)
       .set(data)
       .where(eq(adminUsers.id, id));
 
-    const updatedAdmin = await db.query.adminUsers.findFirst({
-      where: eq(adminUsers.id, id),
-      with: { role: true }
-    });
+    // Get updated admin with role information
+    const [updatedAdminData] = await db
+      .select({
+        admin: adminUsers,
+        role: {
+          id: adminRoles.id,
+          name: adminRoles.name,
+          permissions: adminRoles.permissions
+        }
+      })
+      .from(adminUsers)
+      .leftJoin(adminRoles, eq(adminUsers.roleId, adminRoles.id))
+      .where(eq(adminUsers.id, id))
+      .limit(1);
 
-    if (!updatedAdmin) {
+    if (!updatedAdminData) {
       return NextResponse.json({ error: 'Admin not found' }, { status: 404 });
     }
 
     // Don't return password
-    const { password, ...adminWithoutPassword } = updatedAdmin;
+    const { password, ...adminWithoutPassword } = updatedAdminData.admin;
 
-    return NextResponse.json(adminWithoutPassword);
+    return NextResponse.json({
+      ...adminWithoutPassword,
+      role: updatedAdminData.role
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Failed to update admin' }, { status: 500 });
