@@ -30,11 +30,27 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const data = await req.json();
+    const { batchName, courseId, startDate, endDate, capacity, description, image } = await req.json();
+    
+    // Validate required fields
+    if (!batchName || !courseId || !startDate || !endDate || !capacity) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Transform data to match schema requirements
+    const updateData = {
+      batchName,
+      courseId,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      capacity: Number(capacity),
+      description: description || null,
+      image: image || null,
+    };
 
     await db
       .update(batches)
-      .set(data)
+      .set(updateData)
       .where(eq(batches.id, id));
 
     const updatedBatch = await db.query.batches.findFirst({
@@ -47,7 +63,7 @@ export async function PUT(
 
     return NextResponse.json(updatedBatch);
   } catch (error) {
-    console.error(error);
+    console.error('Error updating batch:', error);
     return NextResponse.json({ error: 'Failed to update batch' }, { status: 500 });
   }
 }
