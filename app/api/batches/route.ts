@@ -26,7 +26,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { batchName, courseId, startDate, endDate, capacity, description } = await req.json();
+    const { batchName, courseId, startDate, endDate, capacity, description, image } = await req.json();
     
     // Validate required fields
     if (!batchName || !courseId || !startDate || !endDate || !capacity) {
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       endDate: new Date(endDate),
       capacity: Number(capacity),
       description: description || null,
+      image: image || null,
     };
     
     await db.insert(batches).values(newBatch);

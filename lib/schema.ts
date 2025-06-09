@@ -30,6 +30,8 @@ export const user = mysqlTable('user', {
   aboutMe: text("about_me"),
   newsletter: boolean("newsletter").default(false),
   phone: varchar("phone", { length: 20 }),
+  otp: varchar("otp", { length: 6 }),
+  otpExpiry: datetime("otp_expiry"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -97,6 +99,7 @@ export const batches = mysqlTable("batches", {
   startDate: datetime("startDate").notNull(),
   endDate: datetime("endDate").notNull(),
   capacity: int("capacity").notNull(),
+  image: varchar("image", { length: 500 }),
   description: text("description"),
   createdAt: datetime("createdAt").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updatedAt").default(sql`CURRENT_TIMESTAMP`),
@@ -232,4 +235,4 @@ export const zoomLinksRelations = relations(zoomLinks, ({ one }) => ({
 export const attendanceRelations = relations(attendance, ({ one }) => ({
   user: one(user, { fields: [attendance.userId], references: [user.id] }),
   batch: one(batches, { fields: [attendance.batchId], references: [batches.id] }),
-})); 
+}));
