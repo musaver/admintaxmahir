@@ -15,7 +15,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   if (!session) return <div>{children}</div>;
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+    { name: 'Dashboard', href: '/', icon: '📊' },
     { name: 'Users', href: '/users', icon: '👥' },
     { name: 'Courses', href: '/courses', icon: '📚' },
     { name: 'Batches', href: '/batches', icon: '📦' },
@@ -58,7 +58,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 key={item.name}
                 href={item.href}
                 className={`flex items-center px-3 py-2 my-1 text-base rounded-md ${
-                  pathname.startsWith(item.href)
+                  pathname === item.href || (item.href === '/' && pathname === '/')
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
@@ -85,7 +85,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 key={item.name}
                 href={item.href}
                 className={`flex items-center px-3 py-2 my-1 text-base rounded-md ${
-                  pathname.startsWith(item.href)
+                  pathname === item.href || (item.href === '/' && pathname === '/')
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}

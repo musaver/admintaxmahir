@@ -30,10 +30,6 @@ export default function AttendancePage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  useEffect(() => {
-    fetchAttendance();
-  }, [startDate, endDate]);
-
   const fetchAttendance = async () => {
     setLoading(true);
     try {
@@ -55,6 +51,10 @@ export default function AttendancePage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAttendance();
+  }, [startDate, endDate]);
 
   const handleClearFilter = () => {
     setStartDate('');
@@ -94,8 +94,19 @@ export default function AttendancePage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Attendance Records</h1>
-        <p className="text-gray-600 mt-1">View and manage student attendance across all batches</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Attendance Records</h1>
+            <p className="text-gray-600 mt-1">View and manage student attendance across all batches</p>
+          </div>
+          <button
+            onClick={fetchAttendance}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </button>
+        </div>
       </div>
 
       <DateFilter

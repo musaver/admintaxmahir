@@ -6,17 +6,21 @@ export default function RecordingsList() {
   const [recordings, setRecordings] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchRecordings = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/recordings');
+      const data = await res.json();
+      setRecordings(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetch('/api/recordings')
-      .then(res => res.json())
-      .then(data => {
-        setRecordings(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    fetchRecordings();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -40,12 +44,21 @@ export default function RecordingsList() {
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Recordings</h1>
-        <Link 
-          href="/recordings/add" 
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Add New Recording
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchRecordings}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </button>
+          <Link 
+            href="/recordings/add" 
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Add New Recording
+          </Link>
+        </div>
       </div>
       
       <div className="overflow-x-auto">

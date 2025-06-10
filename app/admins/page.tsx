@@ -6,17 +6,21 @@ export default function AdminsList() {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchAdmins = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admins');
+      const data = await res.json();
+      setAdmins(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetch('/api/admins')
-      .then(res => res.json())
-      .then(data => {
-        setAdmins(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    fetchAdmins();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -36,12 +40,21 @@ export default function AdminsList() {
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Admin Users</h1>
-        <Link 
-          href="/admins/add" 
-          className="px-4 py-2 bg-blue-500 text-white rounded"
-        >
-          Add New Admin
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchAdmins}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </button>
+          <Link 
+            href="/admins/add" 
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Add New Admin
+          </Link>
+        </div>
       </div>
       
       <div className="overflow-x-auto">

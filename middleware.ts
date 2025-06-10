@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
   
   // Check if the path is any of the protected admin pages
   const isProtectedPage = 
-    request.nextUrl.pathname.startsWith("/dashboard") ||
+    request.nextUrl.pathname === "/" ||
     request.nextUrl.pathname.startsWith("/users") ||
     request.nextUrl.pathname.startsWith("/courses") ||
     request.nextUrl.pathname.startsWith("/orders") ||
@@ -21,8 +21,7 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/logs") ||
     request.nextUrl.pathname.startsWith("/attendance") ||
     request.nextUrl.pathname.startsWith("/batches") ||
-    request.nextUrl.pathname.startsWith("/recordings") ||
-    request.nextUrl.pathname === "/";
+    request.nextUrl.pathname.startsWith("/recordings");
 
   // Debug logging (only in development)
   if (process.env.NODE_ENV === "development") {
@@ -36,9 +35,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (token && isAuthPage) {
-    // ✅ Logged in user trying to access /login → redirect to /dashboard
-    console.log("Redirecting authenticated user to dashboard");
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // ✅ Logged in user trying to access /login → redirect to main page
+    console.log("Redirecting authenticated user to main page");
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   if (!token && isProtectedPage) {
@@ -54,7 +53,6 @@ export const config = {
   matcher: [
     "/login", 
     "/", 
-    "/dashboard/:path*", 
     "/users/:path*", 
     "/courses/:path*", 
     "/orders/:path*", 

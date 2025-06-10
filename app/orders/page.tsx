@@ -6,17 +6,21 @@ export default function OrdersList() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/orders');
+      const data = await res.json();
+      setOrders(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetch('/api/orders')
-      .then(res => res.json())
-      .then(data => {
-        setOrders(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    fetchOrders();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -51,12 +55,21 @@ export default function OrdersList() {
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Orders</h1>
-        <Link 
-          href="/orders/add" 
-          className="px-4 py-2 bg-blue-500 text-white rounded"
-        >
-          Add New Order
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchOrders}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </button>
+          <Link 
+            href="/orders/add" 
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Add New Order
+          </Link>
+        </div>
       </div>
       
       <div className="overflow-x-auto">

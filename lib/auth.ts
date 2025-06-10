@@ -77,19 +77,29 @@ export const authOptions: NextAuthOptions = {
     },
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback:", { url, baseUrl });
-      // Always redirect to dashboard after login
-      if (url === "/login" || url === baseUrl) {
-        return `${baseUrl}/dashboard`;
+      
+      // Always redirect to main page (/) after login - which now contains the dashboard
+      if (url === "/login" || url === `${baseUrl}/login`) {
+        return `${baseUrl}/`;
       }
+      
+      // If coming from base URL, go to main page
+      if (url === baseUrl) {
+        return `${baseUrl}/`;
+      }
+      
       // Handle relative URLs
       if (url.startsWith("/")) {
         return `${baseUrl}${url}`;
       }
+      
       // Handle absolute URLs that match the base domain
       if (new URL(url).origin === baseUrl) {
         return url;
       }
-      return `${baseUrl}/dashboard`;
+      
+      // Default: redirect to main page
+      return `${baseUrl}/`;
     },
   },
   debug: process.env.NODE_ENV === "development",

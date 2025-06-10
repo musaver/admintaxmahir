@@ -1,103 +1,271 @@
-import Image from "next/image";
+'use client';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import ZoomLinkForm from './components/ZoomLinkForm';
 
-export default function Home() {
+interface DashboardStats {
+  users: number;
+  courses: number;
+  orders: number;
+  adminUsers: number;
+  attendance: number;
+  dateRange?: {
+    startDate: string | null;
+    endDate: string | null;
+  };
+}
+
+export default function Dashboard() {
+  const router = useRouter();
+  const [stats, setStats] = useState<DashboardStats>({
+    users: 0,
+    courses: 0,
+    orders: 0,
+    adminUsers: 0,
+    attendance: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await fetch(`/api/dashboard/stats?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard statistics');
+      }
+      const data = await response.json();
+      setStats(data);
+    } catch (err: any) {
+      console.error('Error fetching stats:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDateFilterChange = () => {
+    fetchStats();
+  };
+
+  const clearFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    // Fetch stats without date filters
+    setTimeout(() => fetchStats(), 100);
+  };
+
+  const setPresetDates = (preset: string) => {
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    switch (preset) {
+      case 'today':
+        setStartDate(startOfToday.toISOString().split('T')[0]);
+        setEndDate(startOfToday.toISOString().split('T')[0]);
+        break;
+      case 'week':
+        const weekAgo = new Date(startOfToday);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        setStartDate(weekAgo.toISOString().split('T')[0]);
+        setEndDate(startOfToday.toISOString().split('T')[0]);
+        break;
+      case 'month':
+        const monthAgo = new Date(startOfToday);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        setStartDate(monthAgo.toISOString().split('T')[0]);
+        setEndDate(startOfToday.toISOString().split('T')[0]);
+        break;
+    }
+    setTimeout(() => fetchStats(), 100);
+  };
+  
+  const cards = [
+    { 
+      title: 'Users', 
+      count: loading ? '...' : stats.users.toString(), 
+      link: '/users',
+      color: 'bg-blue-500',
+      hoverColor: 'hover:bg-blue-600',
+      icon: '👥'
+    },
+    { 
+      title: 'Courses', 
+      count: loading ? '...' : stats.courses.toString(), 
+      link: '/courses',
+      color: 'bg-green-500',
+      hoverColor: 'hover:bg-green-600',
+      icon: '📚'
+    },
+    { 
+      title: 'Orders', 
+      count: loading ? '...' : stats.orders.toString(), 
+      link: '/orders',
+      color: 'bg-yellow-500',
+      hoverColor: 'hover:bg-yellow-600',
+      icon: '🛒'
+    },
+    { 
+      title: 'Admin Users', 
+      count: loading ? '...' : stats.adminUsers.toString(), 
+      link: '/admins',
+      color: 'bg-purple-500',
+      hoverColor: 'hover:bg-purple-600',
+      icon: '👨‍💼'
+    },
+    { 
+      title: 'Attendance', 
+      count: loading ? '...' : stats.attendance.toString(), 
+      link: '/attendance',
+      color: 'bg-red-500',
+      hoverColor: 'hover:bg-red-600',
+      icon: '📅'
+    },
+  ];
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+        <button
+          onClick={fetchStats}
+          disabled={loading}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {loading ? 'Refreshing...' : '🔄 Refresh'}
+        </button>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+      {/* Date Filters */}
+      <div className="mb-6 p-6 bg-white rounded-xl shadow-lg border">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">📅 Filter by Date Range</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div className="flex items-end">
+            <button
+              onClick={handleDateFilterChange}
+              className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Apply Filter
+            </button>
+          </div>
+          
+          <div className="flex items-end">
+            <button
+              onClick={clearFilters}
+              className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Clear Filters
+            </button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Preset Buttons */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setPresetDates('today')}
+            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+          >
+            Today
+          </button>
+          <button
+            onClick={() => setPresetDates('week')}
+            className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+          >
+            Last 7 Days
+          </button>
+          <button
+            onClick={() => setPresetDates('month')}
+            className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors"
+          >
+            Last 30 Days
+          </button>
+        </div>
+
+        {/* Active Filter Display */}
+        {(startDate || endDate) && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-700">
+              <span className="font-medium">Active Filter:</span> 
+              {startDate && ` From ${new Date(startDate).toLocaleDateString()}`}
+              {endDate && ` To ${new Date(endDate).toLocaleDateString()}`}
+              {!startDate && endDate && ` Up to ${new Date(endDate).toLocaleDateString()}`}
+            </p>
+          </div>
+        )}
+      </div>
+      
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+          <div className="flex items-center">
+            <span className="text-red-500 mr-2">⚠️</span>
+            Error loading dashboard statistics: {error}
+          </div>
+        </div>
+      )}
+      
+      {/* Dashboard Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        {cards.map((card) => (
+          <div 
+            key={card.title} 
+            className="border rounded-xl shadow-lg cursor-pointer hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            onClick={() => router.push(card.link)}
+          >
+            <div className={`${card.color} ${card.hoverColor} text-white p-4 rounded-t-xl transition-colors`}>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">{card.title}</h2>
+                <span className="text-2xl">{card.icon}</span>
+              </div>
+            </div>
+            <div className="p-6 bg-white rounded-b-xl">
+              <p className="text-4xl font-bold text-gray-800 mb-2">{card.count}</p>
+              <p className="text-sm text-gray-500">Total records</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Zoom Link Section */}
+      <div className="max-w-2xl">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4">🔗 Zoom Link Management</h2>
+        <div className="bg-white p-6 rounded-xl shadow-lg border">
+          <ZoomLinkForm />
+        </div>
+      </div>
     </div>
   );
 }

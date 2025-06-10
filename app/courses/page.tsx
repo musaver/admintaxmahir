@@ -6,17 +6,21 @@ export default function CoursesList() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchCourses = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/courses');
+      const data = await res.json();
+      setCourses(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetch('/api/courses')
-      .then(res => res.json())
-      .then(data => {
-        setCourses(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    fetchCourses();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -36,12 +40,21 @@ export default function CoursesList() {
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Courses</h1>
-        <Link 
-          href="/courses/add" 
-          className="px-4 py-2 bg-blue-500 text-white rounded"
-        >
-          Add New Course
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchCourses}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </button>
+          <Link 
+            href="/courses/add" 
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Add New Course
+          </Link>
+        </div>
       </div>
       
       <div className="overflow-x-auto">

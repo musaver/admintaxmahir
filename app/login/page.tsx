@@ -20,7 +20,7 @@ export default function LoginPage() {
       email,
       password,
       redirect: false,
-      callbackUrl: "/dashboard",
+      callbackUrl: "/",
     });
 
    
@@ -48,7 +48,7 @@ export default function LoginPage() {
         setErrorMsg("An unexpected error occurred.");
       }
     } else if (res?.ok) {
-      router.push("/dashboard");
+      router.push("/");
     }
   };
 

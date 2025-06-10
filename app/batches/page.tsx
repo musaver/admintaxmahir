@@ -6,17 +6,21 @@ export default function BatchesList() {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchBatches = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/batches');
+      const data = await res.json();
+      setBatches(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetch('/api/batches')
-      .then(res => res.json())
-      .then(data => {
-        setBatches(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    fetchBatches();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -40,12 +44,21 @@ export default function BatchesList() {
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Batches</h1>
-        <Link 
-          href="/batches/add" 
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Add New Batch
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchBatches}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </button>
+          <Link 
+            href="/batches/add" 
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Add New Batch
+          </Link>
+        </div>
       </div>
       
       <div className="overflow-x-auto">
