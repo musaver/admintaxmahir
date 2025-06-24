@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { normalizeProductImages } from '../../utils/jsonUtils';
 
 export default function ProductsList() {
   const [products, setProducts] = useState([]);
@@ -40,6 +41,54 @@ export default function ProductsList() {
       return 'From addons';
     }
     return `$${numPrice.toFixed(2)}`;
+  };
+
+  // Use the same approach as the edit product page
+  const getFirstProductImage = (imagesData: any): string | null => {
+    console.log('🖼️ Raw images data:', imagesData);
+    
+    // Use the same utility function as edit product page
+    const normalizedImages = normalizeProductImages(imagesData);
+    console.log('✅ Normalized images:', normalizedImages);
+    
+    // Return the first image or null
+    const firstImage = normalizedImages.length > 0 ? normalizedImages[0] : null;
+    console.log('🎯 First image:', firstImage);
+    
+    return firstImage;
+  };
+
+  // ProductImage component with the same approach as edit page
+  const ProductImage = ({ imagesData, productName }: { imagesData: any; productName: string }) => {
+    const imageUrl = getFirstProductImage(imagesData);
+    
+    if (!imageUrl) {
+      return (
+        <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-gray-500 text-xs border border-gray-200">
+          No Image
+        </div>
+      );
+    }
+
+    return (
+      <img 
+        src={imageUrl}
+        alt={productName}
+        className="w-16 h-16 object-cover rounded border border-gray-200"
+        onLoad={() => {
+          console.log('✅ Image loaded successfully:', imageUrl);
+        }}
+        onError={(e) => {
+          console.error('💥 Image failed to load:', imageUrl);
+          // Hide the broken image and show fallback
+          (e.target as HTMLImageElement).style.display = 'none';
+          const fallback = (e.target as HTMLElement).parentElement?.querySelector('.fallback-image') as HTMLElement;
+          if (fallback) {
+            fallback.style.display = 'flex';
+          }
+        }}
+      />
+    );
   };
 
   if (loading) return <div>Loading...</div>;
@@ -84,23 +133,13 @@ export default function ProductsList() {
           <tbody>
             {products.length > 0 ? (
               products.map((item: any) => {
-                const images = item.product.images ? JSON.parse(item.product.images) : [];
-                const firstImage = Array.isArray(images) && images.length > 0 ? images[0] : null;
-                
                 return (
                   <tr key={item.product.id}>
                     <td className="border p-2">
-                      {firstImage ? (
-                        <img 
-                          src={firstImage} 
-                          alt={item.product.name}
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-gray-500 text-xs">
-                          No Image
-                        </div>
-                      )}
+                      <ProductImage 
+                        imagesData={item.product.images} 
+                        productName={item.product.name}
+                      />
                     </td>
                     <td className="border p-2">
                       <div className="font-medium">{item.product.name}</div>

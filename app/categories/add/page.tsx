@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageUploader from '../../components/ImageUploader';
+import { generateSlug, isValidSlug } from '../../../utils/priceUtils';
 
 export default function AddCategory() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function AddCategory() {
     slug: '',
     description: '',
     image: '',
+    iconName: '',
     parentId: '',
     sortOrder: 0,
     isActive: true,
@@ -18,6 +20,7 @@ export default function AddCategory() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -38,6 +41,27 @@ export default function AddCategory() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
+    
+    // Handle slug field separately to track manual edits
+    if (name === 'slug') {
+      setIsSlugManuallyEdited(true);
+      setFormData({
+        ...formData,
+        [name]: generateSlug(value) // Always generate valid slug even when manually edited
+      });
+      return;
+    }
+    
+    // Auto-generate slug from name if it hasn't been manually edited
+    if (name === 'name' && !isSlugManuallyEdited) {
+      setFormData({
+        ...formData,
+        [name]: value,
+        slug: generateSlug(value)
+      });
+      return;
+    }
+    
     setFormData({
       ...formData,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
@@ -115,7 +139,7 @@ export default function AddCategory() {
 
         <div className="mb-4">
           <label className="block text-gray-700 mb-2" htmlFor="slug">
-            Slug
+            Slug <span className="text-sm text-gray-500">(SEO-friendly URL)</span>
           </label>
           <input
             type="text"
@@ -123,9 +147,51 @@ export default function AddCategory() {
             name="slug"
             value={formData.slug}
             onChange={handleChange}
-            className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-            placeholder="auto-generated-from-name"
+            className={`w-full p-2 border rounded focus:outline-none transition-colors ${
+              formData.slug && !isValidSlug(formData.slug) 
+                ? 'border-red-500 focus:border-red-500' 
+                : 'border-gray-300 focus:border-blue-500'
+            }`}
+            placeholder="auto-generated-from-category-name"
           />
+          {formData.slug && (
+            <div className="mt-1">
+              {isValidSlug(formData.slug) ? (
+                <p className="text-sm text-green-600 flex items-center">
+                  <span className="mr-1">✓</span>
+                  Preview URL: /categories/{formData.slug}
+                </p>
+              ) : (
+                <p className="text-sm text-red-600 flex items-center">
+                  <span className="mr-1">✗</span>
+                  Invalid slug. Only lowercase letters, numbers, and hyphens allowed.
+                </p>
+              )}
+            </div>
+          )}
+          {!isSlugManuallyEdited && (
+            <p className="text-xs text-gray-500 mt-1">
+              Auto-generated from category name. You can edit it manually.
+            </p>
+          )}
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="iconName">
+            Category Icon Name <span className="text-sm text-gray-500">(optional)</span>
+          </label>
+          <input
+            type="text"
+            id="iconName"
+            name="iconName"
+            value={formData.iconName}
+            onChange={handleChange}
+            className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+            placeholder="e.g., shopping-cart, laptop, shirt, etc."
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Icon name for displaying category icons (e.g., FontAwesome or similar icon library names)
+          </p>
         </div>
 
         <div className="mb-4">

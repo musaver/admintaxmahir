@@ -147,6 +147,41 @@ export const calculateBulkPrice = (
   return basePrice * (1 - applicableDiscount / 100);
 };
 
+/**
+ * Generate SEO-friendly slug from a title
+ * Converts title to lowercase, replaces non-alphanumeric characters with dashes,
+ * and handles edge cases like multiple consecutive dashes
+ */
+export const generateSlug = (title: string): string => {
+  if (!title || typeof title !== 'string') {
+    return '';
+  }
+
+  return title
+    .toLowerCase() // Convert to lowercase
+    .trim() // Remove leading/trailing whitespace
+    .normalize('NFD') // Normalize accented characters
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^a-z0-9\s-]/g, '') // Remove all non-alphanumeric characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple consecutive hyphens with single hyphen
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+};
+
+/**
+ * Validate if a slug is SEO-friendly
+ */
+export const isValidSlug = (slug: string): boolean => {
+  if (!slug || typeof slug !== 'string') {
+    return false;
+  }
+  
+  // Check if slug contains only lowercase letters, numbers, and hyphens
+  // Should not start or end with hyphen, and should not have consecutive hyphens
+  const slugRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+  return slugRegex.test(slug);
+};
+
 export default {
   formatPrice,
   calculateDiscountPercentage,
@@ -158,4 +193,6 @@ export default {
   isValidPrice,
   sanitizePrice,
   calculateBulkPrice,
+  generateSlug,
+  isValidSlug,
 }; 

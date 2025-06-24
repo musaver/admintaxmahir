@@ -86,6 +86,7 @@ export const categories = mysqlTable("categories", {
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   description: text("description"),
   image: varchar("image", { length: 500 }),
+  iconName: varchar("icon_name", { length: 100 }), // For category icons (e.g., FontAwesome icon names)
   parentId: varchar("parent_id", { length: 255 }), // For hierarchical categories
   sortOrder: int("sort_order").default(0),
   isActive: boolean("is_active").default(true),

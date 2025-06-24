@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageUploader from '../../components/ImageUploader';
+import { generateSlug, isValidSlug } from '../../../utils/priceUtils';
 
 /**
  * Enhanced Variation System for E-commerce Products
@@ -165,6 +166,7 @@ export default function AddProduct() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -222,6 +224,27 @@ export default function AddProduct() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
+    
+    // Handle slug field separately to track manual edits
+    if (name === 'slug') {
+      setIsSlugManuallyEdited(true);
+      setFormData({
+        ...formData,
+        [name]: generateSlug(value) // Always generate valid slug even when manually edited
+      });
+      return;
+    }
+    
+    // Auto-generate slug from title if it hasn't been manually edited
+    if (name === 'name' && !isSlugManuallyEdited) {
+      setFormData({
+        ...formData,
+        [name]: value,
+        slug: generateSlug(value)
+      });
+      return;
+    }
+    
     setFormData({
       ...formData,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
@@ -519,7 +542,7 @@ export default function AddProduct() {
 
             <div>
               <label className="block text-gray-700 mb-2" htmlFor="slug">
-                Slug
+                Slug <span className="text-sm text-gray-500">(SEO-friendly URL)</span>
               </label>
               <input
                 type="text"
@@ -527,9 +550,33 @@ export default function AddProduct() {
                 name="slug"
                 value={formData.slug}
                 onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                placeholder="auto-generated-from-name"
+                className={`w-full p-2 border rounded focus:outline-none transition-colors ${
+                  formData.slug && !isValidSlug(formData.slug) 
+                    ? 'border-red-500 focus:border-red-500' 
+                    : 'border-gray-300 focus:border-blue-500'
+                }`}
+                placeholder="auto-generated-from-product-name"
               />
+              {formData.slug && (
+                <div className="mt-1">
+                  {isValidSlug(formData.slug) ? (
+                    <p className="text-sm text-green-600 flex items-center">
+                      <span className="mr-1">✓</span>
+                      Preview URL: /products/{formData.slug}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-red-600 flex items-center">
+                      <span className="mr-1">✗</span>
+                      Invalid slug. Only lowercase letters, numbers, and hyphens allowed.
+                    </p>
+                  )}
+                </div>
+              )}
+              {!isSlugManuallyEdited && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Auto-generated from product name. You can edit it manually.
+                </p>
+              )}
             </div>
 
             <div>
