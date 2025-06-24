@@ -12,13 +12,7 @@ export async function middleware(request: NextRequest) {
   
   // Check if the path is any of the protected admin pages
   const isProtectedPage = 
-    request.nextUrl.pathname === "/" ||
-    request.nextUrl.pathname.startsWith("/users") ||
     request.nextUrl.pathname.startsWith("/courses") ||
-    request.nextUrl.pathname.startsWith("/orders") ||
-    request.nextUrl.pathname.startsWith("/admins") ||
-    request.nextUrl.pathname.startsWith("/roles") ||
-    request.nextUrl.pathname.startsWith("/logs") ||
     request.nextUrl.pathname.startsWith("/attendance") ||
     request.nextUrl.pathname.startsWith("/batches") ||
     request.nextUrl.pathname.startsWith("/recordings");
@@ -52,13 +46,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/login", 
-    "/", 
-    "/users/:path*", 
     "/courses/:path*", 
-    "/orders/:path*", 
-    "/admins/:path*", 
-    "/roles/:path*", 
-    "/logs/:path*",
     "/attendance/:path*",
     "/batches/:path*",
     "/recordings/:path*"
