@@ -81,9 +81,9 @@ export async function GET(
       
       priceMatrix[attributeKey] = {
         price: variant.price,
-        comparePrice: variant.comparePrice,
+        comparePrice: variant.comparePrice ?? null,
         variantId: variant.id,
-        inventoryQuantity: variant.inventoryQuantity,
+        inventoryQuantity: variant.inventoryQuantity ?? 0,
         sku: variant.sku || '',
       };
     });
