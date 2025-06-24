@@ -16,12 +16,18 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: '📊' },
-    { name: 'Users', href: '/users', icon: '👥' },
-    { name: 'Courses', href: '/courses', icon: '📚' },
-    { name: 'Batches', href: '/batches', icon: '📦' },
-    { name: 'Recordings', href: '/recordings', icon: '🎥' },
+    { name: 'Customers', href: '/users', icon: '👥' },
+    { name: 'Services', href: '/products', icon: '📦' },
+    { name: 'Categories', href: '/categories', icon: '📂' },
+    /*{ name: 'Subcategories', href: '/subcategories', icon: '📁' },*/
+    { name: 'Addons', href: '/addons', icon: '🧩' },
+    { name: 'Tasks ', href: '/variation-attributes', icon: '🏷️' },
+    /*{ name: 'Product Variants', href: '/product-variants', icon: '🔧' },*/
+    /*{ name: 'Inventory', href: '/inventory', icon: '📈' },*/
     { name: 'Orders', href: '/orders', icon: '🛒' },
-    { name: 'Attendance', href: '/attendance', icon: '📅' },
+    /*{ name: 'Returns', href: '/returns', icon: '↩️' },
+    { name: 'Refunds', href: '/refunds', icon: '💰' },
+    { name: 'Shipping Labels', href: '/shipping-labels', icon: '🏷️' },*/
     { name: 'Admin Users', href: '/admins', icon: '👮' },
     { name: 'Admin Roles', href: '/roles', icon: '🔐' },
     { name: 'Admin Logs', href: '/logs', icon: '📋' },

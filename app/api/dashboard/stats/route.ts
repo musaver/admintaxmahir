@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { user, courses, orders, adminUsers, attendance } from '@/lib/schema';
+import { user, products, categories, orders, adminUsers } from '@/lib/schema';
 import { count, and, gte, lte } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -26,34 +26,34 @@ export async function GET(request: NextRequest) {
 
     // Get counts for all entities with date filters
     const [
-      usersCount,
-      coursesCount,
+      customersCount,
+      productsCount,
+      categoriesCount,
       ordersCount,
-      adminUsersCount,
-      attendanceCount
+      adminUsersCount
     ] = await Promise.all([
-      // Users - filter by createdAt if it exists, otherwise get all
+      // Customers (users) - filter by createdAt if it exists, otherwise get all
       db.select({ count: count() }).from(user).where(buildDateFilter(user.createdAt)),
       
-      // Courses - filter by createdAt
-      db.select({ count: count() }).from(courses).where(buildDateFilter(courses.createdAt)),
+      // Products - filter by createdAt
+      db.select({ count: count() }).from(products).where(buildDateFilter(products.createdAt)),
+      
+      // Categories - filter by createdAt
+      db.select({ count: count() }).from(categories).where(buildDateFilter(categories.createdAt)),
       
       // Orders - filter by createdAt
       db.select({ count: count() }).from(orders).where(buildDateFilter(orders.createdAt)),
       
       // Admin Users - filter by createdAt
-      db.select({ count: count() }).from(adminUsers).where(buildDateFilter(adminUsers.createdAt)),
-      
-      // Attendance - filter by date/createdAt
-      db.select({ count: count() }).from(attendance).where(buildDateFilter(attendance.date))
+      db.select({ count: count() }).from(adminUsers).where(buildDateFilter(adminUsers.createdAt))
     ]);
 
     const stats = {
-      users: usersCount[0]?.count || 0,
-      courses: coursesCount[0]?.count || 0,
+      customers: customersCount[0]?.count || 0,
+      products: productsCount[0]?.count || 0,
+      categories: categoriesCount[0]?.count || 0,
       orders: ordersCount[0]?.count || 0,
       adminUsers: adminUsersCount[0]?.count || 0,
-      attendance: attendanceCount[0]?.count || 0,
       dateRange: {
         startDate,
         endDate

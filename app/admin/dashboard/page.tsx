@@ -6,10 +6,10 @@ export default function Dashboard() {
   const router = useRouter();
   
   const cards = [
-    { title: 'Users', count: '2', link: '/admin/users' },
-    { title: 'Courses', count: '2', link: '/admin/courses' },
-    { title: 'Orders', count: '1', link: '/admin/orders' },
-    { title: 'Admin Users', count: '1', link: '/admin/admins' },
+    { title: 'Customers', count: '0', link: '/admin/users' },
+    { title: 'Products', count: '0', link: '/admin/products' },
+    { title: 'Orders', count: '0', link: '/admin/orders' },
+    { title: 'Categories', count: '0', link: '/admin/categories' },
   ];
 
   return (

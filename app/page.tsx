@@ -1,14 +1,13 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import ZoomLinkForm from './components/ZoomLinkForm';
 
 interface DashboardStats {
-  users: number;
-  courses: number;
+  customers: number;
+  products: number;
+  categories: number;
   orders: number;
   adminUsers: number;
-  attendance: number;
   dateRange?: {
     startDate: string | null;
     endDate: string | null;
@@ -18,11 +17,11 @@ interface DashboardStats {
 export default function Dashboard() {
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats>({
-    users: 0,
-    courses: 0,
+    customers: 0,
+    products: 0,
+    categories: 0,
     orders: 0,
-    adminUsers: 0,
-    attendance: 0
+    adminUsers: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -95,20 +94,28 @@ export default function Dashboard() {
   
   const cards = [
     { 
-      title: 'Users', 
-      count: loading ? '...' : stats.users.toString(), 
-      link: '/users',
+      title: 'Customers', 
+      count: loading ? '...' : stats.customers.toString(), 
+      link: '/customers',
       color: 'bg-blue-500',
       hoverColor: 'hover:bg-blue-600',
       icon: '👥'
     },
     { 
-      title: 'Courses', 
-      count: loading ? '...' : stats.courses.toString(), 
-      link: '/courses',
+      title: 'Services', 
+      count: loading ? '...' : stats.products.toString(), 
+      link: '/products',
       color: 'bg-green-500',
       hoverColor: 'hover:bg-green-600',
-      icon: '📚'
+      icon: '📦'
+    },
+    { 
+      title: 'Categories', 
+      count: loading ? '...' : stats.categories.toString(), 
+      link: '/categories',
+      color: 'bg-purple-500',
+      hoverColor: 'hover:bg-purple-600',
+      icon: '📂'
     },
     { 
       title: 'Orders', 
@@ -122,17 +129,9 @@ export default function Dashboard() {
       title: 'Admin Users', 
       count: loading ? '...' : stats.adminUsers.toString(), 
       link: '/admins',
-      color: 'bg-purple-500',
-      hoverColor: 'hover:bg-purple-600',
-      icon: '👨‍💼'
-    },
-    { 
-      title: 'Attendance', 
-      count: loading ? '...' : stats.attendance.toString(), 
-      link: '/attendance',
       color: 'bg-red-500',
       hoverColor: 'hover:bg-red-600',
-      icon: '📅'
+      icon: '👨‍💼'
     },
   ];
 
@@ -260,12 +259,7 @@ export default function Dashboard() {
       </div>
 
       {/* Zoom Link Section */}
-      <div className="max-w-2xl">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">🔗 Zoom Link Management</h2>
-        <div className="bg-white p-6 rounded-xl shadow-lg border">
-          <ZoomLinkForm />
-        </div>
-      </div>
+      
     </div>
   );
 }

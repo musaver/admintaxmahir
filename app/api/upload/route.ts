@@ -28,10 +28,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate directory parameter
-    const allowedDirectories = ['courses', 'batches', 'general'];
+    const allowedDirectories = ['courses', 'batches', 'general', 'products'];
     if (!allowedDirectories.includes(directory)) {
       return NextResponse.json({ 
-        error: 'Invalid directory. Allowed directories: courses, batches, general' 
+        error: 'Invalid directory. Allowed directories: courses, batches, general, products' 
       }, { status: 400 });
     }
 
