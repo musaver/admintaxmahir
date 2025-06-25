@@ -10,12 +10,12 @@ export async function middleware(request: NextRequest) {
 
   const isAuthPage = request.nextUrl.pathname.startsWith("/login");
   
-  // Check if the path is any of the protected admin pages
-  const isProtectedPage = 
-    request.nextUrl.pathname.startsWith("/courses") ||
-    request.nextUrl.pathname.startsWith("/attendance") ||
-    request.nextUrl.pathname.startsWith("/batches") ||
-    request.nextUrl.pathname.startsWith("/recordings");
+  // Check if the path is any protected admin page (all pages except login and public assets)
+  const isProtectedPage = !isAuthPage && 
+    !request.nextUrl.pathname.startsWith("/api/auth") &&
+    !request.nextUrl.pathname.startsWith("/_next") &&
+    !request.nextUrl.pathname.startsWith("/favicon.ico") &&
+    request.nextUrl.pathname !== "/";
 
   // Debug logging (only in development)
   if (process.env.NODE_ENV === "development") {
@@ -45,10 +45,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/login", 
-    "/courses/:path*", 
-    "/attendance/:path*",
-    "/batches/:path*",
-    "/recordings/:path*"
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (NextAuth API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api/auth|_next/static|_next/image|favicon.ico).*)',
   ],
 };

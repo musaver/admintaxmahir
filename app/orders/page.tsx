@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import CurrencySymbol from '../components/CurrencySymbol';
 
 interface Order {
   id: string;
@@ -254,16 +255,30 @@ export default function OrdersList() {
     );
   };
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-    }).format(amount);
+  const formatCurrency = (amount: number) => {
+    // Handle NaN and undefined/null values
+    if (isNaN(amount) || amount === null || amount === undefined) {
+      return (
+        <span className="flex items-center gap-1">
+          <CurrencySymbol />0.00
+        </span>
+      );
+    }
+    
+    return (
+      <span className="flex items-center gap-1">
+        <CurrencySymbol />{amount.toFixed(2)}
+      </span>
+    );
   };
 
   const getOrderStats = () => {
     const totalOrders = filteredOrders.length;
-    const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+    // Fix NaN issue: ensure totalAmount is a valid number before summing
+    const totalRevenue = filteredOrders.reduce((sum, order) => {
+      const amount = order.totalAmount || 0; // Use the number directly, default to 0 if falsy
+      return sum + amount;
+    }, 0);
     const pendingOrders = filteredOrders.filter(order => order.status === 'pending').length;
     const completedOrders = filteredOrders.filter(order => order.status === 'delivered').length;
 
@@ -499,10 +514,10 @@ export default function OrdersList() {
                       </div>
                     </td>
                     <td className="border-b p-3">
-                      <div className="font-semibold">{formatCurrency(order.totalAmount, order.currency)}</div>
+                      <div className="font-semibold">{formatCurrency(order.totalAmount)}</div>
                       {order.discountAmount > 0 && (
                         <div className="text-sm text-green-600">
-                          -{formatCurrency(order.discountAmount, order.currency)} discount
+                          -{formatCurrency(order.discountAmount)} discount
                         </div>
                       )}
                     </td>

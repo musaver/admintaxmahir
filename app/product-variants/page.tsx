@@ -91,7 +91,12 @@ export default function ProductVariantsList() {
   };
 
   const formatPrice = (price: string) => {
-    return `$${parseFloat(price).toFixed(2)}`;
+    return (
+      <span className="flex items-center gap-1">
+        <span className="currency-symbol">{String.fromCharCode(0xe001)}</span>
+        {parseFloat(price).toFixed(2)}
+      </span>
+    );
   };
 
   const getStockStatus = (quantity: number) => {

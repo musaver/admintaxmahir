@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { normalizeProductImages } from '../../utils/jsonUtils';
+import CurrencySymbol from '../../components/CurrencySymbol';
 
 export default function ProductsList() {
   const [products, setProducts] = useState([]);
@@ -40,7 +41,12 @@ export default function ProductsList() {
     if (productType === 'group' && numPrice === 0) {
       return 'From addons';
     }
-    return `$${numPrice.toFixed(2)}`;
+    return (
+      <span className="flex items-center gap-1">
+        <CurrencySymbol />
+        {numPrice.toFixed(2)}
+      </span>
+    );
   };
 
   // Use the same approach as the edit product page

@@ -9,10 +9,11 @@ export interface PriceData {
 }
 
 /**
- * Format price as currency string
+ * Format price as currency string (without currency symbol)
+ * Use with CurrencySymbol component: <CurrencySymbol />{formatPrice(price)}
  */
-export const formatPrice = (price: number, currency: string = '$'): string => {
-  return `${currency}${price.toFixed(2)}`;
+export const formatPrice = (price: number): string => {
+  return price.toFixed(2);
 };
 
 /**

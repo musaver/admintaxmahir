@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
+import CurrencySymbol from '../../../components/CurrencySymbol';
 
 interface Order {
   id: string;
@@ -275,11 +276,21 @@ export default function EditOrder() {
     );
   };
 
-  const formatCurrency = (amount: number, currency: string = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-    }).format(amount);
+    const formatCurrency = (amount: number) => {
+    // Handle NaN and undefined/null values
+    if (isNaN(amount) || amount === null || amount === undefined) {
+      return (
+        <span className="flex items-center gap-1">
+          <CurrencySymbol />0.00
+        </span>
+      );
+    }
+    
+    return (
+      <span className="flex items-center gap-1">
+        <CurrencySymbol />{amount.toFixed(2)}
+      </span>
+    );
   };
 
   const parseAddons = (addonsData: any) => {
@@ -769,30 +780,30 @@ export default function EditOrder() {
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>{formatCurrency(order.subtotal, order.currency)}</span>
+                <span>{formatCurrency(order.subtotal)}</span>
               </div>
               
               <div className="flex justify-between">
                 <span>Tax:</span>
-                <span>{formatCurrency(order.taxAmount, order.currency)}</span>
+                <span>{formatCurrency(order.taxAmount)}</span>
               </div>
               
               <div className="flex justify-between">
                 <span>Shipping:</span>
-                <span>{formatCurrency(editData.shippingAmount, order.currency)}</span>
+                <span>{formatCurrency(editData.shippingAmount)}</span>
               </div>
               
               {editData.discountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Discount:</span>
-                  <span>-{formatCurrency(editData.discountAmount, order.currency)}</span>
+                  <span>-{formatCurrency(editData.discountAmount)}</span>
                 </div>
               )}
               
               <div className="border-t pt-3">
                 <div className="flex justify-between text-lg font-semibold">
                   <span>Total:</span>
-                  <span>{formatCurrency(calculateNewTotal(), order.currency)}</span>
+                  <span>{formatCurrency(calculateNewTotal())}</span>
                 </div>
               </div>
             </div>

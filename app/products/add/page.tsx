@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageUploader from '../../components/ImageUploader';
+import CurrencySymbol from '../../components/CurrencySymbol';
 import { generateSlug, isValidSlug } from '../../../utils/priceUtils';
 
 /**
@@ -147,7 +148,8 @@ export default function AddProduct() {
     taxable: true,
     metaTitle: '',
     metaDescription: '',
-    productType: 'simple' // 'simple' or 'variable'
+    productType: 'simple', // 'simple' or 'variable'
+    banner: '' // Banner image URL
   });
   
   // Variable product specific states
@@ -755,6 +757,33 @@ export default function AddProduct() {
           </div>
         </div>
 
+        {/* Banner Image */}
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-4">Product Banner</h3>
+          <div className="mb-4">
+            {formData.banner && (
+              <div className="relative inline-block">
+                <img src={formData.banner} alt="Product Banner" className="w-full max-w-md h-32 object-cover rounded border" />
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, banner: '' }))}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+          </div>
+          <ImageUploader
+            currentImage={formData.banner}
+            onImageUpload={(imageUrl) => setFormData(prev => ({ ...prev, banner: imageUrl }))}
+            onImageRemove={() => setFormData(prev => ({ ...prev, banner: '' }))}
+            label="Upload Product Banner"
+            disabled={submitting}
+            directory="products"
+          />
+        </div>
+
         {/* Images */}
         <div className="mt-6">
           <h3 className="text-lg font-semibold mb-4">Product Images</h3>
@@ -1027,7 +1056,7 @@ export default function AddProduct() {
                   .filter(addon => !selectedAddons.some(selected => selected.addonId === addon.id))
                   .map((addon) => (
                     <option key={addon.id} value={addon.id}>
-                      {addon.title} - ${parseFloat(addon.price).toFixed(2)}
+                      {addon.title} - {String.fromCharCode(0xe001)} {parseFloat(addon.price).toFixed(2)}
                     </option>
                   ))}
               </select>
@@ -1064,7 +1093,7 @@ export default function AddProduct() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Override Price ($)
+                          Override Price
                         </label>
                         <input
                           type="number"
@@ -1074,8 +1103,8 @@ export default function AddProduct() {
                           step="0.01"
                           min="0"
                         />
-                        <div className="text-xs text-gray-500 mt-1">
-                          Original price: ${addon ? parseFloat(addon.price).toFixed(2) : '0.00'}
+                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                          Original price: <CurrencySymbol />{addon ? parseFloat(addon.price).toFixed(2) : '0.00'}
                         </div>
                       </div>
                       
@@ -1149,18 +1178,27 @@ export default function AddProduct() {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Base Product Price:</span>
-                    <span>${formData.price ? parseFloat(formData.price).toFixed(2) : '0.00'}</span>
+                    <span className="flex items-center gap-1">
+                      <CurrencySymbol />
+                      {formData.price ? parseFloat(formData.price).toFixed(2) : '0.00'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Total Addon Prices:</span>
-                    <span>${selectedAddons.reduce((total, addon) => total + parseFloat(addon.price), 0).toFixed(2)}</span>
+                    <span className="flex items-center gap-1">
+                      <CurrencySymbol />
+                      {selectedAddons.reduce((total, addon) => total + parseFloat(addon.price), 0).toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between font-medium pt-2 border-t border-blue-300">
                     <span>Maximum Product Price:</span>
-                    <span>${(
-                      (formData.price ? parseFloat(formData.price) : 0) + 
-                      selectedAddons.reduce((total, addon) => total + parseFloat(addon.price), 0)
-                    ).toFixed(2)}</span>
+                    <span className="flex items-center gap-1">
+                      <CurrencySymbol />
+                      {(
+                        (formData.price ? parseFloat(formData.price) : 0) + 
+                        selectedAddons.reduce((total, addon) => total + parseFloat(addon.price), 0)
+                      ).toFixed(2)}
+                    </span>
                   </div>
                   <div className="text-xs text-blue-700 mt-2">
                     * Final price depends on which addons customer selects

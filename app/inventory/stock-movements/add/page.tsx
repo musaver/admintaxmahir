@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import CurrencySymbol from '../../../components/CurrencySymbol';
 
 export default function AddStockMovement() {
   const router = useRouter();
@@ -550,7 +551,7 @@ export default function AddStockMovement() {
                 <div className="p-3 bg-purple-50 rounded">
                   <div className="text-sm text-gray-600">Total Value Added</div>
                   <div className="text-2xl font-bold text-purple-800">
-                    ${(formData.quantity * formData.costPrice).toFixed(2)}
+                    <span className="flex items-center gap-1"><CurrencySymbol />{(formData.quantity * formData.costPrice).toFixed(2)}</span>
                   </div>
                 </div>
               )}

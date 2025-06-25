@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import CurrencySymbol from '../components/CurrencySymbol';
 
 export default function AddonsList() {
   const [addons, setAddons] = useState([]);
@@ -35,10 +36,12 @@ export default function AddonsList() {
   };
 
   const formatPrice = (price: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(parseFloat(price));
+    const numPrice = parseFloat(price) || 0;
+    return (
+      <span className="flex items-center gap-1">
+        <CurrencySymbol />{numPrice.toFixed(2)}
+      </span>
+    );
   };
 
   if (loading) return <div>Loading...</div>;

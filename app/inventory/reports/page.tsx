@@ -233,7 +233,7 @@ export default function InventoryReports() {
                   <div className="flex-1">
                     <div className="font-medium text-sm">{item.product?.name || 'N/A'}</div>
                     <div className="text-xs text-gray-500">
-                      {item.inventory.quantity} units × ${parseFloat(item.product?.price || '0').toFixed(2)}
+                                                  {item.inventory.quantity} units × <span className="currency-symbol">{String.fromCharCode(0xe001)}</span>{parseFloat(item.product?.price || '0').toFixed(2)}
                     </div>
                   </div>
                   <div className="font-semibold text-green-600">${value.toFixed(2)}</div>

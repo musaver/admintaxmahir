@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import CurrencySymbol from '../../components/CurrencySymbol';
 
 interface Product {
   id: string;
@@ -97,7 +98,7 @@ export default function AddOrder() {
     taxRate: 10, // 10%
     discountAmount: 0,
     discountType: 'amount', // 'amount' or 'percentage'
-    currency: 'USD'
+    currency: 'CUSTOM'
   });
 
   // Customer/shipping information
@@ -683,8 +684,8 @@ export default function AddOrder() {
                   <option value="">Select a product...</option>
                   {products.map(product => (
                     <option key={product.id} value={product.id}>
-                      {product.name} - ${Number(product.price).toFixed(2)}
-                      {product.productType === 'group' && Number(product.price) === 0 ? ' (Group Product - Price from addons)' : ''}
+                                      {product.name} - {String.fromCharCode(0xe001)}{Number(product.price).toFixed(2)}
+                {product.productType === 'group' && Number(product.price) === 0 ? ' (Group Product - Price from addons)' : ''}
                       {!stockManagementEnabled ? ' (No stock limit)' : ''}
                     </option>
                   ))}
@@ -702,7 +703,7 @@ export default function AddOrder() {
                     <option value="">Select variant...</option>
                     {selectedProduct.variants?.filter(v => v.isActive).map(variant => (
                       <option key={variant.id} value={variant.id}>
-                        {variant.title} - ${Number(variant.price).toFixed(2)}
+                        {variant.title} - {String.fromCharCode(0xe001)}{Number(variant.price).toFixed(2)}
                         {stockManagementEnabled && variant.inventoryQuantity !== undefined 
                           ? ` (Stock: ${variant.inventoryQuantity})` 
                           : !stockManagementEnabled ? ' (No stock limit)' : ''
@@ -754,7 +755,7 @@ export default function AddOrder() {
                                   <div className="flex-1">
                                     <div className="font-medium">{productAddon.addon.title}</div>
                                     <div className="text-sm text-gray-600">
-                                      ${productAddon.price.toFixed(2)}
+                                      <span className="flex items-center gap-1"><CurrencySymbol />{productAddon.price.toFixed(2)}</span>
                                       {productAddon.isRequired && (
                                         <span className="ml-2 text-red-500 text-xs">Required</span>
                                       )}
@@ -809,12 +810,12 @@ export default function AddOrder() {
                           {selectedAddons.map(addon => (
                             <div key={addon.addonId} className="flex justify-between text-sm">
                               <span>{addon.addonTitle} (x{addon.quantity})</span>
-                              <span>${(addon.price * addon.quantity).toFixed(2)}</span>
+                              <span className="flex items-center gap-1"><CurrencySymbol />{(addon.price * addon.quantity).toFixed(2)}</span>
                             </div>
                           ))}
                           <div className="flex justify-between font-medium text-sm border-t pt-1">
                             <span>Total Addons:</span>
-                            <span>${selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0).toFixed(2)}</span>
+                            <span className="flex items-center gap-1"><CurrencySymbol />{selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0).toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
@@ -877,32 +878,32 @@ export default function AddOrder() {
                           <div className="text-sm">
                             {item.addons && Array.isArray(item.addons) && item.addons.length > 0 ? (
                               <div className="text-right">
-                                <div>Base: ${item.price.toFixed(2)}</div>
-                                <div>Addons: ${item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0).toFixed(2)}</div>
-                                <div className="font-medium border-t pt-1">
-                                  ${(item.price + item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)).toFixed(2)} x 
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={item.quantity}
-                                    onChange={(e) => handleUpdateItemQuantity(index, parseInt(e.target.value) || 1)}
-                                    className="w-16 mx-1 p-1 border rounded text-center"
-                                  />
-                                  = ${item.totalPrice.toFixed(2)}
-                                </div>
+                                                <div className="flex items-center gap-1">Base: <CurrencySymbol />{item.price.toFixed(2)}</div>
+                <div className="flex items-center gap-1">Addons: <CurrencySymbol />{item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0).toFixed(2)}</div>
+                <div className="font-medium border-t pt-1 flex items-center gap-1">
+                  <CurrencySymbol />{(item.price + item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)).toFixed(2)} x 
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={(e) => handleUpdateItemQuantity(index, parseInt(e.target.value) || 1)}
+                    className="w-16 mx-1 p-1 border rounded text-center"
+                  />
+                  = <CurrencySymbol />{item.totalPrice.toFixed(2)}
+                </div>
                               </div>
                             ) : (
-                              <div>
-                                ${item.price.toFixed(2)} x 
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={item.quantity}
-                                  onChange={(e) => handleUpdateItemQuantity(index, parseInt(e.target.value) || 1)}
-                                  className="w-16 mx-1 p-1 border rounded text-center"
-                                />
-                                = ${item.totalPrice.toFixed(2)}
-                              </div>
+                                            <div className="flex items-center gap-1">
+                <CurrencySymbol />{item.price.toFixed(2)} x 
+                <input
+                  type="number"
+                  min="1"
+                  value={item.quantity}
+                  onChange={(e) => handleUpdateItemQuantity(index, parseInt(e.target.value) || 1)}
+                  className="w-16 mx-1 p-1 border rounded text-center"
+                />
+                = <CurrencySymbol />{item.totalPrice.toFixed(2)}
+              </div>
                             )}
                           </div>
                           <button
@@ -922,12 +923,12 @@ export default function AddOrder() {
                             {item.addons.map((addon, addonIndex) => (
                               <div key={addon.addonId} className="flex justify-between text-sm text-gray-600">
                                 <span>• {getAddonTitle(addon, addonIndex)} (x{addon.quantity})</span>
-                                <span>${(addon.price * addon.quantity).toFixed(2)} each</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{(addon.price * addon.quantity).toFixed(2)} each</span>
                               </div>
                             ))}
                             <div className="flex justify-between text-sm font-medium text-gray-700 border-t pt-1 mt-2">
                               <span>Addons subtotal per product:</span>
-                              <span>${item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0).toFixed(2)}</span>
+                              <span className="flex items-center gap-1"><CurrencySymbol />{item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0).toFixed(2)}</span>
                             </div>
                           </div>
                         </div>
@@ -994,9 +995,9 @@ export default function AddOrder() {
                   <select
                     value={orderData.discountType}
                     onChange={(e) => setOrderData({...orderData, discountType: e.target.value})}
-                    className="p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    className="p-2 border rounded focus:border-blue-500 focus:outline-none currency-symbol"
                   >
-                    <option value="amount">$</option>
+                    <option value="amount">{String.fromCharCode(0xe001)}</option>
                     <option value="percentage">%</option>
                   </select>
                 </div>
@@ -1024,30 +1025,30 @@ export default function AddOrder() {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>${totals.subtotal.toFixed(2)}</span>
+                <span className="flex items-center gap-1"><CurrencySymbol />{totals.subtotal.toFixed(2)}</span>
               </div>
               
               {totals.discountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Discount:</span>
-                  <span>-${totals.discountAmount.toFixed(2)}</span>
+                  <span className="flex items-center gap-1">-<CurrencySymbol />{totals.discountAmount.toFixed(2)}</span>
                 </div>
               )}
               
               <div className="flex justify-between">
                 <span>Tax ({orderData.taxRate}%):</span>
-                <span>${totals.taxAmount.toFixed(2)}</span>
+                <span className="flex items-center gap-1"><CurrencySymbol />{totals.taxAmount.toFixed(2)}</span>
               </div>
               
               <div className="flex justify-between">
                 <span>Shipping:</span>
-                <span>${orderData.shippingAmount.toFixed(2)}</span>
+                <span className="flex items-center gap-1"><CurrencySymbol />{orderData.shippingAmount.toFixed(2)}</span>
               </div>
               
               <div className="border-t pt-3">
                 <div className="flex justify-between text-lg font-semibold">
                   <span>Total:</span>
-                  <span>${totals.totalAmount.toFixed(2)}</span>
+                  <span className="flex items-center gap-1"><CurrencySymbol />{totals.totalAmount.toFixed(2)}</span>
                 </div>
               </div>
 

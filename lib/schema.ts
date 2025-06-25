@@ -120,6 +120,7 @@ export const products = mysqlTable("products", {
   comparePrice: decimal("compare_price", { precision: 10, scale: 2 }),
   costPrice: decimal("cost_price", { precision: 10, scale: 2 }),
   images: json("images"), // Array of image URLs
+  banner: varchar("banner", { length: 500 }), // Banner image URL
   categoryId: varchar("category_id", { length: 255 }),
   subcategoryId: varchar("subcategory_id", { length: 255 }),
   tags: json("tags"), // Array of tags
