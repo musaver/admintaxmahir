@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
 
   const isAuthPage = request.nextUrl.pathname.startsWith("/login");
   
-  // Check if the path is any protected admin page (all pages except login and public assets)
+  // Check if the path is any protected admin page (all pages except login, homepage, and public assets)
   const isProtectedPage = !isAuthPage && 
     !request.nextUrl.pathname.startsWith("/api/auth") &&
     !request.nextUrl.pathname.startsWith("/_next") &&

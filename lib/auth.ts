@@ -78,7 +78,7 @@ export const authOptions: NextAuthOptions = {
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback:", { url, baseUrl });
       
-      // Always redirect to main page (/) after login - which now contains the dashboard
+      // Always redirect to main page (/) after login - which handles redirect logic
       if (url === "/login" || url === `${baseUrl}/login`) {
         return `${baseUrl}/`;
       }
@@ -98,7 +98,7 @@ export const authOptions: NextAuthOptions = {
         return url;
       }
       
-      // Default: redirect to main page
+      // Default: redirect to main page (homepage handles further routing)
       return `${baseUrl}/`;
     },
   },
