@@ -276,9 +276,12 @@ export default function EditOrder() {
     );
   };
 
-    const formatCurrency = (amount: number) => {
-    // Handle NaN and undefined/null values
-    if (isNaN(amount) || amount === null || amount === undefined) {
+    const formatCurrency = (amount: any) => {
+    // Convert to number and handle all edge cases
+    const numAmount = Number(amount);
+    
+    // Handle NaN, undefined, null, or invalid values
+    if (isNaN(numAmount) || amount === null || amount === undefined || typeof numAmount !== 'number') {
       return (
         <span className="flex items-center gap-1">
           <CurrencySymbol />0.00
@@ -288,7 +291,7 @@ export default function EditOrder() {
     
     return (
       <span className="flex items-center gap-1">
-        <CurrencySymbol />{amount.toFixed(2)}
+        <CurrencySymbol />{numAmount.toFixed(2)}
       </span>
     );
   };

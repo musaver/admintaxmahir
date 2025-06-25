@@ -255,9 +255,12 @@ export default function OrdersList() {
     );
   };
 
-  const formatCurrency = (amount: number) => {
-    // Handle NaN and undefined/null values
-    if (isNaN(amount) || amount === null || amount === undefined) {
+  const formatCurrency = (amount: any) => {
+    // Convert to number and handle all edge cases
+    const numAmount = Number(amount);
+    
+    // Handle NaN, undefined, null, or invalid values
+    if (isNaN(numAmount) || amount === null || amount === undefined || typeof numAmount !== 'number') {
       return (
         <span className="flex items-center gap-1">
           <CurrencySymbol />0.00
@@ -267,16 +270,17 @@ export default function OrdersList() {
     
     return (
       <span className="flex items-center gap-1">
-        <CurrencySymbol />{amount.toFixed(2)}
+        <CurrencySymbol />{numAmount.toFixed(2)}
       </span>
     );
   };
 
   const getOrderStats = () => {
     const totalOrders = filteredOrders.length;
-    // Fix NaN issue: ensure totalAmount is a valid number before summing
+    // Fix NaN issue: ensure totalAmount is properly converted to number before summing
+    // Database decimal fields often come as strings, so we need explicit conversion
     const totalRevenue = filteredOrders.reduce((sum, order) => {
-      const amount = order.totalAmount || 0; // Use the number directly, default to 0 if falsy
+      const amount = parseFloat(String(order.totalAmount || '0')) || 0; // Convert to float, handle strings and nulls
       return sum + amount;
     }, 0);
     const pendingOrders = filteredOrders.filter(order => order.status === 'pending').length;
