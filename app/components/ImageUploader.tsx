@@ -8,7 +8,7 @@ interface ImageUploaderProps {
   onImageRemove: () => void;
   label?: string;
   disabled?: boolean;
-  directory?: 'courses' | 'batches' | 'general' | 'products';
+  directory?: 'courses' | 'batches' | 'general' | 'products' | 'products/banner';
 }
 
 export default function ImageUploader({

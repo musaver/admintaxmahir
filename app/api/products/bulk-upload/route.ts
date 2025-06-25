@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
           slug: productData.slug || productData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
           description: productData.description,
           shortDescription: productData.shortDescription,
-          sku: productData.sku,
+          sku: productData.sku || null, // Convert empty SKU to null
           price: productData.price.toString(),
           comparePrice: productData.comparePrice ? productData.comparePrice.toString() : null,
           costPrice: productData.costPrice ? productData.costPrice.toString() : null,

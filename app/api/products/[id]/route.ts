@@ -39,6 +39,11 @@ export async function PUT(
       ...productData 
     } = await req.json();
 
+    // Handle empty SKU to avoid unique constraint violations
+    if (productData.sku === '') {
+      productData.sku = null;
+    }
+
     // Convert numeric fields to strings for decimal storage
     if (productData.price) productData.price = productData.price.toString();
     if (productData.comparePrice) productData.comparePrice = productData.comparePrice.toString();

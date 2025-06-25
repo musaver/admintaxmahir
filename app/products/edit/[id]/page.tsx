@@ -745,7 +745,7 @@ export default function EditProduct() {
             onImageRemove={() => setFormData(prev => ({ ...prev, banner: '' }))}
             label="Upload Product Banner"
             disabled={submitting}
-            directory="products"
+            directory="products/banner"
           />
         </div>
 
