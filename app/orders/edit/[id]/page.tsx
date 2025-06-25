@@ -103,8 +103,7 @@ export default function EditOrder() {
     { value: 'pending', label: 'Pending', description: 'Order received, awaiting confirmation' },
     { value: 'confirmed', label: 'Confirmed', description: 'Order confirmed, awaiting processing' },
     { value: 'processing', label: 'Processing', description: 'Order is being prepared' },
-    { value: 'shipped', label: 'Shipped', description: 'Order has been shipped' },
-    { value: 'delivered', label: 'Delivered', description: 'Order has been delivered' },
+    { value: 'completed', label: 'Completed', description: 'Order has been completed' },
     { value: 'cancelled', label: 'Cancelled', description: 'Order has been cancelled' }
   ];
 
@@ -239,8 +238,7 @@ export default function EditOrder() {
       pending: 'bg-yellow-100 text-yellow-800',
       confirmed: 'bg-blue-100 text-blue-800',
       processing: 'bg-indigo-100 text-indigo-800',
-      shipped: 'bg-purple-100 text-purple-800',
-      delivered: 'bg-green-100 text-green-800',
+      completed: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800',
     };
 
@@ -871,15 +869,15 @@ export default function EditOrder() {
                 </div>
               )}
 
-              {editData.status === 'delivered' && order.status !== 'delivered' && (
+              {editData.status === 'completed' && order.status !== 'completed' && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded">
                   <div className="text-green-800 text-sm font-medium">
                     ✅ Status Change Info
                   </div>
                   <div className="text-green-600 text-sm">
                     {stockManagementEnabled 
-                      ? 'Marking as delivered will finalize the order and permanently reduce inventory quantities.'
-                      : 'Marking as delivered will not affect inventory levels since stock management is disabled.'
+                      ? 'Marking as completed will finalize the order and permanently reduce inventory quantities.'
+                      : 'Marking as completed will not affect inventory levels since stock management is disabled.'
                     }
                   </div>
                 </div>

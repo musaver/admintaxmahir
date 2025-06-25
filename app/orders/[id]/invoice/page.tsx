@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import CurrencySymbol from '../../../components/CurrencySymbol';
 
 export default function OrderInvoice() {
   const params = useParams();
@@ -58,7 +59,22 @@ export default function OrderInvoice() {
   };
 
   const formatAmount = (amount: string | number) => {
-    return `$${parseFloat(amount.toString()).toFixed(2)}`;
+    const numAmount = Number(amount);
+    
+    // Handle NaN, undefined, null, or invalid values
+    if (isNaN(numAmount) || amount === null || amount === undefined || typeof numAmount !== 'number') {
+      return (
+        <span className="flex items-center gap-1">
+          <CurrencySymbol />0.00
+        </span>
+      );
+    }
+    
+    return (
+      <span className="flex items-center gap-1">
+        <CurrencySymbol />{numAmount.toFixed(2)}
+      </span>
+    );
   };
 
   const parseAddons = (addonsData: any) => {
@@ -182,12 +198,12 @@ export default function OrderInvoice() {
                   <p className="text-gray-600 mt-2">Invoice #{order.orderNumber}</p>
                 </div>
                 <div className="text-right">
-                  <h2 className="text-2xl font-bold text-blue-600">Your Company</h2>
+                  <h2 className="text-2xl font-bold text-blue-600">Quick Repair Homes</h2>
                   <div className="text-gray-600 mt-2">
-                    <p>123 Business Street</p>
-                    <p>City, State 12345</p>
-                    <p>Phone: (555) 123-4567</p>
-                    <p>Email: sales@yourcompany.com</p>
+                    <p>Sobha Sapphire, Business Bay</p>
+                    <p> Dubai</p>
+                    <p>Phone: +971 50 125 8142</p>
+                    <p>Email: info@quickrepairhomes.com</p>
                   </div>
                 </div>
               </div>
@@ -218,7 +234,7 @@ export default function OrderInvoice() {
 
                 {/* Ship To */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Ship To:</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Delivered To:</h3>
                   <div className="text-gray-600">
                     <p className="font-medium">{order.shippingFirstName} {order.shippingLastName}</p>
                     <div className="mt-2">
@@ -439,7 +455,7 @@ export default function OrderInvoice() {
             <div className="p-8 border-t border-gray-200 text-center text-gray-600">
               <p className="text-sm">Thank you for your business!</p>
               <p className="text-xs mt-2">
-                For questions about this invoice, please contact us at support@yourcompany.com
+                For questions about this invoice, please contact us at info@quickrepairhomes.com
               </p>
             </div>
           </div>

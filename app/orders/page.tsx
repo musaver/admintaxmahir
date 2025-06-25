@@ -70,8 +70,7 @@ export default function OrdersList() {
     { value: 'pending', label: 'Pending' },
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'processing', label: 'Processing' },
-    { value: 'shipped', label: 'Shipped' },
-    { value: 'delivered', label: 'Delivered' },
+    { value: 'completed', label: 'Completed' },
     { value: 'cancelled', label: 'Cancelled' }
   ];
 
@@ -234,8 +233,7 @@ export default function OrdersList() {
       pending: 'bg-yellow-100 text-yellow-800',
       confirmed: 'bg-blue-100 text-blue-800',
       processing: 'bg-indigo-100 text-indigo-800',
-      shipped: 'bg-purple-100 text-purple-800',
-      delivered: 'bg-green-100 text-green-800',
+      completed: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800',
     };
 
@@ -284,7 +282,7 @@ export default function OrdersList() {
       return sum + amount;
     }, 0);
     const pendingOrders = filteredOrders.filter(order => order.status === 'pending').length;
-    const completedOrders = filteredOrders.filter(order => order.status === 'delivered').length;
+    const completedOrders = filteredOrders.filter(order => order.status === 'completed').length;
 
     return { totalOrders, totalRevenue, pendingOrders, completedOrders };
   };

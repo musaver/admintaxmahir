@@ -337,32 +337,32 @@ async function handleStockManagement(
       newReservedQuantity += item.quantity;
       newAvailableQuantity = newQuantity - newReservedQuantity;
       movementType = 'out';
-      reason = 'Order Confirmed - Inventory Reserved';
+      reason = 'Order Confirmed';
       updateNeeded = true;
     } else if (previousStatus === 'confirmed' && newStatus === 'pending') {
       // Unreserve inventory
       newReservedQuantity = Math.max(0, newReservedQuantity - item.quantity);
       newAvailableQuantity = newQuantity - newReservedQuantity;
       movementType = 'in';
-      reason = 'Order Pending - Inventory Unreserved';
+      reason = 'Order Pending';
       updateNeeded = true;
     } else if (newStatus === 'cancelled') {
       // Restore all inventory
-      if (previousStatus === 'confirmed' || previousStatus === 'processing' || previousStatus === 'shipped') {
+      if (previousStatus === 'confirmed' || previousStatus === 'processing') {
         newReservedQuantity = Math.max(0, newReservedQuantity - item.quantity);
         newAvailableQuantity = newQuantity - newReservedQuantity;
         movementType = 'in';
-        reason = 'Order Cancelled - Inventory Restored';
+        reason = 'Order Cancelled';
         updateNeeded = true;
       }
-    } else if (newStatus === 'delivered') {
+    } else if (newStatus === 'completed') {
       // Finalize the inventory reduction
-      if (previousStatus !== 'delivered') {
+      if (previousStatus !== 'completed') {
         newQuantity -= item.quantity;
         newReservedQuantity = Math.max(0, newReservedQuantity - item.quantity);
         newAvailableQuantity = newQuantity - newReservedQuantity;
         movementType = 'out';
-        reason = 'Order Delivered - Final Inventory Reduction';
+        reason = 'Order Completed';
         updateNeeded = true;
       }
     }
