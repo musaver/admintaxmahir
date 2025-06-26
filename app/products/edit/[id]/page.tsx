@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import ImageUploader from '../../../components/ImageUploader';
 import CurrencySymbol from '../../../components/CurrencySymbol';
+import RichTextEditor from '../../../components/RichTextEditor';
 import VariantManager from '../../../../components/VariantManager';
 import useProductVariants from '../../../../hooks/useProductVariants';
 import { formatPrice, calculatePriceRange, generateSlug, isValidSlug } from '../../../../utils/priceUtils';
@@ -109,6 +110,8 @@ export default function EditProduct() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   useEffect(() => {
     fetchProductAndInitialData();
@@ -298,12 +301,108 @@ export default function EditProduct() {
     });
   };
 
-  const handleImageUpload = (imageUrl: string) => {
-    setImages([...images, imageUrl]);
-  };
-
   const handleImageRemove = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
+  };
+
+  const handleBannerRemove = () => {
+    setFormData(prev => ({ ...prev, banner: '' }));
+  };
+
+  // New gallery image upload handler
+  const handleGalleryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Gallery image must be less than 5MB');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file');
+      return;
+    }
+
+    setUploadingGallery(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('directory', 'products');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      console.log('Gallery image upload response:', data);
+      console.log('New image URL:', data.url);
+      setImages([...images, data.url]);
+      
+      // Clear the input
+      e.target.value = '';
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingGallery(false);
+    }
+  };
+
+  // New banner image upload handler
+  const handleBannerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (10MB limit for banners)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Banner image must be less than 10MB');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file');
+      return;
+    }
+
+    setUploadingBanner(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('directory', 'products/banner');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload banner');
+      }
+
+      const data = await response.json();
+      setFormData(prev => ({ ...prev, banner: data.url }));
+      
+      // Clear the input
+      e.target.value = '';
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError('Failed to upload banner. Please try again.');
+    } finally {
+      setUploadingBanner(false);
+    }
   };
 
   // Variant management functions using our optimized hook
@@ -445,7 +544,7 @@ export default function EditProduct() {
         {/* Product Type Selection */}
         <div className="mb-6 p-4 border rounded-lg bg-gray-50">
           <h3 className="text-lg font-semibold mb-4">Product Type</h3>
-          <div className="flex gap-4">
+          <div className="flex gap-4" >
             <label className="flex items-center">
               <input
                 type="radio"
@@ -454,6 +553,7 @@ export default function EditProduct() {
                 checked={formData.productType === 'simple'}
                 onChange={handleChange}
                 className="mr-2"
+                disabled={true}
               />
               Simple Product
             </label>
@@ -465,6 +565,7 @@ export default function EditProduct() {
                 checked={formData.productType === 'variable'}
                 onChange={handleChange}
                 className="mr-2"
+                disabled={true}
               />
               Variable Product (with variations)
             </label>
@@ -476,6 +577,7 @@ export default function EditProduct() {
                 checked={formData.productType === 'group'}
                 onChange={handleChange}
                 className="mr-2"
+                disabled={true}
               />
               Group Product (with addons)
             </label>
@@ -545,13 +647,11 @@ export default function EditProduct() {
               <label className="block text-gray-700 mb-2" htmlFor="description">
                 Description
               </label>
-              <textarea
-                id="description"
-                name="description"
+              <RichTextEditor
                 value={formData.description}
-                onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                rows={4}
+                onChange={(value) => setFormData({ ...formData, description: value })}
+                placeholder="Enter a detailed description of your product..."
+                height="250px"
               />
             </div>
 
@@ -568,85 +668,73 @@ export default function EditProduct() {
                 rows={2}
               />
             </div>
-
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="sku">
-                SKU
-              </label>
-              <input
-                type="text"
-                id="sku"
-                name="sku"
-                value={formData.sku}
-                onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-              />
-            </div>
           </div>
 
           {/* Right Column - Pricing & Details */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Pricing & Details</h3>
             
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="price">
-                Price {formData.productType !== 'group' && <span className="text-red-500">*</span>}
-                {formData.productType === 'group' && (
-                  <span className="text-sm text-gray-500 block">
-                    (Optional for group products - price will come from addons)
-                  </span>
-                )}
-                {formData.productType === 'variable' && (
-                  <span className="text-sm text-gray-500 block">
-                    (Base price - individual variants can override this)
-                  </span>
-                )}
-              </label>
-              <input
-                type="number"
-                id="price"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                step="0.01"
-                min="0"
-                required={formData.productType !== 'group'}
-                placeholder={formData.productType === 'group' ? '0.00 (optional)' : ''}
-              />
-            </div>
+            {/* Only show pricing fields for simple products */}
+            {formData.productType === 'simple' && (
+              <>
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="price">
+                    Price <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="price"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                </div>
 
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="comparePrice">
-                Compare Price
-              </label>
-              <input
-                type="number"
-                id="comparePrice"
-                name="comparePrice"
-                value={formData.comparePrice}
-                onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                step="0.01"
-                min="0"
-              />
-            </div>
 
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="costPrice">
-                Cost Price
-              </label>
-              <input
-                type="number"
-                id="costPrice"
-                name="costPrice"
-                value={formData.costPrice}
-                onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                step="0.01"
-                min="0"
-              />
-            </div>
+              </>
+            )}
+
+            {/* Show informational message for variable/grouped products */}
+            {formData.productType === 'variable' && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-800 mb-2">Variable Product Pricing</h4>
+                <p className="text-sm text-blue-700">
+                  Prices will be set individually for each variant below. Each variant can have its own price, compare price, and cost price.
+                </p>
+              </div>
+            )}
+
+            {formData.productType === 'group' && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="font-medium text-green-800 mb-2">Group Product Pricing</h4>
+                <p className="text-sm text-green-700">
+                  Product pricing will come from the selected addons below. Customers will choose which addons they want.
+                </p>
+              </div>
+            )}
+
+            {/* Base price field for group products */}
+            {formData.productType === 'group' && (
+              <div>
+                <label className="block text-gray-700 mb-2" htmlFor="price">
+                  Base Price <span className="text-sm text-gray-500">(Optional - can be 0 if all pricing comes from addons)</span>
+                </label>
+                <input
+                  type="number"
+                  id="price"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-gray-700 mb-2" htmlFor="categoryId">
@@ -668,120 +756,207 @@ export default function EditProduct() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="subcategoryId">
-                Subcategory
-              </label>
-              <select
-                id="subcategoryId"
-                name="subcategoryId"
-                value={formData.subcategoryId}
-                onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                disabled={!formData.categoryId}
-              >
-                <option value="">Select a subcategory</option>
-                {subcategories.map((subcategory: any) => (
-                  <option key={subcategory.id} value={subcategory.id}>
-                    {subcategory.name}
-                  </option>
-                ))}
-              </select>
-            </div>
 
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="tags">
-                Tags (comma-separated)
-              </label>
-              <input
-                type="text"
-                id="tags"
-                name="tags"
-                value={formData.tags}
-                onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                placeholder="tag1, tag2, tag3"
-              />
+        {/* Product Gallery Manager */}
+        <div className="mt-6 bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
-
             <div>
-              <label className="block text-gray-700 mb-2" htmlFor="weight">
-                Weight (kg)
-              </label>
-              <input
-                type="number"
-                id="weight"
-                name="weight"
-                value={formData.weight}
-                onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                step="0.01"
-                min="0"
-              />
+              <h3 className="text-xl font-bold text-gray-800">Product Gallery</h3>
+              <p className="text-sm text-gray-600">Manage your product images with our advanced uploader</p>
             </div>
           </div>
-        </div>
 
-        {/* Banner Image */}
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-4">Product Banner</h3>
-          <div className="mb-4">
-            {formData.banner && (
-              <div className="relative inline-block">
-                <img src={formData.banner} alt="Product Banner" className="w-full max-w-md h-32 object-cover rounded border" />
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, banner: '' }))}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
-                >
-                  ×
-                </button>
-              </div>
-            )}
-          </div>
-          <ImageUploader
-            currentImage={formData.banner}
-            onImageUpload={(imageUrl) => setFormData(prev => ({ ...prev, banner: imageUrl }))}
-            onImageRemove={() => setFormData(prev => ({ ...prev, banner: '' }))}
-            label="Upload Product Banner"
-            disabled={submitting}
-            directory="products/banner"
-          />
-        </div>
-
-        {/* Images */}
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-4">Product Images</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+          {/* Gallery Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
             {images.map((image, index) => (
-              <div key={index} className="relative">
-                <img src={image} alt={`Product ${index + 1}`} className="w-full h-32 object-cover rounded border" />
+              <div key={index} className="group relative bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border-2 border-purple-100">
+                <div className="aspect-square overflow-hidden bg-gray-100 flex items-center justify-center">
+                  <img 
+                    src={image} 
+                    alt={`Gallery ${index + 1}`} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                    onError={(e) => {
+                      console.error('Failed to load image:', image);
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `
+                          <div class="flex flex-col items-center justify-center h-full text-gray-500">
+                            <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                            <span class="text-xs">Failed to load</span>
+                          </div>
+                        `;
+                      }
+                    }}
+                    onLoad={() => {
+                      console.log('Successfully loaded image:', image);
+                    }}
+                  />
+                </div>
+                <div className="absolute inset-0 bg-none bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300"></div>
+                <div className="absolute top-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                  #{index + 1}
+                </div>
                 <button
                   type="button"
                   onClick={() => handleImageRemove(index)}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform hover:scale-110"
                 >
-                  ×
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-transparent to-transparent p-2">
+                  <p className="text-white text-xs font-medium">Gallery Image</p>
+                </div>
               </div>
             ))}
+            
+            {/* Add New Image Card */}
+            <div className="aspect-square border-2 border-dashed border-purple-300 rounded-lg flex flex-col items-center justify-center bg-white hover:bg-purple-50 transition-colors duration-300 cursor-pointer group">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleGalleryImageUpload}
+                className="hidden"
+                id="gallery-upload-edit"
+                disabled={submitting || uploadingGallery}
+              />
+              <label htmlFor="gallery-upload-edit" className={`w-full h-full flex flex-col items-center justify-center ${uploadingGallery ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors">
+                  {uploadingGallery ? (
+                    <svg className="w-6 h-6 text-purple-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-purple-600 font-medium text-sm">
+                  {uploadingGallery ? 'Uploading...' : 'Add Image'}
+                </span>
+                <span className="text-gray-500 text-xs mt-1">
+                  {uploadingGallery ? 'Please wait' : 'Click to browse'}
+                </span>
+              </label>
+            </div>
           </div>
-          <ImageUploader
-            currentImage=""
-            onImageUpload={handleImageUpload}
-            onImageRemove={() => {}}
-            label="Add Product Image"
-            disabled={submitting}
-            directory="products"
-          />
+
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Recommended: 355x250px • Images stored in 'products' directory • Supports JPG, PNG, WebP • Max 5MB per image</span>
+          </div>
         </div>
+
+        {/* Hero Banner Manager */}
+        <div className="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m0 0V1a1 1 0 011-1h2a1 1 0 011 1v18a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1h2a1 1 0 011 1v3" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-800">Hero Banner</h3>
+              <p className="text-sm text-gray-600">Upload a promotional banner for marketing displays</p>
+            </div>
+          </div>
+
+          {formData.banner ? (
+            <div className="relative bg-white rounded-lg overflow-hidden shadow-md border-2 border-emerald-100 mb-4">
+              <div className="aspect-[16/9] md:aspect-[21/9] overflow-hidden">
+                <img 
+                  src={formData.banner} 
+                  alt="Hero Banner" 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+              <div className="absolute top-4 left-4 bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                HERO BANNER
+              </div>
+              <button
+                type="button"
+                onClick={handleBannerRemove}
+                className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+              <div className="absolute bottom-4 left-4 right-4">
+                <p className="text-white font-medium">Current Hero Banner</p>
+                <p className="text-white/80 text-sm">Click the trash icon to remove</p>
+              </div>
+            </div>
+          ) : (
+            <div className="border-2 border-dashed border-emerald-300 rounded-lg bg-white hover:bg-emerald-50 transition-colors duration-300 mb-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleBannerImageUpload}
+                className="hidden"
+                id="banner-upload-edit"
+                disabled={submitting || uploadingBanner}
+              />
+              <label htmlFor="banner-upload-edit" className={`aspect-[16/9] md:aspect-[21/9] flex flex-col items-center justify-center ${uploadingBanner ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+                  {uploadingBanner ? (
+                    <svg className="w-8 h-8 text-emerald-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  )}
+                </div>
+                <h4 className="text-emerald-600 font-semibold text-lg mb-2">
+                  {uploadingBanner ? 'Uploading Banner...' : 'Upload Hero Banner'}
+                </h4>
+                <p className="text-gray-600 text-center max-w-md">
+                  {uploadingBanner ? 'Please wait while your banner is being uploaded.' : 'Choose a high-quality banner image that represents your product. Recommended size: 840x270px or larger.'}
+                </p>
+                <div className="mt-4 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium">
+                  {uploadingBanner ? 'Uploading...' : 'Click to Browse Files'}
+                </div>
+              </label>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span> Recommended: 840x270px • Max 10MB • Stored in 'products/banner' directory</span>
+          </div>
+        </div>
+
+            
+          </div>
+        </div>
+
 
         {/* Variable Product Variants - Using our optimized VariantManager */}
         {formData.productType === 'variable' && variantData && (
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-4">🔧 Product Variants</h3>
             <p className="text-gray-600 mb-4">
-              Manage individual variant pricing, inventory, and settings. Variants are automatically organized by their attributes.
+              Manage individual variant pricing, and settings. Variants are automatically organized by their attributes.
             </p>
             
             <VariantManager

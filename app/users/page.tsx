@@ -5,6 +5,7 @@ import Link from 'next/link';
 export default function UsersList() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -34,6 +35,46 @@ export default function UsersList() {
     }
   };
 
+  const exportUsers = async () => {
+    setExporting(true);
+    try {
+      // Convert users data to CSV format
+      const csvHeaders = ['ID', 'Name', 'Email', 'Phone', 'Country', 'City', 'Address', 'Created At'];
+      const csvData = users.map((user: any) => [
+        user.id || '',
+        user.name || '',
+        user.email || '',
+        user.phone || '',
+        user.country || '',
+        user.city || '',
+        user.address || '',
+        user.createdAt ? new Date(user.createdAt).toLocaleString() : ''
+      ]);
+
+      // Create CSV content
+      const csvContent = [
+        csvHeaders.join(','),
+        ...csvData.map(row => row.map(field => `"${field}"`).join(','))
+      ].join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error exporting users:', error);
+      alert('Failed to export users');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -47,6 +88,13 @@ export default function UsersList() {
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </button>
+          <button
+            onClick={exportUsers}
+            disabled={exporting || users.length === 0}
+            className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {exporting ? 'Exporting...' : '📊 Export CSV'}
           </button>
           <Link 
             href="/users/add" 

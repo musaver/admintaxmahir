@@ -31,6 +31,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     { name: 'Admin Users', href: '/admins', icon: '👮' },
     { name: 'Admin Roles', href: '/roles', icon: '🔐' },
     { name: 'Admin Logs', href: '/logs', icon: '📋' },
+    { name: 'Settings', href: '/settings', icon: '⚙️' },
     { name: 'Logout', href: '/logout', icon: '👋' },
   ];
 

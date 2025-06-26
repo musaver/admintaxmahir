@@ -57,6 +57,7 @@ export default function OrdersList() {
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [addons, setAddons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
@@ -228,6 +229,79 @@ export default function OrdersList() {
     }
   };
 
+  const exportOrders = async () => {
+    setExporting(true);
+    try {
+      // Convert orders data to CSV format
+      const csvHeaders = [
+        'Order Number', 'Customer Name', 'Email', 'Phone', 'Status', 'Payment Status', 
+        'Subtotal', 'Tax Amount', 'Shipping Amount', 'Discount Amount', 'Total Amount', 
+        'Currency', 'Shipping Address', 'Order Date', 'Items Count', 'Items Detail'
+      ];
+      
+      const csvData = filteredOrders.map((order) => {
+        const customerName = order.shippingFirstName && order.shippingLastName 
+          ? `${order.shippingFirstName} ${order.shippingLastName}`
+          : order.user?.name || 'Guest';
+          
+        const shippingAddress = [
+          order.shippingAddress1,
+          order.shippingCity,
+          order.shippingState,
+          order.shippingCountry
+        ].filter(Boolean).join(', ');
+        
+        const itemsDetail = order.items?.map(item => {
+          const addonsText = item.addons && Array.isArray(item.addons) && item.addons.length > 0
+            ? ` (Addons: ${item.addons.map(addon => getAddonTitle(addon, 0)).join(', ')})`
+            : '';
+          return `${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''} x${item.quantity}${addonsText}`;
+        }).join(' | ') || '';
+
+        return [
+          order.orderNumber || '',
+          customerName,
+          order.email || '',
+          order.phone || '',
+          order.status || '',
+          order.paymentStatus || '',
+          order.subtotal?.toString() || '0',
+          order.taxAmount?.toString() || '0',
+          order.shippingAmount?.toString() || '0',
+          order.discountAmount?.toString() || '0',
+          order.totalAmount?.toString() || '0',
+          order.currency || 'USD',
+          shippingAddress,
+          order.createdAt ? new Date(order.createdAt).toLocaleString() : '',
+          order.items?.length?.toString() || '0',
+          itemsDetail
+        ];
+      });
+
+      // Create CSV content
+      const csvContent = [
+        csvHeaders.join(','),
+        ...csvData.map(row => row.map(field => `"${field?.replace(/"/g, '""') || ''}"`).join(','))
+      ].join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `orders_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error exporting orders:', error);
+      alert('Failed to export orders');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const getStatusBadge = (status: string, type: 'order' | 'payment' = 'order') => {
     const orderStatusColors: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -302,6 +376,13 @@ export default function OrdersList() {
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
           >
             {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </button>
+          <button
+            onClick={exportOrders}
+            disabled={exporting || filteredOrders.length === 0}
+            className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {exporting ? 'Exporting...' : '📊 Export CSV'}
           </button>
           <Link 
             href="/orders/add" 

@@ -74,8 +74,8 @@ const VariantManager: React.FC<VariantManagerProps> = ({
     <div className="space-y-4">
       {/* Bulk Actions */}
       {isEditing && (
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-4 hidden">
             <label className="flex items-center">
               <input
                 type="checkbox"
@@ -176,8 +176,7 @@ const VariantManager: React.FC<VariantManagerProps> = ({
 
                       {/* Variant Info */}
                       <div className={`${bulkEdit ? 'lg:col-span-3' : 'lg:col-span-4'}`}>
-                        <div className="font-medium">{variant.title}</div>
-                        <div className="text-sm text-gray-500">SKU: {variant.sku || 'N/A'}</div>
+                        
                         <div className="flex flex-wrap gap-1 mt-1">
                           {Object.entries(variant.attributes).map(([key, value]) => (
                             <span
@@ -197,24 +196,22 @@ const VariantManager: React.FC<VariantManagerProps> = ({
                             <div>
                               <label className="block text-xs text-gray-600">Price</label>
                               <input
-                                type="number"
+                                type="text"
                                 value={variant.price}
-                                onChange={(e) => onVariantUpdate(variant.id, 'price', parseFloat(e.target.value))}
+                                onChange={(e) => onVariantUpdate(variant.id, 'price', e.target.value)}
                                 className="w-full p-1 text-sm border rounded"
-                                step="0.01"
-                                min="0"
+                                placeholder="0.00"
                               />
                             </div>
                             {variant.comparePrice && (
                               <div>
                                 <label className="block text-xs text-gray-600">Compare Price</label>
                                 <input
-                                  type="number"
+                                  type="text"
                                   value={variant.comparePrice}
-                                  onChange={(e) => onVariantUpdate(variant.id, 'comparePrice', parseFloat(e.target.value))}
+                                  onChange={(e) => onVariantUpdate(variant.id, 'comparePrice', e.target.value)}
                                   className="w-full p-1 text-sm border rounded"
-                                  step="0.01"
-                                  min="0"
+                                  placeholder="0.00"
                                 />
                               </div>
                             )}
@@ -232,25 +229,7 @@ const VariantManager: React.FC<VariantManagerProps> = ({
                         )}
                       </div>
 
-                      {/* Inventory */}
-                      <div className={`${bulkEdit ? 'lg:col-span-2' : 'lg:col-span-2'}`}>
-                        {isEditing ? (
-                          <div>
-                            <label className="block text-xs text-gray-600">Stock</label>
-                            <input
-                              type="number"
-                              value={variant.inventoryQuantity}
-                              onChange={(e) => onVariantUpdate(variant.id, 'inventoryQuantity', parseInt(e.target.value))}
-                              className="w-full p-1 text-sm border rounded"
-                              min="0"
-                            />
-                          </div>
-                        ) : (
-                          <span className={`px-2 py-1 rounded-full text-xs ${getStockStatusColor(variant.inventoryQuantity)}`}>
-                            {variant.inventoryQuantity} in stock
-                          </span>
-                        )}
-                      </div>
+                      
 
                       {/* Actions */}
                       {isEditing && (

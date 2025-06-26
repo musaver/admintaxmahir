@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageUploader from '../../components/ImageUploader';
+import RichTextEditor from '../../components/RichTextEditor';
 import { generateSlug, isValidSlug } from '../../../utils/priceUtils';
 
 export default function AddCategory() {
@@ -198,13 +199,11 @@ export default function AddCategory() {
           <label className="block text-gray-700 mb-2" htmlFor="description">
             Description
           </label>
-          <textarea
-            id="description"
-            name="description"
+          <RichTextEditor
             value={formData.description}
-            onChange={handleChange}
-            className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-            rows={3}
+            onChange={(value) => setFormData({ ...formData, description: value })}
+            placeholder="Enter a description for this category..."
+            height="200px"
           />
         </div>
 
