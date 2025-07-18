@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import ImageUploader from '../../components/ImageUploader';
 import CurrencySymbol from '../../components/CurrencySymbol';
 import RichTextEditor from '../../components/RichTextEditor';
-import { generateSlug, isValidSlug } from '../../../utils/priceUtils';
+import { generateSlug, isValidSlug, formatPrice } from '../../../utils/priceUtils';
 
 /**
  * Enhanced Variation System for E-commerce Products
@@ -92,6 +92,8 @@ interface Addon {
   price: string;
   description?: string;
   image?: string;
+  groupId?: string;
+  groupTitle?: string;
   isActive: boolean;
   sortOrder: number;
 }
@@ -158,6 +160,7 @@ export default function AddProduct() {
   const [selectedAttributes, setSelectedAttributes] = useState<VariationAttribute[]>([]);
   const [generatedVariants, setGeneratedVariants] = useState<GeneratedVariant[]>([]);
   const [showVariantGeneration, setShowVariantGeneration] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   
   // Group product specific states
   const [availableAddons, setAvailableAddons] = useState<Addon[]>([]);
@@ -197,6 +200,14 @@ export default function AddProduct() {
   useEffect(() => {
     if (generatedVariants.length > 0) {
       setShowVariantGeneration(true);
+      // Auto-expand all sections
+      const groupedVariants = generatedVariants.reduce((groups, variant) => {
+        const firstAttr = variant.attributes[0];
+        const groupKey = firstAttr ? `${firstAttr.attributeName}: ${firstAttr.value}` : 'Default';
+        groups[groupKey] = true;
+        return groups;
+      }, {} as { [key: string]: boolean });
+      setExpandedSections(new Set(Object.keys(groupedVariants)));
     }
   }, [generatedVariants.length]);
 
@@ -214,7 +225,7 @@ export default function AddProduct() {
       
       setCategories(categoriesData);
       setAvailableAttributes(attributesData);
-      setAvailableAddons(addonsData.filter((addon: Addon) => addon.isActive));
+      setAvailableAddons(addonsData.filter((addon: any) => addon.isActive));
     } catch (err) {
       console.error(err);
       setError('Failed to load initial data');
@@ -505,6 +516,16 @@ export default function AddProduct() {
     setGeneratedVariants(updated);
   };
 
+  const toggleSection = (sectionId: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(sectionId)) {
+      newExpanded.delete(sectionId);
+    } else {
+      newExpanded.add(sectionId);
+    }
+    setExpandedSections(newExpanded);
+  };
+
   // Generate variation matrix for frontend consumption
   const generateVariationMatrix = (): VariationMatrix => {
     return {
@@ -551,7 +572,7 @@ export default function AddProduct() {
         // Keep legacy format for backwards compatibility
         variationAttributes: formData.productType === 'variable' ? selectedAttributes : null,
         variants: formData.productType === 'variable' ? generatedVariants : null,
-        addons: formData.productType === 'group' ? selectedAddons : null,
+        addons: selectedAddons.length > 0 ? selectedAddons : null,
       };
 
       const response = await fetch('/api/products', {
@@ -1096,63 +1117,114 @@ export default function AddProduct() {
                 </div>
 
                 {showVariantGeneration && (
-                  <div className="space-y-3 max-h-96 overflow-y-auto flex gap-3 flex-wrap" style={{  display: 'flex', flexWrap: 'wrap', gap: '10px', margin: '10px 0 0 2%' }}>
-                    {generatedVariants.map((variant, index) => (
-                      <div key={index} className="p-3 border rounded bg-white h-full" style={{  width: '49%', boxSizing: 'border-box' }}>
+                  <div className="space-y-4">
+                    {(() => {
+                      // Group variants by first attribute for collapsible sections
+                      const groupedVariants = generatedVariants.reduce((groups, variant, index) => {
+                        const firstAttr = variant.attributes[0];
+                        const groupKey = firstAttr ? `${firstAttr.attributeName}: ${firstAttr.value}` : 'Default';
+                        
+                        if (!groups[groupKey]) {
+                          groups[groupKey] = [];
+                        }
+                        groups[groupKey].push({ ...variant, index });
+                        return groups;
+                      }, {} as { [key: string]: (GeneratedVariant & { index: number })[] });
 
-                        <div className="mt-2">
-                          <label className="block text-xs text-gray-600 mb-1">Attributes</label>
-                          <div className="text-sm text-gray-500">
-                            {variant.attributes.map((attr, index) => (
-                              <span key={index} className="inline-block bg-gray-100 px-2 py-1 rounded mr-2 mb-1">
-                                {attr.attributeName}: {attr.value}
+                      return Object.entries(groupedVariants).map(([groupName, groupVariants]) => (
+                        <div key={groupName} className="border rounded-lg bg-white">
+                          {/* Group Header */}
+                          <div
+                            className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                            onClick={() => toggleSection(groupName)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <h3 className="font-semibold text-lg">{groupName}</h3>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                                {groupVariants.length} variant{groupVariants.length !== 1 ? 's' : ''}
                               </span>
-                            ))}
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                              <div className="text-sm text-gray-600">
+                                Price Range: {(() => {
+                                  const prices = groupVariants.map(v => parseFloat(v.price) || 0);
+                                  const min = Math.min(...prices);
+                                  const max = Math.max(...prices);
+                                  return min === max ? formatPrice(min) : `${formatPrice(min)} - ${formatPrice(max)}`;
+                                })()}
+                              </div>
+                              
+                              <svg
+                                className={`w-5 h-5 transition-transform ${
+                                  expandedSections.has(groupName) ? 'rotate-180' : ''
+                                }`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                          <div className="hidden">
-                            <label className="block text-xs text-gray-600 mb-1">Variant Title</label>
-                            <input
-                              type="text"
-                              value={variant.title}
-                              onChange={(e) => updateVariant(index, 'title', e.target.value)}
-                              className="w-full p-1 text-sm border rounded"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Price</label>
-                            <input
-                              type="text"
-                              value={variant.price}
-                              onChange={(e) => updateVariant(index, 'price', e.target.value)}
-                              className="w-full p-1 text-sm border rounded"
-                              placeholder="0.00"
-                            />
-                          </div>
-                          <div className="hidden">
-                            <label className="block text-xs text-gray-600 mb-1">SKU</label>
-                            <input
-                              type="text"
-                              value={variant.sku}
-                              onChange={(e) => updateVariant(index, 'sku', e.target.value)}
-                              className="w-full p-1 text-sm border rounded"
-                            />
-                          </div>
-                          <div className="hidden">
-                            <label className="block text-xs text-gray-600 mb-1">Inventory</label>
-                            <input
-                              type="number"
-                              value={variant.inventoryQuantity}
-                              onChange={(e) => updateVariant(index, 'inventoryQuantity', parseInt(e.target.value) || 0)}
-                              className="w-full p-1 text-sm border rounded"
-                              min="0"
-                            />
-                          </div>
+                          {/* Group Content */}
+                          {expandedSections.has(groupName) && (
+                            <div className="border-t">
+                              {groupVariants.map((variant) => (
+                                <div key={variant.index} className="p-4 border-b last:border-b-0 hover:bg-gray-50">
+                                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                                    {/* Variant Info */}
+                                    <div className="lg:col-span-4">
+                                      <div className="flex flex-wrap gap-1">
+                                        {variant.attributes.map((attr, attrIndex) => (
+                                          <span
+                                            key={attrIndex}
+                                            className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                                          >
+                                            {attr.attributeName}: {attr.value}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    {/* Pricing */}
+                                    <div className="lg:col-span-3">
+                                      <div className="space-y-2">
+                                        <div>
+                                          <label className="block text-xs text-gray-600">Price</label>
+                                          <input
+                                            type="text"
+                                            value={variant.price}
+                                            onChange={(e) => updateVariant(variant.index, 'price', e.target.value)}
+                                            className="w-full p-1 text-sm border rounded"
+                                            placeholder="0.00"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+
+
+                                    {/* Actions */}
+                                    <div className="lg:col-span-2 flex gap-2">
+                                      <label className="flex items-center">
+                                        <input
+                                          type="checkbox"
+                                          checked={variant.isActive}
+                                          onChange={(e) => updateVariant(variant.index, 'isActive', e.target.checked)}
+                                          className="mr-1"
+                                        />
+                                        <span className="text-sm">Active</span>
+                                      </label>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
                 )}
               </div>
@@ -1160,8 +1232,8 @@ export default function AddProduct() {
           </div>
         )}
 
-        {/* Group Product Addons */}
-        {formData.productType === 'group' && (
+        {/* Product Addons - Available for all product types */}
+        {(
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-4">🧩 Product Addons</h3>
             
@@ -1178,7 +1250,7 @@ export default function AddProduct() {
                   .filter(addon => !selectedAddons.some(selected => selected.addonId === addon.id))
                   .map((addon) => (
                     <option key={addon.id} value={addon.id}>
-                      {addon.title} - {String.fromCharCode(0xe001)} {parseFloat(addon.price).toFixed(2)}
+                      {addon.groupTitle ? `[${addon.groupTitle}] ` : ''}{addon.title} - {String.fromCharCode(0xe001)} {parseFloat(addon.price).toFixed(2)}
                     </option>
                   ))}
               </select>
@@ -1198,6 +1270,11 @@ export default function AddProduct() {
                   <div key={selectedAddon.addonId} className="p-4 border rounded-lg bg-white">
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="font-medium">
+                        {addon?.groupTitle && (
+                          <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs mr-2">
+                            {addon.groupTitle}
+                          </span>
+                        )}
                         {selectedAddon.addonTitle}
                         {addon?.description && (
                           <span className="block text-sm text-gray-600">{addon.description}</span>
@@ -1282,27 +1359,25 @@ export default function AddProduct() {
 
             {selectedAddons.length === 0 && (
               <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500">
-                No addons selected. 
-                {(!formData.price || parseFloat(formData.price) === 0) ? (
-                  <span className="block text-red-500 font-medium mt-1">
-                    You must add at least one addon for group products with zero price.
-                  </span>
-                ) : (
-                  <span>Add some addons to create a group product.</span>
-                )}
+                No addons selected. Add some addons to enhance your product.
               </div>
             )}
 
-            {/* Group Product Pricing Summary */}
-            {formData.productType === 'group' && selectedAddons.length > 0 && (
+            {/* Product Pricing Summary with Addons */}
+            {selectedAddons.length > 0 && (
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Pricing Summary</h4>
+                <h4 className="font-medium text-blue-900 mb-2">Pricing Summary with Addons</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Base Product Price:</span>
                     <span className="flex items-center gap-1">
                       <CurrencySymbol />
-                      {formData.price ? parseFloat(formData.price).toFixed(2) : '0.00'}
+                      {formData.productType === 'simple' 
+                        ? (formData.price ? parseFloat(formData.price).toFixed(2) : '0.00')
+                        : formData.productType === 'variable' 
+                          ? 'Variable pricing'
+                          : (formData.price ? parseFloat(formData.price).toFixed(2) : '0.00')
+                      }
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -1312,16 +1387,18 @@ export default function AddProduct() {
                       {selectedAddons.reduce((total, addon) => total + parseFloat(addon.price), 0).toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between font-medium pt-2 border-t border-blue-300">
-                    <span>Maximum Product Price:</span>
-                    <span className="flex items-center gap-1">
-                      <CurrencySymbol />
-                      {(
-                        (formData.price ? parseFloat(formData.price) : 0) + 
-                        selectedAddons.reduce((total, addon) => total + parseFloat(addon.price), 0)
-                      ).toFixed(2)}
-                    </span>
-                  </div>
+                  {formData.productType !== 'variable' && (
+                    <div className="flex justify-between font-medium pt-2 border-t border-blue-300">
+                      <span>Maximum Product Price:</span>
+                      <span className="flex items-center gap-1">
+                        <CurrencySymbol />
+                        {(
+                          (formData.price ? parseFloat(formData.price) : 0) + 
+                          selectedAddons.reduce((total, addon) => total + parseFloat(addon.price), 0)
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                   <div className="text-xs text-blue-700 mt-2">
                     * Final price depends on which addons customer selects
                   </div>

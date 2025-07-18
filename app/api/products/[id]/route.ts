@@ -113,15 +113,15 @@ export async function PUT(
         .where(eq(productVariants.productId, id));
     }
 
-    // Handle addon management for group products
-    if (productData.productType === 'group' && addons) {
+    // Handle addon management for all product types
+    if (addons !== undefined) {
       // First, delete all existing product addons
       await db
         .delete(productAddons)
         .where(eq(productAddons.productId, id));
 
-      // Then create new product addons
-      if (addons.length > 0) {
+      // Then create new product addons if any are provided
+      if (addons && addons.length > 0) {
         const addonData = addons.map((addon: any) => ({
           id: uuidv4(),
           productId: id,
@@ -134,11 +134,6 @@ export async function PUT(
         
         await db.insert(productAddons).values(addonData);
       }
-    } else if (productData.productType !== 'group') {
-      // If changed from group to another type, delete all product addons
-      await db
-        .delete(productAddons)
-        .where(eq(productAddons.productId, id));
     }
 
     const updatedProduct = await db.query.products.findFirst({

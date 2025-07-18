@@ -49,6 +49,8 @@ interface Addon {
   price: string;
   description?: string;
   image?: string;
+  groupId?: string;
+  groupTitle?: string;
   isActive: boolean;
   sortOrder: number;
 }
@@ -239,7 +241,7 @@ export default function EditProduct() {
       setSelectedAttributes(autoSelectedAttributes);
       
       // Set available addons
-      setAvailableAddons(addonsData.filter((addon: Addon) => addon.isActive));
+      setAvailableAddons(addonsData.filter((addon: any) => addon.isActive));
       
       // Convert existing product addons to our format
       const formattedProductAddons = productAddonsData.map((item: any) => ({
@@ -480,7 +482,7 @@ export default function EditProduct() {
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : null,
         variationAttributes: formData.productType === 'variable' ? selectedAttributes : null,
         variantsToDelete: variantsToDelete.length > 0 ? variantsToDelete : null,
-        addons: formData.productType === 'group' ? selectedAddons : null,
+        addons: selectedAddons.length > 0 ? selectedAddons : null,
       };
 
       const response = await fetch(`/api/products/${productId}`, {
@@ -968,8 +970,8 @@ export default function EditProduct() {
           </div>
         )}
 
-        {/* Group Product Addons */}
-        {formData.productType === 'group' && (
+        {/* Product Addons - Available for all product types */}
+        {(
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-4">🧩 Product Addons</h3>
             
@@ -986,7 +988,7 @@ export default function EditProduct() {
                   .filter(addon => !selectedAddons.some(selected => selected.addonId === addon.id))
                   .map((addon) => (
                     <option key={addon.id} value={addon.id}>
-                      {addon.title} - {String.fromCharCode(0xe001)} {parseFloat(addon.price).toFixed(2)}
+                      {addon.groupTitle ? `[${addon.groupTitle}] ` : ''}{addon.title} - {String.fromCharCode(0xe001)} {parseFloat(addon.price).toFixed(2)}
                     </option>
                   ))}
               </select>
@@ -1006,6 +1008,11 @@ export default function EditProduct() {
                   <div key={selectedAddon.addonId} className="p-4 border rounded-lg bg-white">
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="font-medium">
+                        {addon?.groupTitle && (
+                          <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs mr-2">
+                            {addon.groupTitle}
+                          </span>
+                        )}
                         {selectedAddon.addonTitle}
                         {addon?.description && (
                           <span className="block text-sm text-gray-600">{addon.description}</span>
@@ -1090,27 +1097,25 @@ export default function EditProduct() {
 
             {selectedAddons.length === 0 && (
               <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500">
-                No addons selected. 
-                {(!formData.price || parseFloat(formData.price) === 0) ? (
-                  <span className="block text-red-500 font-medium mt-1">
-                    You must add at least one addon for group products with zero price.
-                  </span>
-                ) : (
-                  <span>Add some addons to create a group product.</span>
-                )}
+                No addons selected. Add some addons to enhance your product.
               </div>
             )}
 
-            {/* Group Product Pricing Summary */}
-            {formData.productType === 'group' && selectedAddons.length > 0 && (
+            {/* Product Pricing Summary with Addons */}
+            {selectedAddons.length > 0 && (
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Pricing Summary</h4>
+                <h4 className="font-medium text-blue-900 mb-2">Pricing Summary with Addons</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Base Product Price:</span>
                     <span className="flex items-center gap-1">
                       <CurrencySymbol />
-                      {formData.price ? parseFloat(formData.price).toFixed(2) : '0.00'}
+                      {formData.productType === 'simple' 
+                        ? (formData.price ? parseFloat(formData.price).toFixed(2) : '0.00')
+                        : formData.productType === 'variable' 
+                          ? 'Variable pricing'
+                          : (formData.price ? parseFloat(formData.price).toFixed(2) : '0.00')
+                      }
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -1120,16 +1125,18 @@ export default function EditProduct() {
                       {selectedAddons.reduce((total, addon) => total + parseFloat(addon.price), 0).toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between font-medium pt-2 border-t border-blue-300">
-                    <span>Maximum Product Price:</span>
-                    <span className="flex items-center gap-1">
-                      <CurrencySymbol />
-                      {(
-                        (formData.price ? parseFloat(formData.price) : 0) + 
-                        selectedAddons.reduce((total, addon) => total + parseFloat(addon.price), 0)
-                      ).toFixed(2)}
-                    </span>
-                  </div>
+                  {formData.productType !== 'variable' && (
+                    <div className="flex justify-between font-medium pt-2 border-t border-blue-300">
+                      <span>Maximum Product Price:</span>
+                      <span className="flex items-center gap-1">
+                        <CurrencySymbol />
+                        {(
+                          (formData.price ? parseFloat(formData.price) : 0) + 
+                          selectedAddons.reduce((total, addon) => total + parseFloat(addon.price), 0)
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                   <div className="text-xs text-blue-700 mt-2">
                     * Final price depends on which addons customer selects
                   </div>

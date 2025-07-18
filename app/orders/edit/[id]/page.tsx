@@ -410,19 +410,7 @@ export default function EditOrder() {
         </div>
       )}
 
-      {!stockManagementEnabled && (
-        <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-          <div className="flex items-center">
-            <span className="inline-block w-3 h-3 bg-orange-500 rounded-full mr-3"></span>
-            <div>
-              <h3 className="font-medium text-orange-800">Stock Management Disabled</h3>
-              <p className="text-sm text-orange-600 mt-1">
-                Status changes will not affect inventory levels automatically.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+     
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Edit Form */}
@@ -487,42 +475,10 @@ export default function EditOrder() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-gray-700 mb-2">Shipping Method</label>
-                  <input
-                    type="text"
-                    value={editData.shippingMethod}
-                    onChange={(e) => setEditData({...editData, shippingMethod: e.target.value})}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., Standard Shipping, Express"
-                  />
-                </div>
+               
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-gray-700 mb-2">Tracking Number</label>
-                  <input
-                    type="text"
-                    value={editData.trackingNumber}
-                    onChange={(e) => setEditData({...editData, trackingNumber: e.target.value})}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="Enter tracking number"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 mb-2">Shipping Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={editData.shippingAmount}
-                    onChange={(e) => setEditData({...editData, shippingAmount: Number(e.target.value) || 0})}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
+              
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>

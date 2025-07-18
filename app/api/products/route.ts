@@ -129,8 +129,8 @@ export async function POST(req: NextRequest) {
       await db.insert(productVariants).values(variantData);
     }
     
-    // If it's a group product, create product addons
-    if (productType === 'group' && addons && addons.length > 0) {
+    // Create product addons for any product type that has addons
+    if (addons && addons.length > 0) {
       const addonData = addons.map((addon: any) => ({
         id: uuidv4(),
         productId: newProduct.id,

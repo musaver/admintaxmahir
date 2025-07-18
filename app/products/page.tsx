@@ -204,14 +204,12 @@ export default function ProductsList() {
                             Variants
                           </Link>
                         )}
-                        {item.product.productType === 'group' && (
-                          <Link 
-                            href={`/product-addons?productId=${item.product.id}`}
-                            className="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-                          >
-                            Addons
-                          </Link>
-                        )}
+                        <Link 
+                          href={`/product-addons?productId=${item.product.id}`}
+                          className="px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                        >
+                          Addons
+                        </Link>
                         <button 
                           onClick={() => handleDelete(item.product.id)}
                           className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"

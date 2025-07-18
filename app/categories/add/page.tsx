@@ -13,6 +13,7 @@ export default function AddCategory() {
     description: '',
     image: '',
     iconName: '',
+    isFeatured: false,
     parentId: '',
     sortOrder: 0,
     isActive: true,
@@ -251,6 +252,19 @@ export default function AddCategory() {
             className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
             min="0"
           />
+        </div>
+
+        <div className="mb-4">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              name="isFeatured"
+              checked={formData.isFeatured}
+              onChange={handleChange}
+              className="mr-2"
+            />
+            Featured Category
+          </label>
         </div>
 
         <div className="mb-4">
