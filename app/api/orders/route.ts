@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { orders, orderItems, productInventory, stockMovements, products, productVariants, user } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and, isNull, desc } from 'drizzle-orm';
+import { getStockManagementSettingDirect } from '@/lib/stockManagement';
 
 export async function GET() {
   try {
@@ -100,16 +101,7 @@ export async function POST(req: NextRequest) {
     const orderId = uuidv4();
 
     // Check if stock management is enabled
-    let stockManagementEnabled = true;
-    try {
-      const stockSettingRes = await fetch(new URL('/api/settings/stock-management', req.url));
-      if (stockSettingRes.ok) {
-        const stockData = await stockSettingRes.json();
-        stockManagementEnabled = stockData.stockManagementEnabled;
-      }
-    } catch (error) {
-      console.warn('Could not fetch stock management setting, defaulting to enabled');
-    }
+    const stockManagementEnabled = await getStockManagementSettingDirect();
 
     // Validate inventory for all items before creating order (only if stock management is enabled)
     if (stockManagementEnabled) {

@@ -220,12 +220,12 @@ export default function EditOrder() {
 
       // Refresh order data
       await fetchOrder(orderId);
-      alert('Order updated successfully!');
+      //alert('Order updated successfully!');
       
       // Redirect to orders listing page
-      setTimeout(() => {
+      
         router.push('/orders');
-      }, 1000);
+      
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -410,7 +410,33 @@ export default function EditOrder() {
         </div>
       )}
 
-     
+      {!stockManagementEnabled && (
+        <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="flex items-center">
+            <span className="inline-block w-3 h-3 bg-orange-500 rounded-full mr-3"></span>
+            <div>
+              <h3 className="font-medium text-orange-800">Stock Management Disabled</h3>
+              <p className="text-sm text-orange-600 mt-1">
+                Order status changes will not affect inventory levels. Stock management is currently disabled.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {stockManagementEnabled && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center">
+            <span className="inline-block w-3 h-3 bg-blue-500 rounded-full mr-3"></span>
+            <div>
+              <h3 className="font-medium text-blue-800">Stock Management Enabled</h3>
+              <p className="text-sm text-blue-600 mt-1">
+                Order status changes will automatically update inventory levels where applicable.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Edit Form */}

@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { orders, orderItems, productInventory, stockMovements, user } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and, isNull } from 'drizzle-orm';
+import { getStockManagementSettingDirect } from '@/lib/stockManagement';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -86,16 +87,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const order = currentOrder[0];
 
     // Check if stock management is enabled
-    let stockManagementEnabled = true;
-    try {
-      const stockSettingRes = await fetch(new URL('/api/settings/stock-management', req.url));
-      if (stockSettingRes.ok) {
-        const stockData = await stockSettingRes.json();
-        stockManagementEnabled = stockData.stockManagementEnabled;
-      }
-    } catch (error) {
-      console.warn('Could not fetch stock management setting, defaulting to enabled');
-    }
+    const stockManagementEnabled = await getStockManagementSettingDirect();
 
     // Handle stock management based on status changes (only if stock management is enabled)
     if (stockManagementEnabled && status && status !== previousStatus) {
@@ -270,16 +262,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     // Check if stock management is enabled for deletion
-    let stockManagementEnabledForDeletion = true;
-    try {
-      const stockSettingRes = await fetch(new URL('/api/settings/stock-management', req.url));
-      if (stockSettingRes.ok) {
-        const stockData = await stockSettingRes.json();
-        stockManagementEnabledForDeletion = stockData.stockManagementEnabled;
-      }
-    } catch (error) {
-      console.warn('Could not fetch stock management setting for deletion, defaulting to enabled');
-    }
+    const stockManagementEnabledForDeletion = await getStockManagementSettingDirect();
 
     // Restore inventory if order was confirmed/paid (only if stock management is enabled)
     if (stockManagementEnabledForDeletion && order[0].status !== 'cancelled' && order[0].status !== 'pending') {
