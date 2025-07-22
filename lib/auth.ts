@@ -13,6 +13,22 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 24 * 60 * 60, // 24 hours
   },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token' 
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'production' 
+          ? process.env.NEXTAUTH_URL ? new URL(process.env.NEXTAUTH_URL).hostname : undefined
+          : undefined
+      }
+    },
+  },
   pages: {
     signIn: "/login",
   },
@@ -78,6 +94,15 @@ export const authOptions: NextAuthOptions = {
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback:", { url, baseUrl });
       
+      // Handle callback URLs from login redirects
+      if (url.includes('callbackUrl=')) {
+        const urlObj = new URL(url);
+        const callbackUrl = urlObj.searchParams.get('callbackUrl');
+        if (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) {
+          return `${baseUrl}${callbackUrl}`;
+        }
+      }
+      
       // Always redirect to main page (/) after login - which handles redirect logic
       if (url === "/login" || url === `${baseUrl}/login`) {
         return `${baseUrl}/`;
@@ -94,8 +119,13 @@ export const authOptions: NextAuthOptions = {
       }
       
       // Handle absolute URLs that match the base domain
-      if (new URL(url).origin === baseUrl) {
-        return url;
+      try {
+        if (new URL(url).origin === baseUrl) {
+          return url;
+        }
+      } catch (e) {
+        // Invalid URL, fallback to homepage
+        console.warn("Invalid URL in redirect callback:", url);
       }
       
       // Default: redirect to main page (homepage handles further routing)
