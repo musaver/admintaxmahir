@@ -31,7 +31,9 @@ import {
   BarChart3Icon,
   AlertTriangleIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  ShoppingCartIcon,
+  MinusCircleIcon
 } from 'lucide-react';
 
 interface InventoryItem {
@@ -156,17 +158,44 @@ export default function InventoryList() {
     if (stockFilter !== 'all') {
       filtered = filtered.filter((item: InventoryItem) => {
         const stockManagementType = item.product?.stockManagementType || 'quantity';
-        let stockStatus;
         
-        if (isWeightBasedProduct(stockManagementType)) {
-          const availableWeight = parseFloat(item.inventory.availableWeight || '0');
-          const reorderPoint = parseFloat(item.inventory.reorderWeightPoint || '0');
-          stockStatus = getWeightStockStatus(availableWeight, reorderPoint);
+        if (stockFilter === 'soldout') {
+          // Sold out items are those with zero total stock
+          if (isWeightBasedProduct(stockManagementType)) {
+            const totalWeight = parseFloat(item.inventory.weightQuantity || '0');
+            return totalWeight <= 0;
+          } else {
+            return item.inventory.quantity <= 0;
+          }
         } else {
-          stockStatus = getStockStatus(item.inventory.quantity, item.inventory.reorderPoint);
+          let stockStatus;
+          
+          if (isWeightBasedProduct(stockManagementType)) {
+            const availableWeight = parseFloat(item.inventory.availableWeight || '0');
+            const reorderPoint = parseFloat(item.inventory.reorderWeightPoint || '0');
+            const totalWeight = parseFloat(item.inventory.weightQuantity || '0');
+            
+            if (totalWeight <= 0) {
+              stockStatus = { status: 'Sold Out' };
+            } else if (availableWeight <= 0) {
+              stockStatus = { status: 'Out of Stock' };
+            } else {
+              stockStatus = getWeightStockStatus(availableWeight, reorderPoint);
+            }
+          } else {
+            const availableQuantity = item.inventory.availableQuantity || item.inventory.quantity;
+            
+            if (item.inventory.quantity <= 0) {
+              stockStatus = { status: 'Sold Out' };
+            } else if (availableQuantity <= 0) {
+              stockStatus = { status: 'Out of Stock' };
+            } else {
+              stockStatus = getStockStatus(item.inventory.quantity, item.inventory.reorderPoint);
+            }
+          }
+          
+          return stockStatus.status.toLowerCase().replace(' ', '') === stockFilter;
         }
-        
-        return stockStatus.status.toLowerCase().replace(' ', '') === stockFilter;
       });
     }
 
@@ -266,18 +295,30 @@ export default function InventoryList() {
       const stockManagementType = item.product?.stockManagementType || 'quantity';
       if (isWeightBasedProduct(stockManagementType)) {
         const availableWeight = parseFloat(item.inventory.availableWeight || '0');
-        const reorderPoint = parseFloat(item.inventory.reorderWeightPoint || '0');
-        const status = getWeightStockStatus(availableWeight, reorderPoint);
-        return status.status === 'Out of Stock';
+        const totalWeight = parseFloat(item.inventory.weightQuantity || '0');
+        return availableWeight <= 0 && totalWeight > 0; // Has inventory record but no available stock
       } else {
-        const status = getStockStatus(item.inventory.quantity, item.inventory.reorderPoint);
-        return status.status === 'Out of Stock';
+        const availableQuantity = item.inventory.availableQuantity || item.inventory.quantity;
+        return availableQuantity <= 0 && item.inventory.quantity > 0; // Has inventory record but no available stock
       }
     }).length;
 
+    // Sold out items are those with zero total stock (completely depleted)
+    const soldOutItems = filteredInventory.filter((item: InventoryItem) => {
+      const stockManagementType = item.product?.stockManagementType || 'quantity';
+      if (isWeightBasedProduct(stockManagementType)) {
+        const totalWeight = parseFloat(item.inventory.weightQuantity || '0');
+        return totalWeight <= 0; // Completely sold out - no stock left
+      } else {
+        return item.inventory.quantity <= 0; // Completely sold out - no stock left
+      }
+    }).length;
+
+    const inStockItems = totalItems - lowStockItems - outOfStockItems - soldOutItems;
+
     const totalValue = getTotalValue();
 
-    return { totalItems, lowStockItems, outOfStockItems, totalValue };
+    return { totalItems, lowStockItems, outOfStockItems, soldOutItems, inStockItems, totalValue };
   };
 
   const stats = getStats();
@@ -335,13 +376,23 @@ export default function InventoryList() {
       render: (_: any, item: InventoryItem) => {
         const availableWeight = parseFloat(item.inventory.availableWeight || '0');
         const reorderPoint = parseFloat(item.inventory.reorderWeightPoint || '0');
-        const status = getWeightStockStatus(availableWeight, reorderPoint);
+        const totalWeight = parseFloat(item.inventory.weightQuantity || '0');
+        
+        let status;
+        if (totalWeight <= 0) {
+          status = { status: 'Sold Out' };
+        } else if (availableWeight <= 0) {
+          status = { status: 'Out of Stock' };
+        } else {
+          status = getWeightStockStatus(availableWeight, reorderPoint);
+        }
         
         return (
           <Badge 
             variant={
               status.status === 'In Stock' ? 'default' : 
-              status.status === 'Low Stock' ? 'secondary' : 'destructive'
+              status.status === 'Low Stock' ? 'secondary' : 
+              status.status === 'Sold Out' ? 'outline' : 'destructive'
             }
           >
             {status.status}
@@ -427,13 +478,23 @@ export default function InventoryList() {
       key: 'status',
       title: 'Status',
       render: (_: any, item: InventoryItem) => {
-        const status = getStockStatus(item.inventory.quantity, item.inventory.reorderPoint);
+        const availableQuantity = item.inventory.availableQuantity || item.inventory.quantity;
+        
+        let status;
+        if (item.inventory.quantity <= 0) {
+          status = { status: 'Sold Out' };
+        } else if (availableQuantity <= 0) {
+          status = { status: 'Out of Stock' };
+        } else {
+          status = getStockStatus(item.inventory.quantity, item.inventory.reorderPoint);
+        }
         
         return (
           <Badge 
             variant={
               status.status === 'In Stock' ? 'default' : 
-              status.status === 'Low Stock' ? 'secondary' : 'destructive'
+              status.status === 'Low Stock' ? 'secondary' : 
+              status.status === 'Sold Out' ? 'outline' : 'destructive'
             }
           >
             {status.status}
@@ -578,7 +639,7 @@ export default function InventoryList() {
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Items</CardTitle>
@@ -606,6 +667,26 @@ export default function InventoryList() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{stats.outOfStockItems}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Sold Out</CardTitle>
+            <MinusCircleIcon className="h-4 w-4 text-gray-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-500">{stats.soldOutItems}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">In Stock</CardTitle>
+            <CheckCircleIcon className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.inStockItems}</div>
           </CardContent>
         </Card>
 
@@ -648,6 +729,7 @@ export default function InventoryList() {
                 <option value="instock">In Stock</option>
                 <option value="lowstock">Low Stock</option>
                 <option value="outofstock">Out of Stock</option>
+                <option value="soldout">Sold Out</option>
               </select>
             </div>
 

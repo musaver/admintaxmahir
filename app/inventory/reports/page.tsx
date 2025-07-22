@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import CurrencySymbol from '../../components/CurrencySymbol';
+import { isWeightBasedProduct, formatWeightAuto, formatWeight } from '@/utils/weightUtils';
 
 export default function InventoryReports() {
   const [inventory, setInventory] = useState([]);
@@ -27,21 +28,63 @@ export default function InventoryReports() {
 
   const getStockAnalytics = () => {
     const total = inventory.length;
-    const outOfStock = inventory.filter((item: any) => item.inventory.quantity <= 0).length;
-    const lowStock = inventory.filter((item: any) => 
-      item.inventory.quantity > 0 && item.inventory.quantity <= item.inventory.reorderPoint
-    ).length;
-    const inStock = inventory.filter((item: any) => 
-      item.inventory.quantity > item.inventory.reorderPoint
-    ).length;
-    
-    const totalValue = inventory.reduce((sum: number, item: any) => {
-      const price = parseFloat(item.product?.price || '0');
-      return sum + (item.inventory.quantity * price);
-    }, 0);
+    let outOfStock = 0;
+    let lowStock = 0;
+    let inStock = 0;
+    let totalValue = 0;
+    let totalStockLevel = 0;
 
-    const averageStockLevel = total > 0 ? inventory.reduce((sum: number, item: any) => 
-      sum + item.inventory.quantity, 0) / total : 0;
+    inventory.forEach((item: any) => {
+      const isWeightBased = isWeightBasedProduct(item.product?.stockManagementType || 'quantity');
+      
+      if (isWeightBased) {
+        // Weight-based product analysis
+        const availableWeight = parseFloat(item.inventory.availableWeight || '0');
+        const reorderPoint = parseFloat(item.inventory.reorderWeightPoint || '0');
+        const totalWeight = parseFloat(item.inventory.weightQuantity || '0');
+        
+        if (availableWeight <= 0) {
+          outOfStock++;
+        } else if (availableWeight <= reorderPoint) {
+          lowStock++;
+        } else {
+          inStock++;
+        }
+        
+        // Calculate value for weight-based products
+        const pricePerGram = parseFloat(item.product?.pricePerUnit || '0');
+        if (item.product?.baseWeightUnit === 'kg') {
+          // Convert per kg price to per gram
+          totalValue += totalWeight * (pricePerGram / 1000);
+        } else {
+          // Already per gram
+          totalValue += totalWeight * pricePerGram;
+        }
+        
+        totalStockLevel += totalWeight;
+      } else {
+        // Quantity-based product analysis
+        const availableQty = item.inventory.availableQuantity || 0;
+        const reorderPoint = item.inventory.reorderPoint || 0;
+        const totalQty = item.inventory.quantity || 0;
+        
+        if (availableQty <= 0) {
+          outOfStock++;
+        } else if (availableQty <= reorderPoint) {
+          lowStock++;
+        } else {
+          inStock++;
+        }
+        
+        // Calculate value for quantity-based products
+        const price = parseFloat(item.product?.price || '0');
+        totalValue += totalQty * price;
+        
+        totalStockLevel += totalQty;
+      }
+    });
+
+    const averageStockLevel = total > 0 ? totalStockLevel / total : 0;
 
     return {
       total,
@@ -58,18 +101,44 @@ export default function InventoryReports() {
 
   const getTopProducts = () => {
     return inventory
-      .sort((a: any, b: any) => {
-        const aValue = a.inventory.quantity * parseFloat(a.product?.price || '0');
-        const bValue = b.inventory.quantity * parseFloat(b.product?.price || '0');
-        return bValue - aValue;
+      .map((item: any) => {
+        const isWeightBased = isWeightBasedProduct(item.product?.stockManagementType || 'quantity');
+        let value = 0;
+        
+        if (isWeightBased) {
+          const totalWeight = parseFloat(item.inventory.weightQuantity || '0');
+          const pricePerGram = parseFloat(item.product?.pricePerUnit || '0');
+          if (item.product?.baseWeightUnit === 'kg') {
+            value = totalWeight * (pricePerGram / 1000);
+          } else {
+            value = totalWeight * pricePerGram;
+          }
+        } else {
+          const quantity = item.inventory.quantity || 0;
+          const price = parseFloat(item.product?.price || '0');
+          value = quantity * price;
+        }
+        
+        return { ...item, calculatedValue: value };
       })
+      .sort((a: any, b: any) => b.calculatedValue - a.calculatedValue)
       .slice(0, 10);
   };
 
   const getLowStockItems = () => {
-    return inventory.filter((item: any) => 
-      item.inventory.quantity > 0 && item.inventory.quantity <= item.inventory.reorderPoint
-    );
+    return inventory.filter((item: any) => {
+      const isWeightBased = isWeightBasedProduct(item.product?.stockManagementType || 'quantity');
+      
+      if (isWeightBased) {
+        const availableWeight = parseFloat(item.inventory.availableWeight || '0');
+        const reorderPoint = parseFloat(item.inventory.reorderWeightPoint || '0');
+        return availableWeight > 0 && availableWeight <= reorderPoint;
+      } else {
+        const quantity = item.inventory.quantity || 0;
+        const reorderPoint = item.inventory.reorderPoint || 0;
+        return quantity > 0 && quantity <= reorderPoint;
+      }
+    });
   };
 
   const getLocationAnalytics = () => {
@@ -82,14 +151,33 @@ export default function InventoryReports() {
           location,
           totalItems: 0,
           totalQuantity: 0,
+          totalWeight: 0,
           totalValue: 0
         });
       }
       
       const locationData = locationMap.get(location);
       locationData.totalItems += 1;
-      locationData.totalQuantity += item.inventory.quantity;
-      locationData.totalValue += item.inventory.quantity * parseFloat(item.product?.price || '0');
+      
+      const isWeightBased = isWeightBasedProduct(item.product?.stockManagementType || 'quantity');
+      
+      if (isWeightBased) {
+        const totalWeight = parseFloat(item.inventory.weightQuantity || '0');
+        locationData.totalWeight += totalWeight;
+        
+        const pricePerGram = parseFloat(item.product?.pricePerUnit || '0');
+        if (item.product?.baseWeightUnit === 'kg') {
+          locationData.totalValue += totalWeight * (pricePerGram / 1000);
+        } else {
+          locationData.totalValue += totalWeight * pricePerGram;
+        }
+      } else {
+        const quantity = item.inventory.quantity || 0;
+        locationData.totalQuantity += quantity;
+        
+        const price = parseFloat(item.product?.price || '0');
+        locationData.totalValue += quantity * price;
+      }
     });
 
     return Array.from(locationMap.values()).sort((a, b) => b.totalValue - a.totalValue);
@@ -131,7 +219,7 @@ export default function InventoryReports() {
             <div className="text-blue-600">Total SKUs</div>
           </div>
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <div className="text-2xl font-bold text-green-800"><CurrencySymbol />{analytics.totalValue.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-green-800"><CurrencySymbol />{analytics.totalValue.toFixed(2)}</div>
             <div className="text-green-600">Total Inventory Value</div>
           </div>
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
@@ -214,7 +302,11 @@ export default function InventoryReports() {
                 </div>
                 <div className="text-right">
                   <div className="font-semibold"><CurrencySymbol />{location.totalValue.toFixed(2)}</div>
-                  <div className="text-sm text-gray-500">{location.totalQuantity} units</div>
+                  <div className="text-sm text-gray-500">
+                    {location.totalQuantity > 0 && `${location.totalQuantity} units`}
+                    {location.totalWeight > 0 && location.totalQuantity > 0 && ' • '}
+                    {location.totalWeight > 0 && formatWeightAuto(location.totalWeight).formattedString}
+                  </div>
                 </div>
               </div>
             ))}
@@ -228,16 +320,32 @@ export default function InventoryReports() {
           <h2 className="text-xl font-semibold mb-4">💰 Top Products by Value</h2>
           <div className="space-y-3">
             {topProducts.slice(0, 8).map((item: any, index) => {
-              const value = item.inventory.quantity * parseFloat(item.product?.price || '0');
+              const isWeightBased = isWeightBasedProduct(item.product?.stockManagementType || 'quantity');
+              let stockDisplay = '';
+              
+              if (isWeightBased) {
+                const totalWeight = parseFloat(item.inventory.weightQuantity || '0');
+                const pricePerGram = parseFloat(item.product?.pricePerUnit || '0');
+                const priceDisplay = item.product?.baseWeightUnit === 'kg' 
+                  ? `${(pricePerGram).toFixed(2)}/kg`
+                  : `${(pricePerGram * 1000).toFixed(2)}/kg`;
+                stockDisplay = `${formatWeightAuto(totalWeight).formattedString} × <CurrencySymbol />${priceDisplay}`;
+              } else {
+                const quantity = item.inventory.quantity || 0;
+                const price = parseFloat(item.product?.price || '0');
+                stockDisplay = `${quantity} units × <CurrencySymbol />${price.toFixed(2)}`;
+              }
+              
               return (
                 <div key={index} className="flex justify-between items-center">
                   <div className="flex-1">
                     <div className="font-medium text-sm">{item.product?.name || 'N/A'}</div>
-                    <div className="text-xs text-gray-500">
-                      {item.inventory.quantity} units × <CurrencySymbol />{parseFloat(item.product?.price || '0').toFixed(2)}
-                    </div>
+                    <div className="text-xs text-gray-500" dangerouslySetInnerHTML={{ __html: stockDisplay }} />
+                    {isWeightBased && (
+                      <div className="text-xs text-blue-500">⚖️ Weight-based</div>
+                    )}
                   </div>
-                  <div className="font-semibold text-green-600"><CurrencySymbol />{value.toFixed(2)}</div>
+                  <div className="font-semibold text-green-600"><CurrencySymbol />{item.calculatedValue.toFixed(2)}</div>
                 </div>
               );
             })}
@@ -248,19 +356,38 @@ export default function InventoryReports() {
           <h2 className="text-xl font-semibold mb-4">⚠️ Low Stock Alert</h2>
           {lowStockItems.length > 0 ? (
             <div className="space-y-3">
-              {lowStockItems.slice(0, 8).map((item: any, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-red-50 rounded">
-                  <div>
-                    <div className="font-medium text-sm">{item.product?.name || 'N/A'}</div>
-                    <div className="text-xs text-gray-500">
-                      Current: {item.inventory.quantity} | Reorder at: {item.inventory.reorderPoint}
+              {lowStockItems.slice(0, 8).map((item: any, index) => {
+                const isWeightBased = isWeightBasedProduct(item.product?.stockManagementType || 'quantity');
+                let currentStock = '';
+                let reorderPoint = '';
+                
+                if (isWeightBased) {
+                  const availableWeight = parseFloat(item.inventory.availableWeight || '0');
+                  const reorderWeightPoint = parseFloat(item.inventory.reorderWeightPoint || '0');
+                  currentStock = formatWeightAuto(availableWeight).formattedString;
+                  reorderPoint = formatWeightAuto(reorderWeightPoint).formattedString;
+                } else {
+                  currentStock = `${item.inventory.quantity || 0} units`;
+                  reorderPoint = `${item.inventory.reorderPoint || 0} units`;
+                }
+                
+                return (
+                  <div key={index} className="flex justify-between items-center p-3 bg-red-50 rounded">
+                    <div>
+                      <div className="font-medium text-sm">{item.product?.name || 'N/A'}</div>
+                      <div className="text-xs text-gray-500">
+                        Current: {currentStock} | Reorder at: {reorderPoint}
+                      </div>
+                      {isWeightBased && (
+                        <div className="text-xs text-blue-500">⚖️ Weight-based</div>
+                      )}
+                    </div>
+                    <div className="text-red-600 font-semibold text-sm">
+                      {currentStock} left
                     </div>
                   </div>
-                  <div className="text-red-600 font-semibold text-sm">
-                    {item.inventory.quantity} left
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {lowStockItems.length > 8 && (
                 <div className="text-center text-sm text-gray-500 mt-3">
                   +{lowStockItems.length - 8} more items need attention

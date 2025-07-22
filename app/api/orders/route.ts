@@ -301,8 +301,8 @@ export async function POST(req: NextRequest) {
         createdAt: new Date(),
       });
 
-      // Reserve inventory when order is created (only if stock management is enabled)
-      // This prevents overselling by reserving stock immediately
+      // Deduct inventory immediately when order is created (only if stock management is enabled)
+      // This treats orders as immediate sales rather than reservations
       if (stockManagementEnabled) {
         // Get product to determine stock management type
         const product = await db.query.products.findFirst({
@@ -311,7 +311,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (!product) {
-          console.warn(`Product not found for reservation: ${item.productName}`);
+          console.warn(`Product not found for stock deduction: ${item.productName}`);
           continue;
         }
 
@@ -335,19 +335,19 @@ export async function POST(req: NextRequest) {
           const inventory = currentInventory[0];
 
           if (isWeightBased) {
-            // Handle weight-based reservation
-            const currentReservedWeight = parseFloat(inventory.reservedWeight || '0');
+            // Handle weight-based stock deduction
             const currentWeightQuantity = parseFloat(inventory.weightQuantity || '0');
+            const currentReservedWeight = parseFloat(inventory.reservedWeight || '0');
             const requestedWeight = item.weightQuantity || 0;
             
-            const newReservedWeight = currentReservedWeight + requestedWeight;
-            const newAvailableWeight = currentWeightQuantity - newReservedWeight;
+            const newWeightQuantity = currentWeightQuantity - requestedWeight;
+            const newAvailableWeight = newWeightQuantity - currentReservedWeight;
 
             // Update inventory
             await db
               .update(productInventory)
               .set({
-                reservedWeight: newReservedWeight.toString(),
+                weightQuantity: newWeightQuantity.toString(),
                 availableWeight: newAvailableWeight.toString(),
                 updatedAt: new Date(),
               })
@@ -365,23 +365,24 @@ export async function POST(req: NextRequest) {
               newQuantity: inventory.quantity,
               weightQuantity: requestedWeight.toString(),
               previousWeightQuantity: currentWeightQuantity.toString(),
-              newWeightQuantity: currentWeightQuantity.toString(), // Weight stays same, but reserved changes
-              reason: 'Order Reservation',
+              newWeightQuantity: newWeightQuantity.toString(),
+              reason: 'Order Created - Stock Sold',
               reference: orderNumber,
-              notes: `Reserved ${requestedWeight}g for new order ${orderNumber}`,
+              notes: `Sold ${requestedWeight}g for new order ${orderNumber}`,
               processedBy: null, // TODO: Add current admin user
               createdAt: new Date(),
             });
           } else {
-            // Handle quantity-based reservation
-            const newReservedQuantity = (inventory.reservedQuantity || 0) + item.quantity;
-            const newAvailableQuantity = inventory.quantity - newReservedQuantity;
+            // Handle quantity-based stock deduction
+            const currentReservedQuantity = inventory.reservedQuantity || 0;
+            const newQuantity = inventory.quantity - item.quantity;
+            const newAvailableQuantity = newQuantity - currentReservedQuantity;
 
             // Update inventory
             await db
               .update(productInventory)
               .set({
-                reservedQuantity: newReservedQuantity,
+                quantity: newQuantity,
                 availableQuantity: newAvailableQuantity,
                 updatedAt: new Date(),
               })
@@ -396,13 +397,13 @@ export async function POST(req: NextRequest) {
               movementType: 'out',
               quantity: item.quantity,
               previousQuantity: inventory.quantity,
-              newQuantity: inventory.quantity, // Quantity stays same, but reserved changes
+              newQuantity: newQuantity,
               weightQuantity: '0.00',
               previousWeightQuantity: '0.00',
               newWeightQuantity: '0.00',
-              reason: 'Order Reservation',
+              reason: 'Order Created - Stock Sold',
               reference: orderNumber,
-              notes: `Reserved ${item.quantity} units for new order ${orderNumber}`,
+              notes: `Sold ${item.quantity} units for new order ${orderNumber}`,
               processedBy: null, // TODO: Add current admin user
               createdAt: new Date(),
             });

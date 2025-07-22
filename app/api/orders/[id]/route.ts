@@ -92,41 +92,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Handle stock management based on status changes (only if stock management is enabled)
     if (stockManagementEnabled && status && status !== previousStatus) {
-      // If changing to confirmed status, validate inventory availability first
-      if (status === 'confirmed' && previousStatus !== 'confirmed') {
-        for (const item of orderItemsData) {
-          const inventoryConditions = [eq(productInventory.productId, item.productId)];
-          
-          if (item.variantId) {
-            inventoryConditions.push(eq(productInventory.variantId, item.variantId));
-          } else {
-            inventoryConditions.push(isNull(productInventory.variantId));
-          }
-
-          const currentInventory = await db
-            .select()
-            .from(productInventory)
-            .where(and(...inventoryConditions))
-            .limit(1);
-
-          if (currentInventory.length === 0) {
-            return NextResponse.json({ 
-              error: `Cannot confirm order: No inventory record found for ${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''}. Please create an inventory record first.` 
-            }, { status: 400 });
-          }
-
-          const inventory = currentInventory[0];
-          const availableStock = inventory.availableQuantity || 
-            (inventory.quantity - (inventory.reservedQuantity || 0));
-
-          if (availableStock < item.quantity) {
-            return NextResponse.json({ 
-              error: `Cannot confirm order: Insufficient stock for ${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''}. Available: ${availableStock}, Required: ${item.quantity}` 
-            }, { status: 400 });
-          }
-        }
-      }
-
       await handleStockManagement(
         orderItemsData,
         previousStatus,
@@ -135,51 +100,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       );
     }
 
-    // Handle payment status changes (only if stock management is enabled)
-    if (stockManagementEnabled && paymentStatus && paymentStatus !== previousPaymentStatus) {
-      // If payment is now successful and order is pending, validate inventory before reserving
-      if (paymentStatus === 'paid' && previousPaymentStatus !== 'paid' && (status || order.status) === 'pending') {
-        for (const item of orderItemsData) {
-          const inventoryConditions = [eq(productInventory.productId, item.productId)];
-          
-          if (item.variantId) {
-            inventoryConditions.push(eq(productInventory.variantId, item.variantId));
-          } else {
-            inventoryConditions.push(isNull(productInventory.variantId));
-          }
-
-          const currentInventory = await db
-            .select()
-            .from(productInventory)
-            .where(and(...inventoryConditions))
-            .limit(1);
-
-          if (currentInventory.length === 0) {
-            return NextResponse.json({ 
-              error: `Cannot process payment: No inventory record found for ${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''}. Please create an inventory record first.` 
-            }, { status: 400 });
-          }
-
-          const inventory = currentInventory[0];
-          const availableStock = inventory.availableQuantity || 
-            (inventory.quantity - (inventory.reservedQuantity || 0));
-
-          if (availableStock < item.quantity) {
-            return NextResponse.json({ 
-              error: `Cannot process payment: Insufficient stock for ${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''}. Available: ${availableStock}, Required: ${item.quantity}` 
-            }, { status: 400 });
-          }
-        }
-      }
-
-      await handlePaymentStatusChange(
-        orderItemsData,
-        previousPaymentStatus,
-        paymentStatus,
-        order.orderNumber,
-        status || order.status
-      );
-    }
+    // Note: Payment status changes no longer affect inventory since stock is deducted at order creation
 
     // Calculate new total if shipping or discount changed
     let newTotalAmount = order.totalAmount;
@@ -335,21 +256,14 @@ async function handleStockManagement(
 
       // Handle status transitions for weight-based products
       if (newStatus === 'cancelled') {
-        // Unreserve weight when order is cancelled (inventory was reserved when order was created)
-        newReservedWeight = Math.max(0, newReservedWeight - itemWeight);
+        // Restore weight when order is cancelled (inventory was deducted when order was created)
+        newWeightQuantity += itemWeight;
         newAvailableWeight = newWeightQuantity - newReservedWeight;
         movementType = 'in';
-        reason = 'Order Cancelled - Weight Unreserved';
-        updateNeeded = true;
-      } else if (newStatus === 'completed' && previousStatus !== 'completed') {
-        // Finalize the weight reduction when order is completed
-        newWeightQuantity -= itemWeight;
-        newReservedWeight = Math.max(0, newReservedWeight - itemWeight);
-        newAvailableWeight = newWeightQuantity - newReservedWeight;
-        movementType = 'out';
-        reason = 'Order Completed - Weight Consumed';
+        reason = 'Order Cancelled - Weight Restored';
         updateNeeded = true;
       }
+      // Note: No action needed for 'completed' status since stock was already deducted at order creation
 
       if (updateNeeded) {
         // Update weight-based inventory
@@ -391,21 +305,14 @@ async function handleStockManagement(
 
       // Handle status transitions for quantity-based products
       if (newStatus === 'cancelled') {
-        // Unreserve quantity when order is cancelled (inventory was reserved when order was created)
-        newReservedQuantity = Math.max(0, newReservedQuantity - item.quantity);
+        // Restore quantity when order is cancelled (inventory was deducted when order was created)
+        newQuantity += item.quantity;
         newAvailableQuantity = newQuantity - newReservedQuantity;
         movementType = 'in';
-        reason = 'Order Cancelled - Quantity Unreserved';
-        updateNeeded = true;
-      } else if (newStatus === 'completed' && previousStatus !== 'completed') {
-        // Finalize the quantity reduction when order is completed
-        newQuantity -= item.quantity;
-        newReservedQuantity = Math.max(0, newReservedQuantity - item.quantity);
-        newAvailableQuantity = newQuantity - newReservedQuantity;
-        movementType = 'out';
-        reason = 'Order Completed - Quantity Consumed';
+        reason = 'Order Cancelled - Quantity Restored';
         updateNeeded = true;
       }
+      // Note: No action needed for 'completed' status since stock was already deducted at order creation
 
       if (updateNeeded) {
         // Update quantity-based inventory
@@ -443,66 +350,7 @@ async function handleStockManagement(
   }
 }
 
-// Helper function to handle payment status changes
-async function handlePaymentStatusChange(
-  orderItems: any[],
-  previousPaymentStatus: string,
-  newPaymentStatus: string,
-  orderNumber: string,
-  currentOrderStatus: string
-) {
-  // If payment is now successful and order is pending, reserve inventory
-  if (previousPaymentStatus === 'pending' && newPaymentStatus === 'paid' && currentOrderStatus === 'pending') {
-    for (const item of orderItems) {
-      const inventoryConditions = [eq(productInventory.productId, item.productId)];
-      
-      if (item.variantId) {
-        inventoryConditions.push(eq(productInventory.variantId, item.variantId));
-      } else {
-        inventoryConditions.push(isNull(productInventory.variantId));
-      }
 
-      const currentInventory = await db
-        .select()
-        .from(productInventory)
-        .where(and(...inventoryConditions))
-        .limit(1);
-
-      if (currentInventory.length === 0) continue;
-
-      const inventory = currentInventory[0];
-      const newReservedQuantity = (inventory.reservedQuantity || 0) + item.quantity;
-      const newAvailableQuantity = inventory.quantity - newReservedQuantity;
-
-      // Update inventory
-      await db
-        .update(productInventory)
-        .set({
-          reservedQuantity: newReservedQuantity,
-          availableQuantity: newAvailableQuantity,
-          updatedAt: new Date(),
-        })
-        .where(eq(productInventory.id, inventory.id));
-
-      // Create stock movement record
-      await db.insert(stockMovements).values({
-        id: uuidv4(),
-        inventoryId: inventory.id,
-        productId: item.productId,
-        variantId: item.variantId || null,
-        movementType: 'out',
-        quantity: item.quantity,
-        previousQuantity: inventory.quantity,
-        newQuantity: inventory.quantity,
-        reason: 'Payment Received - Inventory Reserved',
-        reference: orderNumber,
-        notes: `Payment status changed to ${newPaymentStatus}`,
-        processedBy: null,
-        createdAt: new Date(),
-      });
-    }
-  }
-}
 
 // Helper function to restore inventory when order is deleted
 async function restoreInventoryFromOrder(orderItems: any[], orderNumber: string) {
@@ -544,14 +392,14 @@ async function restoreInventoryFromOrder(orderItems: any[], orderNumber: string)
       const currentWeightQuantity = parseFloat(inventory.weightQuantity || '0');
       const itemWeight = parseFloat(item.weightQuantity || '0');
       
-      const newReservedWeight = Math.max(0, currentReservedWeight - itemWeight);
-      const newAvailableWeight = currentWeightQuantity - newReservedWeight;
+      const newWeightQuantity = currentWeightQuantity + itemWeight;
+      const newAvailableWeight = newWeightQuantity - currentReservedWeight;
 
       // Update inventory
       await db
         .update(productInventory)
         .set({
-          reservedWeight: newReservedWeight.toString(),
+          weightQuantity: newWeightQuantity.toString(),
           availableWeight: newAvailableWeight.toString(),
           updatedAt: new Date(),
         })
@@ -569,23 +417,24 @@ async function restoreInventoryFromOrder(orderItems: any[], orderNumber: string)
         newQuantity: inventory.quantity,
         weightQuantity: itemWeight.toString(),
         previousWeightQuantity: currentWeightQuantity.toString(),
-        newWeightQuantity: currentWeightQuantity.toString(),
-        reason: 'Order Deleted - Weight Unreserved',
+        newWeightQuantity: newWeightQuantity.toString(),
+        reason: 'Order Deleted - Weight Restored',
         reference: orderNumber,
-        notes: `Order ${orderNumber} was deleted, ${itemWeight}g unreserved`,
+        notes: `Order ${orderNumber} was deleted, ${itemWeight}g restored to inventory`,
         processedBy: null,
         createdAt: new Date(),
       });
     } else {
       // Handle quantity-based inventory restoration
-      const newReservedQuantity = Math.max(0, (inventory.reservedQuantity || 0) - item.quantity);
-      const newAvailableQuantity = inventory.quantity - newReservedQuantity;
+      const currentReservedQuantity = inventory.reservedQuantity || 0;
+      const newQuantity = inventory.quantity + item.quantity;
+      const newAvailableQuantity = newQuantity - currentReservedQuantity;
 
       // Update inventory
       await db
         .update(productInventory)
         .set({
-          reservedQuantity: newReservedQuantity,
+          quantity: newQuantity,
           availableQuantity: newAvailableQuantity,
           updatedAt: new Date(),
         })
@@ -600,13 +449,13 @@ async function restoreInventoryFromOrder(orderItems: any[], orderNumber: string)
         movementType: 'in',
         quantity: item.quantity,
         previousQuantity: inventory.quantity,
-        newQuantity: inventory.quantity,
+        newQuantity: newQuantity,
         weightQuantity: '0.00',
         previousWeightQuantity: '0.00',
         newWeightQuantity: '0.00',
-        reason: 'Order Deleted - Quantity Unreserved',
+        reason: 'Order Deleted - Quantity Restored',
         reference: orderNumber,
-        notes: `Order ${orderNumber} was deleted, ${item.quantity} units unreserved`,
+        notes: `Order ${orderNumber} was deleted, ${item.quantity} units restored to inventory`,
         processedBy: null,
         createdAt: new Date(),
       });
