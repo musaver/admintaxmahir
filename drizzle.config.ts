@@ -3,12 +3,12 @@ import type { Config } from 'drizzle-kit';
 export default {
   schema: './lib/schema.ts',
   out: './drizzle',
-  dialect: 'mysql', // ✅ FIXED: use driver not dialect
+  dialect: 'mysql',
   dbCredentials: {
-    host: '109.106.254.201',
-    port: 3306,
-    user: 'u970484384_weightecomerce',
-    password: 'c@*B6suj',
-    database: 'u970484384_weightecomerce',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    user: process.env.DB_USER || '',
+    password: process.env.DB_PASS || '',
+    database: process.env.DB_NAME || '',
   },
 } satisfies Config;
