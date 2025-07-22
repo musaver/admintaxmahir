@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { productVariants, products } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   try {
@@ -82,5 +82,28 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Error creating product variant:', error);
     return NextResponse.json({ error: 'Failed to create product variant' }, { status: 500 });
+  }
+} 
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { ids } = await req.json();
+    
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: 'Array of variant IDs is required' }, { status: 400 });
+    }
+    
+    // Delete all variants with the provided IDs
+    await db
+      .delete(productVariants)
+      .where(inArray(productVariants.id, ids));
+    
+    return NextResponse.json({ 
+      message: `Successfully deleted ${ids.length} variant(s)`,
+      deletedCount: ids.length 
+    });
+  } catch (error) {
+    console.error('Error deleting product variants:', error);
+    return NextResponse.json({ error: 'Failed to delete product variants' }, { status: 500 });
   }
 } 

@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import CurrencySymbol from '../components/CurrencySymbol';
 
 export default function ProductVariantsList() {
   const [variants, setVariants] = useState([]);
@@ -11,6 +12,8 @@ export default function ProductVariantsList() {
   const [productFilter, setProductFilter] = useState('');
   const [stockFilter, setStockFilter] = useState('all');
   const [groupByProduct, setGroupByProduct] = useState(false);
+  const [selectedVariants, setSelectedVariants] = useState(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     // Check for productId in URL parameters
@@ -36,6 +39,7 @@ export default function ProductVariantsList() {
       setVariants(variantsData);
       setFilteredVariants(variantsData);
       setProducts(productsData);
+      setSelectedVariants(new Set()); // Clear selections on refresh
     } catch (err) {
       console.error(err);
     } finally {
@@ -49,6 +53,8 @@ export default function ProductVariantsList() {
 
   useEffect(() => {
     filterVariants();
+    // Clear selections when filters change
+    setSelectedVariants(new Set());
   }, [variants, searchTerm, productFilter, stockFilter]);
 
   const filterVariants = () => {
@@ -90,10 +96,65 @@ export default function ProductVariantsList() {
     }
   };
 
+  const handleSelectVariant = (variantId: string) => {
+    const newSelected = new Set(selectedVariants);
+    if (newSelected.has(variantId)) {
+      newSelected.delete(variantId);
+    } else {
+      newSelected.add(variantId);
+    }
+    setSelectedVariants(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedVariants.size === filteredVariants.length) {
+      // If all are selected, deselect all
+      setSelectedVariants(new Set());
+    } else {
+      // Select all filtered variants
+      const allIds = new Set(filteredVariants.map((item: any) => item.variant.id));
+      setSelectedVariants(allIds);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedVariants.size === 0) {
+      alert('Please select variants to delete');
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete ${selectedVariants.size} selected variant(s)?`)) {
+      setIsDeleting(true);
+      try {
+        const response = await fetch('/api/product-variants', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ids: Array.from(selectedVariants) }),
+        });
+
+        if (response.ok) {
+          // Remove deleted variants from state
+          setVariants(variants.filter((variant: any) => !selectedVariants.has(variant.variant.id)));
+          setSelectedVariants(new Set());
+        } else {
+          const error = await response.json();
+          alert(`Error deleting variants: ${error.error}`);
+        }
+      } catch (error) {
+        console.error('Error deleting variants:', error);
+        alert('Error deleting variants');
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+  };
+
   const formatPrice = (price: string) => {
     return (
       <span className="flex items-center gap-1">
-        <span className="currency-symbol">{String.fromCharCode(0xe001)}</span>
+        <CurrencySymbol />
         {parseFloat(price).toFixed(2)}
       </span>
     );
@@ -140,6 +201,15 @@ export default function ProductVariantsList() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">🔧 Product Variants</h1>
         <div className="flex gap-2">
+          {selectedVariants.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isDeleting ? 'Deleting...' : `🗑️ Delete Selected (${selectedVariants.size})`}
+            </button>
+          )}
           <button
             onClick={fetchData}
             disabled={loading}
@@ -177,7 +247,7 @@ export default function ProductVariantsList() {
           <div className="text-yellow-600">Low Stock</div>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <div className="text-2xl font-bold text-purple-800">${getTotalValue().toFixed(2)}</div>
+          <div className="text-2xl font-bold text-purple-800"><CurrencySymbol />{getTotalValue().toFixed(2)}</div>
           <div className="text-purple-600">Total Value</div>
         </div>
       </div>
@@ -272,18 +342,26 @@ export default function ProductVariantsList() {
                     return (
                       <div key={item.variant.id} className="border rounded-lg p-3 hover:bg-gray-50">
                         <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="font-medium text-sm">{item.variant.title}</div>
+                          <div className="flex items-start gap-2 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={selectedVariants.has(item.variant.id)}
+                              onChange={() => handleSelectVariant(item.variant.id)}
+                              className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{item.variant.title}</div>
                             <div className="text-xs text-gray-500 mt-1">
                               SKU: {item.variant.sku || 'N/A'}
                             </div>
                             <div className="text-sm font-semibold text-green-600 mt-1">
                               {formatPrice(item.variant.price)}
                             </div>
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className={`px-2 py-1 rounded-full text-xs ${stockStatus.color}`}>
-                                {item.variant.inventoryQuantity} in stock
-                              </span>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className={`px-2 py-1 rounded-full text-xs ${stockStatus.color}`}>
+                                  {item.variant.inventoryQuantity} in stock
+                                </span>
+                              </div>
                             </div>
                           </div>
                           {item.variant.image && (
@@ -321,6 +399,14 @@ export default function ProductVariantsList() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="border-b p-3 text-left font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={filteredVariants.length > 0 && selectedVariants.size === filteredVariants.length}
+                      onChange={handleSelectAll}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                  </th>
                   <th className="border-b p-3 text-left font-semibold">Image</th>
                   <th className="border-b p-3 text-left font-semibold">Product</th>
                   <th className="border-b p-3 text-left font-semibold">Variant Title</th>
@@ -339,6 +425,14 @@ export default function ProductVariantsList() {
                     
                     return (
                       <tr key={item.variant.id} className="hover:bg-gray-50">
+                        <td className="border-b p-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedVariants.has(item.variant.id)}
+                            onChange={() => handleSelectVariant(item.variant.id)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                        </td>
                         <td className="border-b p-3">
                           {item.variant.image ? (
                             <img 
@@ -408,7 +502,7 @@ export default function ProductVariantsList() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={9} className="border-b p-8 text-center text-gray-500">
+                    <td colSpan={10} className="border-b p-8 text-center text-gray-500">
                       {searchTerm || productFilter || stockFilter !== 'all'
                         ? 'No variants match your filters'
                         : 'No product variants found'

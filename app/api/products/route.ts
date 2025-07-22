@@ -57,7 +57,11 @@ export async function POST(req: NextRequest) {
       productType,
       variationAttributes,
       variants,
-      addons
+      addons,
+      // Weight-based stock management fields
+      stockManagementType,
+      pricePerUnit,
+      baseWeightUnit
     } = await req.json();
     
     // Validate required fields
@@ -65,9 +69,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
     
-    // Price validation - required for all product types except group products
-    if (productType !== 'group' && (price === undefined || price === null)) {
-      return NextResponse.json({ error: 'Price is required for this product type' }, { status: 400 });
+    // Price validation - required for quantity-based products (except group), weight-based products need pricePerUnit
+    if (productType !== 'group') {
+      if (stockManagementType === 'weight') {
+        if (pricePerUnit === undefined || pricePerUnit === null) {
+          return NextResponse.json({ error: 'Price per unit is required for weight-based products' }, { status: 400 });
+        }
+      } else {
+        if (price === undefined || price === null) {
+          return NextResponse.json({ error: 'Price is required for quantity-based products' }, { status: 400 });
+        }
+      }
     }
     
     // For group products with zero price, ensure they have addons
@@ -101,6 +113,10 @@ export async function POST(req: NextRequest) {
       metaDescription: metaDescription || null,
       productType: productType || 'simple',
       variationAttributes: variationAttributes ? JSON.stringify(variationAttributes) : null,
+      // Weight-based stock management fields
+      stockManagementType: stockManagementType || 'quantity',
+      pricePerUnit: pricePerUnit ? pricePerUnit.toString() : null,
+      baseWeightUnit: baseWeightUnit || 'grams',
     };
     
     // Start transaction for product and variants

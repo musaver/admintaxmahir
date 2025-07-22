@@ -26,6 +26,22 @@ const nextConfig: NextConfig = {
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+  webpack: (config, { isServer }) => {
+    // Handle node: scheme imports for client-side builds
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+        stream: false,
+        util: false,
+        events: false,
+        buffer: false,
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

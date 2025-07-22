@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { convertFromGrams } from '@/utils/weightUtils';
 
 interface StockMovement {
   id: string;
@@ -8,10 +9,21 @@ interface StockMovement {
   variantTitle?: string;
   movementType: 'in' | 'out' | 'adjustment';
   quantity: number;
+  previousQuantity?: number;
+  newQuantity?: number;
+  weightQuantity?: number;
+  previousWeightQuantity?: number;
+  newWeightQuantity?: number;
+  stockManagementType?: 'quantity' | 'weight';
+  baseWeightUnit?: string;
   reason: string;
   location: string;
   createdAt: string;
   reference?: string;
+  notes?: string;
+  costPrice?: string;
+  supplier?: string;
+  processedBy?: string;
 }
 
 export default function StockMovements() {
@@ -24,6 +36,9 @@ export default function StockMovements() {
     startDate: '',
     endDate: ''
   });
+  // Checkbox and delete functionality state
+  const [selectedMovements, setSelectedMovements] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchStockMovements();
@@ -36,28 +51,78 @@ export default function StockMovements() {
   const fetchStockMovements = async () => {
     setLoading(true);
     try {
-      // This would be a new API endpoint for stock movements
-      const res = await fetch('/api/inventory/stock-movements');
-      const data = await res.json();
-      setMovements(data);
-    } catch (err) {
-      console.error('Error fetching stock movements:', err);
-      // For now, use mock data
-      setMovements([
-        {
-          id: '1',
-          productName: 'Sample Product',
-          variantTitle: 'Red - Large',
-          movementType: 'in',
-          quantity: 50,
-          reason: 'Initial stock',
-          location: 'Warehouse A',
-          createdAt: new Date().toISOString(),
-          reference: 'PO-001'
-        }
-      ]);
+      const response = await fetch('/api/inventory/stock-movements');
+      if (response.ok) {
+        const data = await response.json();
+        setMovements(data);
+      } else {
+        console.error('Failed to fetch stock movements');
+      }
+    } catch (error) {
+      console.error('Error fetching stock movements:', error);
+    }
+    setLoading(false);
+  };
+
+  // Checkbox handling functions
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedMovements(new Set(filteredMovements.map(m => m.id)));
+    } else {
+      setSelectedMovements(new Set());
+    }
+  };
+
+  const handleSelectMovement = (movementId: string, checked: boolean) => {
+    const newSelected = new Set(selectedMovements);
+    if (checked) {
+      newSelected.add(movementId);
+    } else {
+      newSelected.delete(movementId);
+    }
+    setSelectedMovements(newSelected);
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedMovements.size === 0) {
+      alert('Please select movements to delete');
+      return;
+    }
+
+    const confirmed = confirm(
+      `Are you sure you want to delete ${selectedMovements.size} stock movement(s)? This action cannot be undone and will remove audit trail history.`
+    );
+
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch('/api/inventory/stock-movements', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ids: Array.from(selectedMovements)
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message + (result.warning ? `\n\nWarning: ${result.warning}` : ''));
+        
+        // Refresh the movements list
+        await fetchStockMovements();
+        setSelectedMovements(new Set());
+      } else {
+        const error = await response.json();
+        alert(`Failed to delete movements: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting movements:', error);
+      alert('Failed to delete movements. Please try again.');
     } finally {
-      setLoading(false);
+      setDeleting(false);
     }
   };
 
@@ -120,6 +185,17 @@ export default function StockMovements() {
     };
   };
 
+  const formatWeightDisplay = (weightInGrams: number) => {
+    // If weight is 1kg (1000g) or more, display in kg
+    if (weightInGrams >= 1000) {
+      const weightInKg = convertFromGrams(weightInGrams, 'kg');
+      return `${parseFloat(weightInKg.toFixed(3))}kg`;
+    } else {
+      // If less than 1kg, display in grams
+      return `${Math.round(weightInGrams)}g`;
+    }
+  };
+
   if (loading) return <div className="p-8 text-center">Loading stock movements...</div>;
 
   const totals = getTotalMovements();
@@ -127,8 +203,20 @@ export default function StockMovements() {
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">📊 Stock Movements</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">📊 Stock Movements</h1>
+          <p className="text-gray-600">Track all inventory movements and changes</p>
+        </div>
         <div className="flex gap-2">
+          {selectedMovements.size > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              disabled={deleting}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors"
+            >
+              {deleting ? 'Deleting...' : `🗑️ Delete Selected (${selectedMovements.size})`}
+            </button>
+          )}
           <button
             onClick={fetchStockMovements}
             disabled={loading}
@@ -244,11 +332,19 @@ export default function StockMovements() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="border-b p-3 text-center font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={filteredMovements.length > 0 && selectedMovements.size === filteredMovements.length}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 <th className="border-b p-3 text-left font-semibold">Date</th>
                 <th className="border-b p-3 text-left font-semibold">Product</th>
                 <th className="border-b p-3 text-left font-semibold">Variant</th>
                 <th className="border-b p-3 text-left font-semibold">Type</th>
-                <th className="border-b p-3 text-left font-semibold">Quantity</th>
+                <th className="border-b p-3 text-left font-semibold">Quantity/Weight</th>
                 <th className="border-b p-3 text-left font-semibold">Reason</th>
                 <th className="border-b p-3 text-left font-semibold">Location</th>
                 <th className="border-b p-3 text-left font-semibold">Reference</th>
@@ -258,6 +354,14 @@ export default function StockMovements() {
               {filteredMovements.length > 0 ? (
                 filteredMovements.map((movement) => (
                   <tr key={movement.id} className="hover:bg-gray-50">
+                    <td className="border-b p-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedMovements.has(movement.id)}
+                        onChange={(e) => handleSelectMovement(movement.id, e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
                     <td className="border-b p-3 text-sm">
                       {new Date(movement.createdAt).toLocaleDateString()} <br />
                       <span className="text-gray-500">
@@ -274,13 +378,24 @@ export default function StockMovements() {
                       </span>
                     </td>
                     <td className="border-b p-3">
-                      <span className={`font-semibold ${
-                        movement.movementType === 'in' ? 'text-green-600' : 
-                        movement.movementType === 'out' ? 'text-red-600' : 'text-blue-600'
-                      }`}>
-                        {movement.movementType === 'in' ? '+' : movement.movementType === 'out' ? '-' : '±'}
-                        {movement.quantity}
-                      </span>
+                      <div className="space-y-1">
+                        <span className={`font-semibold ${
+                          movement.movementType === 'in' ? 'text-green-600' : 
+                          movement.movementType === 'out' ? 'text-red-600' : 'text-blue-600'
+                        }`}>
+                          {movement.movementType === 'in' ? '+' : movement.movementType === 'out' ? '-' : '±'}
+                          {movement.quantity}
+                        </span>
+                        {movement.weightQuantity && movement.stockManagementType === 'weight' && (
+                          <div className={`text-sm ${
+                            movement.movementType === 'in' ? 'text-green-500' : 
+                            movement.movementType === 'out' ? 'text-red-500' : 'text-blue-500'
+                          }`}>
+                            {movement.movementType === 'in' ? '+' : movement.movementType === 'out' ? '-' : '±'}
+                            {formatWeightDisplay(movement.weightQuantity)}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="border-b p-3">{movement.reason}</td>
                     <td className="border-b p-3">{movement.location}</td>
@@ -289,7 +404,7 @@ export default function StockMovements() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="border-b p-8 text-center text-gray-500">
+                  <td colSpan={9} className="border-b p-8 text-center text-gray-500">
                     {searchTerm || movementFilter !== 'all' || dateRange.startDate || dateRange.endDate
                       ? 'No stock movements match your filters' 
                       : 'No stock movements recorded yet'

@@ -54,7 +54,7 @@ export default function AdminLayout({
             <h2 className="text-xl font-semibold">Admin Panel</h2>
             <button type="button" className="lg:hidden" onClick={() => setSidebarOpen(false)}>✕</button>
           </div>
-          <nav className="flex-1 overflow-y-auto p-4">
+          <nav className="flex-1 overflow-y-auto p-4" style={{ overflowY: 'auto' }}>
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -80,7 +80,7 @@ export default function AdminLayout({
           <div className="p-4 flex items-center border-b">
             <h2 className="text-xl font-semibold">Admin Panel</h2>
           </div>
-          <nav className="flex-1 p-4">
+          <nav className="flex-1 p-4" style={{ overflowY: 'auto' }}>
             {navigation.map((item) => (
               <Link
                 key={item.name}

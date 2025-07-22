@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import CurrencySymbol from '../components/CurrencySymbol';
 
 export default function ShippingLabelsList() {
   const [shippingLabels, setShippingLabels] = useState([]);
@@ -35,7 +36,12 @@ export default function ShippingLabelsList() {
   };
 
   const formatCost = (cost: string | null) => {
-    return cost ? `$${parseFloat(cost).toFixed(2)}` : 'N/A';
+    return cost ? (
+      <span className="flex items-center gap-1">
+        <CurrencySymbol />
+        {parseFloat(cost).toFixed(2)}
+      </span>
+    ) : 'N/A';
   };
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {

@@ -1,4 +1,6 @@
+'use client';
 import React from 'react';
+import { useCurrency } from '@/app/contexts/CurrencyContext';
 
 interface CurrencySymbolProps {
   /** Additional CSS classes to apply */
@@ -10,7 +12,7 @@ interface CurrencySymbolProps {
 /**
  * CurrencySymbol Component
  * 
- * Renders the custom currency symbol with proper font styling.
+ * Renders the current currency symbol based on the selected currency setting.
  * Use this component consistently across the admin app for currency displays.
  * 
  * @example
@@ -20,13 +22,25 @@ const CurrencySymbol: React.FC<CurrencySymbolProps> = ({
   className = '', 
   style = {} 
 }) => {
+  const { currencySettings, loading } = useCurrency();
+  
+  if (loading) {
+    return (
+      <span 
+        className={`currency-symbol ${className}`.trim()}
+        style={style}
+      >
+        &#xe001; {/* Fallback to Dirham while loading */}
+      </span>
+    );
+  }
+
   return (
     <span 
       className={`currency-symbol ${className}`.trim()}
       style={style}
-    >
-      &#xe001;
-    </span>
+      dangerouslySetInnerHTML={{ __html: currencySettings.symbol }}
+    />
   );
 };
 

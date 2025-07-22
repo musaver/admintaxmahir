@@ -1,6 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { 
+  formatWeightAuto, 
+  isWeightBasedProduct, 
+  convertToGrams,
+  getWeightStockStatus
+} from '@/utils/weightUtils';
 
 interface ProductInventory {
   productId: string;
@@ -9,6 +15,10 @@ interface ProductInventory {
   productType: string;
   categoryName: string;
   isActive: boolean;
+  // Weight-based stock management fields
+  stockManagementType?: string;
+  pricePerUnit?: number;
+  baseWeightUnit?: string;
   variants?: {
     variantId: string;
     variantTitle: string;
@@ -17,6 +27,11 @@ interface ProductInventory {
     reservedStock: number;
     availableStock: number;
     reorderPoint: number;
+    // Weight-based fields
+    currentWeight: number;
+    reservedWeight: number;
+    availableWeight: number;
+    reorderWeightPoint: number;
     lastRestocked: string | null;
     isActive: boolean;
   }[];
@@ -25,6 +40,11 @@ interface ProductInventory {
     reservedStock: number;
     availableStock: number;
     reorderPoint: number;
+    // Weight-based fields
+    currentWeight: number;
+    reservedWeight: number;
+    availableWeight: number;
+    reorderWeightPoint: number;
     lastRestocked: string | null;
   };
 }
@@ -35,6 +55,10 @@ interface QuickStockUpdate {
   productName: string;
   variantTitle?: string;
   currentStock: number;
+  // Weight-based fields
+  isWeightBased: boolean;
+  currentWeight?: number;
+  stockManagementType?: string;
 }
 
 export default function InventoryListing() {
@@ -53,7 +77,10 @@ export default function InventoryListing() {
     quantity: 0,
     reason: 'Purchase Order',
     reference: '',
-    location: ''
+    location: '',
+    // Weight-based fields
+    weightQuantity: '',
+    weightUnit: 'grams' as 'grams' | 'kg'
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -126,11 +153,13 @@ export default function InventoryListing() {
       filtered = filtered.filter(item => {
         if (item.productType === 'simple' && item.simpleStock) {
           const status = getStockStatus(item.simpleStock.availableStock, item.simpleStock.reorderPoint);
-          return status.toLowerCase().replace(' ', '') === stockFilter;
+          const statusText = typeof status === 'string' ? status : status.status;
+          return statusText.toLowerCase().replace(' ', '') === stockFilter;
         } else if (item.variants) {
           return item.variants.some(variant => {
             const status = getStockStatus(variant.availableStock, variant.reorderPoint);
-            return status.toLowerCase().replace(' ', '') === stockFilter;
+            const statusText = typeof status === 'string' ? status : status.status;
+            return statusText.toLowerCase().replace(' ', '') === stockFilter;
           });
         }
         return false;
@@ -140,7 +169,10 @@ export default function InventoryListing() {
     setFilteredInventory(filtered);
   };
 
-  const getStockStatus = (availableStock: number, reorderPoint: number) => {
+  const getStockStatus = (availableStock: number, reorderPoint: number, isWeightBased: boolean = false, availableWeight?: number, reorderWeightPoint?: number) => {
+    if (isWeightBased && availableWeight !== undefined && reorderWeightPoint !== undefined) {
+      return getWeightStockStatus(availableWeight, reorderWeightPoint);
+    }
     if (availableStock <= 0) return 'Out of Stock';
     if (availableStock <= reorderPoint) return 'Low Stock';
     return 'In Stock';
@@ -155,41 +187,70 @@ export default function InventoryListing() {
     }
   };
 
-  const openQuickAdd = (productId: string, productName: string, variantId?: string, variantTitle?: string, currentStock?: number) => {
+  const openQuickAdd = (productId: string, productName: string, variantId?: string, variantTitle?: string, currentStock?: number, stockManagementType?: string, currentWeight?: number) => {
+    const isWeightBased = isWeightBasedProduct(stockManagementType || 'quantity');
+    
     setQuickAddData({
       productId,
       variantId,
       productName,
       variantTitle,
-      currentStock: currentStock || 0
+      currentStock: currentStock || 0,
+      isWeightBased,
+      currentWeight: currentWeight || 0,
+      stockManagementType
     });
     setQuickAddForm({
       quantity: 0,
       reason: 'Purchase Order',
       reference: '',
-      location: ''
+      location: '',
+      weightQuantity: '',
+      weightUnit: 'grams'
     });
     setShowQuickAdd(true);
   };
 
   const handleQuickAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickAddData || quickAddForm.quantity <= 0) return;
+    if (!quickAddData) return;
+
+    // Validate based on stock management type
+    if (quickAddData.isWeightBased) {
+      if (!quickAddForm.weightQuantity || parseFloat(quickAddForm.weightQuantity) <= 0) {
+        alert('Please enter a valid weight quantity');
+        return;
+      }
+    } else {
+      if (quickAddForm.quantity <= 0) {
+        alert('Please enter a valid quantity');
+        return;
+      }
+    }
 
     setSubmitting(true);
     try {
+      const submitData: any = {
+        productId: quickAddData.productId,
+        variantId: quickAddData.variantId || null,
+        movementType: 'in',
+        reason: quickAddForm.reason,
+        location: quickAddForm.location,
+        reference: quickAddForm.reference
+      };
+
+      if (quickAddData.isWeightBased) {
+        submitData.weightQuantity = parseFloat(quickAddForm.weightQuantity);
+        submitData.weightUnit = quickAddForm.weightUnit;
+        submitData.quantity = 0; // Set to 0 for weight-based products
+      } else {
+        submitData.quantity = quickAddForm.quantity;
+      }
+
       const response = await fetch('/api/inventory/stock-movements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productId: quickAddData.productId,
-          variantId: quickAddData.variantId || null,
-          movementType: 'in',
-          quantity: quickAddForm.quantity,
-          reason: quickAddForm.reason,
-          location: quickAddForm.location,
-          reference: quickAddForm.reference
-        }),
+        body: JSON.stringify(submitData),
       });
 
       if (!response.ok) {
@@ -221,14 +282,16 @@ export default function InventoryListing() {
     inventory.forEach(item => {
       if (item.productType === 'simple' && item.simpleStock) {
         totalItems++;
-        const status = getStockStatus(item.simpleStock.availableStock, item.simpleStock.reorderPoint);
+        const statusResult = getStockStatus(item.simpleStock.availableStock, item.simpleStock.reorderPoint);
+        const status = typeof statusResult === 'string' ? statusResult : statusResult.status;
         if (status === 'Out of Stock') outOfStock++;
         else if (status === 'Low Stock') lowStock++;
         else inStock++;
       } else if (item.variants) {
         totalItems += item.variants.length;
         item.variants.forEach(variant => {
-          const status = getStockStatus(variant.availableStock, variant.reorderPoint);
+          const statusResult = getStockStatus(variant.availableStock, variant.reorderPoint);
+          const status = typeof statusResult === 'string' ? statusResult : statusResult.status;
           if (status === 'Out of Stock') outOfStock++;
           else if (status === 'Low Stock') lowStock++;
           else inStock++;
@@ -368,6 +431,7 @@ export default function InventoryListing() {
                 <th className="border-b p-3 text-left font-semibold">Type</th>
                 <th className="border-b p-3 text-left font-semibold">Category</th>
                 <th className="border-b p-3 text-left font-semibold">Variant/Details</th>
+                <th className="border-b p-3 text-left font-semibold">Stock Type</th>
                 <th className="border-b p-3 text-left font-semibold">Current Stock</th>
                 <th className="border-b p-3 text-left font-semibold">Available</th>
                 <th className="border-b p-3 text-left font-semibold">Status</th>
@@ -378,8 +442,18 @@ export default function InventoryListing() {
             <tbody>
               {filteredInventory.length > 0 ? (
                 filteredInventory.map((item) => {
+                  const isWeightBased = isWeightBasedProduct(item.stockManagementType || 'quantity');
+                  
                   if (item.productType === 'simple' && item.simpleStock) {
-                    const status = getStockStatus(item.simpleStock.availableStock, item.simpleStock.reorderPoint);
+                    const statusResult = getStockStatus(
+                      item.simpleStock.availableStock, 
+                      item.simpleStock.reorderPoint,
+                      isWeightBased,
+                      item.simpleStock.availableWeight,
+                      item.simpleStock.reorderWeightPoint
+                    );
+                    const status = typeof statusResult === 'string' ? statusResult : statusResult.status;
+                    const statusColor = typeof statusResult === 'string' ? getStockStatusColor(statusResult) : statusResult.color;
                     return (
                       <tr key={item.productId} className="hover:bg-gray-50">
                         <td className="border-b p-3">
@@ -400,18 +474,43 @@ export default function InventoryListing() {
                           <span className="text-gray-500">Base Product</span>
                         </td>
                         <td className="border-b p-3">
-                          <span className="font-semibold">{item.simpleStock.currentStock}</span>
-                          {item.simpleStock.reservedStock > 0 && (
-                            <span className="text-sm text-orange-600 ml-1">
-                              ({item.simpleStock.reservedStock} reserved)
-                            </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            isWeightBased ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {isWeightBased ? '⚖️ Weight' : '📦 Quantity'}
+                          </span>
+                        </td>
+                        <td className="border-b p-3">
+                          {isWeightBased ? (
+                            <div>
+                              <span className="font-semibold">{formatWeightAuto(item.simpleStock.currentWeight || 0).formattedString}</span>
+                              {(item.simpleStock.reservedWeight || 0) > 0 && (
+                                <span className="text-sm text-orange-600 ml-1">
+                                  ({formatWeightAuto(item.simpleStock.reservedWeight || 0).formattedString} reserved)
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="font-semibold">{item.simpleStock.currentStock}</span>
+                              {item.simpleStock.reservedStock > 0 && (
+                                <span className="text-sm text-orange-600 ml-1">
+                                  ({item.simpleStock.reservedStock} reserved)
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="border-b p-3">
-                          <span className="font-semibold text-green-600">{item.simpleStock.availableStock}</span>
+                          <span className="font-semibold text-green-600">
+                            {isWeightBased 
+                              ? formatWeightAuto(item.simpleStock.availableWeight || 0).formattedString
+                              : item.simpleStock.availableStock
+                            }
+                          </span>
                         </td>
                         <td className="border-b p-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStockStatusColor(status)}`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
                             {status}
                           </span>
                         </td>
@@ -428,7 +527,9 @@ export default function InventoryListing() {
                               item.productName,
                               undefined,
                               undefined,
-                              item.simpleStock?.currentStock
+                              item.simpleStock?.currentStock,
+                              item.stockManagementType,
+                              item.simpleStock?.currentWeight
                             )}
                             className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors"
                           >
@@ -439,7 +540,15 @@ export default function InventoryListing() {
                     );
                   } else if (item.variants) {
                     return item.variants.map((variant, index) => {
-                      const status = getStockStatus(variant.availableStock, variant.reorderPoint);
+                      const statusResult = getStockStatus(
+                        variant.availableStock, 
+                        variant.reorderPoint,
+                        isWeightBased,
+                        variant.availableWeight,
+                        variant.reorderWeightPoint
+                      );
+                      const status = typeof statusResult === 'string' ? statusResult : statusResult.status;
+                      const statusColor = typeof statusResult === 'string' ? getStockStatusColor(statusResult) : statusResult.color;
                       return (
                         <tr key={`${item.productId}-${variant.variantId}`} className="hover:bg-gray-50">
                           {index === 0 && (
@@ -472,19 +581,46 @@ export default function InventoryListing() {
                               )}
                             </div>
                           </td>
-                          <td className="border-b p-3">
-                            <span className="font-semibold">{variant.currentStock}</span>
-                            {variant.reservedStock > 0 && (
-                              <span className="text-sm text-orange-600 ml-1">
-                                ({variant.reservedStock} reserved)
+                          {index === 0 && (
+                            <td className="border-b p-3" rowSpan={item.variants!.length}>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                isWeightBased ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {isWeightBased ? '⚖️ Weight' : '📦 Quantity'}
                               </span>
+                            </td>
+                          )}
+                          <td className="border-b p-3">
+                            {isWeightBased ? (
+                              <div>
+                                <span className="font-semibold">{formatWeightAuto(variant.currentWeight || 0).formattedString}</span>
+                                {(variant.reservedWeight || 0) > 0 && (
+                                  <span className="text-sm text-orange-600 ml-1">
+                                    ({formatWeightAuto(variant.reservedWeight || 0).formattedString} reserved)
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <div>
+                                <span className="font-semibold">{variant.currentStock}</span>
+                                {variant.reservedStock > 0 && (
+                                  <span className="text-sm text-orange-600 ml-1">
+                                    ({variant.reservedStock} reserved)
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </td>
                           <td className="border-b p-3">
-                            <span className="font-semibold text-green-600">{variant.availableStock}</span>
+                            <span className="font-semibold text-green-600">
+                              {isWeightBased 
+                                ? formatWeightAuto(variant.availableWeight || 0).formattedString
+                                : variant.availableStock
+                              }
+                            </span>
                           </td>
                           <td className="border-b p-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStockStatusColor(status)}`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor}`}>
                               {status}
                             </span>
                           </td>
@@ -501,7 +637,9 @@ export default function InventoryListing() {
                                 item.productName,
                                 variant.variantId,
                                 variant.variantTitle,
-                                variant.currentStock
+                                variant.currentStock,
+                                item.stockManagementType,
+                                variant.currentWeight
                               )}
                               className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors"
                             >
@@ -516,7 +654,7 @@ export default function InventoryListing() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="border-b p-8 text-center text-gray-500">
+                  <td colSpan={10} className="border-b p-8 text-center text-gray-500">
                     {searchTerm || categoryFilter !== 'all' || stockFilter !== 'all' || productTypeFilter !== 'all'
                       ? 'No inventory items match your filters' 
                       : 'No inventory items found'
@@ -540,23 +678,59 @@ export default function InventoryListing() {
               {quickAddData.variantTitle && (
                 <div className="text-sm text-gray-600">{quickAddData.variantTitle}</div>
               )}
-              <div className="text-sm text-gray-500">Current Stock: {quickAddData.currentStock}</div>
+              <div className="text-sm text-gray-500">
+                Stock Type: {quickAddData.isWeightBased ? '⚖️ Weight-based' : '📦 Quantity-based'}
+              </div>
+              <div className="text-sm text-gray-500">
+                Current Stock: {quickAddData.isWeightBased 
+                  ? formatWeightAuto(quickAddData.currentWeight || 0).formattedString
+                  : quickAddData.currentStock
+                }
+              </div>
             </div>
 
             <form onSubmit={handleQuickAddSubmit}>
-              <div className="mb-4">
-                <label className="block text-gray-700 mb-2">
-                  Quantity to Add <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={quickAddForm.quantity}
-                  onChange={(e) => setQuickAddForm({...quickAddForm, quantity: parseInt(e.target.value) || 0})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                  min="1"
-                  required
-                />
-              </div>
+              {quickAddData.isWeightBased ? (
+                <div className="mb-4">
+                  <label className="block text-gray-700 mb-2">
+                    Weight to Add <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={quickAddForm.weightQuantity}
+                      onChange={(e) => setQuickAddForm({...quickAddForm, weightQuantity: e.target.value})}
+                      className="flex-1 p-2 border rounded focus:border-blue-500 focus:outline-none"
+                      min="0"
+                      step="0.001"
+                      placeholder="Enter weight"
+                      required
+                    />
+                    <select
+                      value={quickAddForm.weightUnit}
+                      onChange={(e) => setQuickAddForm({...quickAddForm, weightUnit: e.target.value as 'grams' | 'kg'})}
+                      className="p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    >
+                      <option value="grams">g</option>
+                      <option value="kg">kg</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-4">
+                  <label className="block text-gray-700 mb-2">
+                    Quantity to Add <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={quickAddForm.quantity}
+                    onChange={(e) => setQuickAddForm({...quickAddForm, quantity: parseInt(e.target.value) || 0})}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    min="1"
+                    required
+                  />
+                </div>
+              )}
 
               <div className="mb-4">
                 <label className="block text-gray-700 mb-2">
@@ -599,10 +773,13 @@ export default function InventoryListing() {
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  disabled={submitting || quickAddForm.quantity <= 0}
+                  disabled={submitting || (quickAddData.isWeightBased ? (!quickAddForm.weightQuantity || parseFloat(quickAddForm.weightQuantity) <= 0) : quickAddForm.quantity <= 0)}
                   className="flex-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
                 >
-                  {submitting ? 'Adding...' : `Add ${quickAddForm.quantity} Stock`}
+                  {submitting ? 'Adding...' : quickAddData.isWeightBased 
+                    ? `Add ${quickAddForm.weightQuantity || 0}${quickAddForm.weightUnit === 'kg' ? 'kg' : 'g'} Stock`
+                    : `Add ${quickAddForm.quantity} Stock`
+                  }
                 </button>
                 <button
                   type="button"

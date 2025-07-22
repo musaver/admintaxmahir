@@ -2,6 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import CurrencySymbol from '../../../components/CurrencySymbol';
+import { 
+  formatWeightAuto, 
+  isWeightBasedProduct 
+} from '@/utils/weightUtils';
 
 interface Order {
   id: string;
@@ -66,6 +70,10 @@ interface OrderItem {
   price: number;
   totalPrice: number;
   productImage?: string;
+  // Weight-based fields
+  isWeightBased?: boolean;
+  weightQuantity?: number; // Weight in grams
+  weightUnit?: string; // Display unit (grams, kg)
   addons?: Array<{
     addonId: string;
     addonTitle?: string;
@@ -166,6 +174,22 @@ export default function EditOrder() {
       }
       
       const orderData = await response.json();
+      
+      // Process items to add weight-based information
+      if (orderData.items) {
+        orderData.items = orderData.items.map((item: any) => {
+          // Determine if item is weight-based by checking if weightQuantity exists and is > 0
+          const weightQuantity = item.weightQuantity ? parseFloat(item.weightQuantity) : 0;
+          const isWeightBased = weightQuantity > 0;
+
+          return {
+            ...item,
+            isWeightBased,
+            weightQuantity: weightQuantity > 0 ? weightQuantity : undefined,
+            weightUnit: item.weightUnit || undefined
+          };
+        });
+      }
       
       setOrder(orderData);
       
@@ -589,6 +613,11 @@ export default function EditOrder() {
                           {item.sku && (
                             <div className="text-sm text-gray-500">SKU: {item.sku}</div>
                           )}
+                          {item.isWeightBased && item.weightQuantity && (
+                            <div className="text-sm text-blue-600">
+                              ⚖️ Weight: {formatWeightAuto(item.weightQuantity).formattedString}
+                            </div>
+                          )}
                           {(() => {
                             const parsedAddons = parseAddons(item.addons);
                             return parsedAddons.length > 0 && (
@@ -603,16 +632,24 @@ export default function EditOrder() {
                         <div className="font-medium">
                           {(() => {
                             const parsedAddons = parseAddons(item.addons);
-                            return parsedAddons.length > 0 ? (
-                              <div>
-                                <div className="text-sm">Base: {formatCurrency(item.price)} x {item.quantity}</div>
-                                <div className="text-xs text-gray-500">
-                                  +Addons: {formatCurrency(parsedAddons.reduce((sum, addon) => sum + ((Number(addon.price) || 0) * (Number(addon.quantity) || 1)), 0))} x {item.quantity}
+                            if (parsedAddons.length > 0) {
+                              return (
+                                <div>
+                                  <div className="text-sm">Base: {formatCurrency(item.price)} x {item.quantity}</div>
+                                  <div className="text-xs text-gray-500">
+                                    +Addons: {formatCurrency(parsedAddons.reduce((sum, addon) => sum + ((Number(addon.price) || 0) * (Number(addon.quantity) || 1)), 0))} x {item.quantity}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div>{formatCurrency(item.price)} x {item.quantity}</div>
-                            );
+                              );
+                            } else if (item.isWeightBased && item.weightQuantity) {
+                              return (
+                                <div className="text-sm">
+                                  {formatCurrency(item.price)} (for {formatWeightAuto(item.weightQuantity).formattedString})
+                                </div>
+                              );
+                            } else {
+                              return <div>{formatCurrency(item.price)} x {item.quantity}</div>;
+                            }
                           })()}
                         </div>
                         <div className="text-lg font-semibold">

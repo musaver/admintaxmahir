@@ -3,9 +3,49 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { normalizeProductImages } from '../../utils/jsonUtils';
 import CurrencySymbol from '../../components/CurrencySymbol';
+import ResponsiveTable from '../components/ResponsiveTable';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { 
+  PlusIcon, 
+  MoreVerticalIcon, 
+  EditIcon, 
+  EyeIcon, 
+  TrashIcon,
+  RefreshCwIcon,
+  PackageIcon
+} from 'lucide-react';
+
+interface Product {
+  id: string;
+  name: string;
+  sku?: string;
+  price: string;
+  productType: string;
+  isActive: boolean;
+  isFeatured: boolean;
+  categoryId?: string;
+  images?: any;
+  createdAt: string;
+}
+
+interface ProductWithCategory {
+  product: Product;
+  category: {
+    id: string;
+    name: string;
+  } | null;
+}
 
 export default function ProductsList() {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<ProductWithCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchProducts = async () => {
@@ -29,7 +69,7 @@ export default function ProductsList() {
     if (confirm('Are you sure you want to delete this product?')) {
       try {
         await fetch(`/api/products/${id}`, { method: 'DELETE' });
-        setProducts(products.filter((product: any) => product.product.id !== id));
+        setProducts(products.filter((item) => item.product.id !== id));
       } catch (error) {
         console.error('Error deleting product:', error);
       }
@@ -49,29 +89,18 @@ export default function ProductsList() {
     );
   };
 
-  // Use the same approach as the edit product page
   const getFirstProductImage = (imagesData: any): string | null => {
-    console.log('🖼️ Raw images data:', imagesData);
-    
-    // Use the same utility function as edit product page
     const normalizedImages = normalizeProductImages(imagesData);
-    console.log('✅ Normalized images:', normalizedImages);
-    
-    // Return the first image or null
-    const firstImage = normalizedImages.length > 0 ? normalizedImages[0] : null;
-    console.log('🎯 First image:', firstImage);
-    
-    return firstImage;
+    return normalizedImages.length > 0 ? normalizedImages[0] : null;
   };
 
-  // ProductImage component with the same approach as edit page
   const ProductImage = ({ imagesData, productName }: { imagesData: any; productName: string }) => {
     const imageUrl = getFirstProductImage(imagesData);
     
     if (!imageUrl) {
       return (
-        <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-gray-500 text-xs border border-gray-200">
-          No Image
+        <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+          <PackageIcon className="h-6 w-6 text-gray-400" />
         </div>
       );
     }
@@ -80,13 +109,8 @@ export default function ProductsList() {
       <img 
         src={imageUrl}
         alt={productName}
-        className="w-16 h-16 object-cover rounded border border-gray-200"
-        onLoad={() => {
-          console.log('✅ Image loaded successfully:', imageUrl);
-        }}
+        className="w-12 h-12 object-cover rounded border border-gray-200"
         onError={(e) => {
-          console.error('💥 Image failed to load:', imageUrl);
-          // Hide the broken image and show fallback
           (e.target as HTMLImageElement).style.display = 'none';
           const fallback = (e.target as HTMLElement).parentElement?.querySelector('.fallback-image') as HTMLElement;
           if (fallback) {
@@ -97,138 +121,195 @@ export default function ProductsList() {
     );
   };
 
-  if (loading) return <div>Loading...</div>;
+  const getStats = () => {
+    const totalProducts = products.length;
+    const activeProducts = products.filter(item => item.product.isActive).length;
+    const featuredProducts = products.filter(item => item.product.isFeatured).length;
+    const groupProducts = products.filter(item => item.product.productType === 'group').length;
+    
+    return { totalProducts, activeProducts, featuredProducts, groupProducts };
+  };
+
+  const stats = getStats();
+
+  const columns = [
+    {
+      key: 'image',
+      title: 'Image',
+      render: (_: any, item: ProductWithCategory) => (
+        <ProductImage 
+          imagesData={item.product.images} 
+          productName={item.product.name}
+        />
+      ),
+      mobileHidden: true
+    },
+    {
+      key: 'name',
+      title: 'Product',
+      render: (_: any, item: ProductWithCategory) => (
+        <div>
+          <div className="font-medium">{item.product.name}</div>
+          {item.product.sku && (
+            <div className="text-sm text-muted-foreground">SKU: {item.product.sku}</div>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'type',
+      title: 'Type',
+      render: (_: any, item: ProductWithCategory) => (
+        <Badge variant={item.product.productType === 'group' ? 'secondary' : 'outline'}>
+          {item.product.productType === 'group' ? 'Group' : 'Simple'}
+        </Badge>
+      ),
+      mobileHidden: true
+    },
+    {
+      key: 'price',
+      title: 'Price',
+      render: (_: any, item: ProductWithCategory) => (
+        <div className="font-medium">
+          {formatPrice(item.product.price, item.product.productType)}
+        </div>
+      )
+    },
+    {
+      key: 'category',
+      title: 'Category',
+      render: (_: any, item: ProductWithCategory) => (
+        <div className="text-sm">
+          {item.category ? item.category.name : 'No Category'}
+        </div>
+      ),
+      mobileHidden: true
+    },
+    {
+      key: 'status',
+      title: 'Status',
+      render: (_: any, item: ProductWithCategory) => (
+        <div className="space-y-1">
+          <Badge variant={item.product.isActive ? 'default' : 'secondary'}>
+            {item.product.isActive ? 'Active' : 'Inactive'}
+          </Badge>
+          {item.product.isFeatured && (
+            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+              Featured
+            </Badge>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'createdAt',
+      title: 'Created',
+      render: (_: any, item: ProductWithCategory) => (
+        <div className="text-sm">
+          {new Date(item.product.createdAt).toLocaleDateString()}
+        </div>
+      ),
+      mobileHidden: true
+    }
+  ];
+
+  const renderActions = (item: ProductWithCategory) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm">
+          <MoreVerticalIcon className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem asChild>
+          <Link href={`/products/edit/${item.product.id}`} className="flex items-center">
+            <EditIcon className="h-4 w-4 mr-2" />
+            Edit
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={() => handleDelete(item.product.id)}
+          className="text-red-600 focus:text-red-600"
+        >
+          <TrashIcon className="h-4 w-4 mr-2" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Products</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={fetchProducts}
-            disabled={loading}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? 'Refreshing...' : '🔄 Refresh'}
-          </button>
-          <Link 
-            href="/products/add" 
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-          >
-            Add New Product
-          </Link>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+          <p className="text-muted-foreground">
+            Manage your products and services
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button onClick={fetchProducts} disabled={loading} variant="outline" size="sm">
+            <RefreshCwIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button asChild>
+            <Link href="/products/add">
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add Product
+            </Link>
+          </Button>
         </div>
       </div>
-      
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border p-2 text-left">Image</th>
-              <th className="border p-2 text-left">Name</th>
-              <th className="border p-2 text-left">Type</th>
-              <th className="border p-2 text-left">SKU</th>
-              <th className="border p-2 text-left">Price</th>
-              <th className="border p-2 text-left">Category</th>
-              <th className="border p-2 text-left">Status</th>
-              <th className="border p-2 text-left">Featured</th>
-              <th className="border p-2 text-left">Created At</th>
-              <th className="border p-2 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.length > 0 ? (
-              products.map((item: any) => {
-                return (
-                  <tr key={item.product.id}>
-                    <td className="border p-2">
-                      <ProductImage 
-                        imagesData={item.product.images} 
-                        productName={item.product.name}
-                      />
-                    </td>
-                    <td className="border p-2">
-                      <div className="font-medium">{item.product.name}</div>
-                      <div className="text-sm text-gray-500">{item.product.slug}</div>
-                    </td>
-                    <td className="border p-2">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        item.product.productType === 'variable' 
-                          ? 'bg-purple-100 text-purple-800' 
-                          : item.product.productType === 'group'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {item.product.productType === 'variable' 
-                          ? 'Variable' 
-                          : item.product.productType === 'group'
-                          ? 'Group'
-                          : 'Simple'}
-                      </span>
-                    </td>
-                    <td className="border p-2 font-mono text-sm">{item.product.sku || 'N/A'}</td>
-                    <td className="border p-2 font-semibold text-green-600">{formatPrice(item.product.price, item.product.productType)}</td>
-                    <td className="border p-2">{item.category?.name || 'Uncategorized'}</td>
-                    <td className="border p-2">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        item.product.isActive 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {item.product.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="border p-2">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        item.product.isFeatured 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {item.product.isFeatured ? 'Featured' : 'Normal'}
-                      </span>
-                    </td>
-                    <td className="border p-2">{new Date(item.product.createdAt).toLocaleString()}</td>
-                    <td className="border p-2">
-                      <div className="flex gap-2">
-                        <Link 
-                          href={`/products/edit/${item.product.id}`}
-                          className="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-                        >
-                          Edit
-                        </Link>
-                        {item.product.productType === 'variable' && (
-                          <Link 
-                            href={`/product-variants?productId=${item.product.id}`}
-                            className="px-2 py-1 bg-purple-500 text-white rounded text-sm hover:bg-purple-600"
-                          >
-                            Variants
-                          </Link>
-                        )}
-                        <Link 
-                          href={`/product-addons?productId=${item.product.id}`}
-                          className="px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                        >
-                          Addons
-                        </Link>
-                        <button 
-                          onClick={() => handleDelete(item.product.id)}
-                          className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan={10} className="border p-2 text-center">No products found</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+            <PackageIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalProducts}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Products</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.activeProducts}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Featured Products</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{stats.featuredProducts}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Group Products</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.groupProducts}</div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Products Table */}
+      <ResponsiveTable
+        columns={columns}
+        data={products}
+        loading={loading}
+        emptyMessage="No products found"
+        actions={renderActions}
+      />
     </div>
   );
 } 

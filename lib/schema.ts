@@ -140,6 +140,11 @@ export const products = mysqlTable("products", {
   productType: varchar("product_type", { length: 50 }).default("simple"), // 'simple' or 'variable'
   variationAttributes: json("variation_attributes"), // Array of {name: string, values: string[]}
   
+  // Stock Management Fields
+  stockManagementType: varchar("stock_management_type", { length: 20 }).default("quantity"), // 'quantity' or 'weight'
+  pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }), // Price per gram for weight-based products
+  baseWeightUnit: varchar("base_weight_unit", { length: 10 }).default("grams"), // 'grams' or 'kg'
+  
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -236,11 +241,21 @@ export const productInventory = mysqlTable("product_inventory", {
   id: varchar("id", { length: 255 }).primaryKey(),
   productId: varchar("product_id", { length: 255 }),
   variantId: varchar("variant_id", { length: 255 }),
+  
+  // Quantity-based inventory fields
   quantity: int("quantity").notNull().default(0),
   reservedQuantity: int("reserved_quantity").default(0),
   availableQuantity: int("available_quantity").default(0),
   reorderPoint: int("reorder_point").default(0),
   reorderQuantity: int("reorder_quantity").default(0),
+  
+  // Weight-based inventory fields (stored in grams for consistency)
+  weightQuantity: decimal("weight_quantity", { precision: 12, scale: 2 }).default('0.00'), // Total weight in grams
+  reservedWeight: decimal("reserved_weight", { precision: 12, scale: 2 }).default('0.00'), // Reserved weight in grams
+  availableWeight: decimal("available_weight", { precision: 12, scale: 2 }).default('0.00'), // Available weight in grams
+  reorderWeightPoint: decimal("reorder_weight_point", { precision: 12, scale: 2 }).default('0.00'), // Reorder point in grams
+  reorderWeightQuantity: decimal("reorder_weight_quantity", { precision: 12, scale: 2 }).default('0.00'), // Reorder quantity in grams
+  
   location: varchar("location", { length: 255 }),
   supplier: varchar("supplier", { length: 255 }),
   lastRestockDate: datetime("last_restock_date"),
@@ -255,9 +270,17 @@ export const stockMovements = mysqlTable("stock_movements", {
   productId: varchar("product_id", { length: 255 }).notNull(),
   variantId: varchar("variant_id", { length: 255 }),
   movementType: varchar("movement_type", { length: 50 }).notNull(), // 'in', 'out', 'adjustment'
-  quantity: int("quantity").notNull(),
+  
+  // Quantity-based movement fields
+  quantity: int("quantity").notNull().default(0),
   previousQuantity: int("previous_quantity").notNull().default(0),
-  newQuantity: int("new_quantity").notNull(),
+  newQuantity: int("new_quantity").notNull().default(0),
+  
+  // Weight-based movement fields (stored in grams)
+  weightQuantity: decimal("weight_quantity", { precision: 12, scale: 2 }).default('0.00'), // Weight moved in grams
+  previousWeightQuantity: decimal("previous_weight_quantity", { precision: 12, scale: 2 }).default('0.00'), // Previous weight in grams
+  newWeightQuantity: decimal("new_weight_quantity", { precision: 12, scale: 2 }).default('0.00'), // New weight in grams
+  
   reason: varchar("reason", { length: 255 }).notNull(),
   location: varchar("location", { length: 255 }),
   reference: varchar("reference", { length: 255 }), // PO number, invoice, etc.
@@ -327,9 +350,18 @@ export const orderItems = mysqlTable("order_items", {
   productName: varchar("product_name", { length: 255 }).notNull(),
   variantTitle: varchar("variant_title", { length: 255 }),
   sku: varchar("sku", { length: 100 }),
-  quantity: int("quantity").notNull(),
+  
+  // Quantity-based order fields
+  quantity: int("quantity").notNull().default(0),
+  
+  // Weight-based order fields (stored in grams)
+  weightQuantity: decimal("weight_quantity", { precision: 12, scale: 2 }).default('0.00'), // Ordered weight in grams
+  weightUnit: varchar("weight_unit", { length: 10 }), // Display unit (grams, kg)
+  
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  costPrice: decimal("cost_price", { precision: 10, scale: 2 }), // Cost price at time of sale
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  totalCost: decimal("total_cost", { precision: 10, scale: 2 }), // Total cost (costPrice * quantity/weight)
   productImage: varchar("product_image", { length: 500 }),
   addons: json("addons"), // Store selected addons as JSON
   groupTitle: varchar("group_title", { length: 255 }), // Add group title for addon groups

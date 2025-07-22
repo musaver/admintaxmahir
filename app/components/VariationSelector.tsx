@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import CurrencySymbol from './CurrencySymbol';
 
 interface VariationAttribute {
   id: string;
@@ -212,7 +213,7 @@ export default function VariationSelector({
             <div className="flex justify-between">
               <span className="text-gray-600">Price:</span>
               <span className="font-medium flex items-center gap-1">
-                <span className="currency-symbol">{String.fromCharCode(0xe001)}</span>
+                <CurrencySymbol />
                 {parseFloat(selectedVariant.price).toFixed(2)}
               </span>
             </div>
@@ -220,7 +221,7 @@ export default function VariationSelector({
               <div className="flex justify-between">
                 <span className="text-gray-600">Compare Price:</span>
                 <span className="line-through text-gray-500 flex items-center gap-1">
-                  <span className="currency-symbol">{String.fromCharCode(0xe001)}</span>
+                  <CurrencySymbol />
                   {parseFloat(selectedVariant.comparePrice).toFixed(2)}
                 </span>
               </div>

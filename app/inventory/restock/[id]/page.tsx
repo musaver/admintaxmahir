@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import CurrencySymbol from '../../../components/CurrencySymbol';
 
 export default function RestockInventory() {
   const router = useRouter();
@@ -299,10 +300,10 @@ export default function RestockInventory() {
                         <div>
                           <span className="text-blue-600 font-medium">Total Cost:</span>
                           <div className="text-xl font-bold text-blue-800">
-                            ${calculateRestockCost().toFixed(2)}
+                            <CurrencySymbol />{calculateRestockCost().toFixed(2)}
                           </div>
                           <div className="text-blue-600">
-                            ${parseFloat(restockData.cost).toFixed(2)} × {restockData.quantity}
+                            <CurrencySymbol />{parseFloat(restockData.cost).toFixed(2)} × {restockData.quantity}
                           </div>
                         </div>
                       )}

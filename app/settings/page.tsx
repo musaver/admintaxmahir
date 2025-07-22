@@ -1,6 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import CurrencySymbol from '../components/CurrencySymbol';
+import { useCurrency } from '@/app/contexts/CurrencyContext';
+import { CurrencyCode } from '@/app/contexts/CurrencyContext';
 
 interface TaxSetting {
   enabled: boolean;
@@ -13,6 +15,9 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Currency context
+  const { currentCurrency, availableCurrencies, setCurrency, loading: currencyLoading } = useCurrency();
   
   // Stock management setting
   const [stockManagementEnabled, setStockManagementEnabled] = useState(true);
@@ -72,6 +77,21 @@ export default function SettingsPage() {
       
       setStockManagementEnabled(!stockManagementEnabled);
       setSuccess('Stock management setting updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCurrencyChange = async (currency: CurrencyCode) => {
+    try {
+      setSaving(true);
+      setError('');
+      
+      await setCurrency(currency);
+      setSuccess('Currency updated successfully');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message);
@@ -197,6 +217,67 @@ export default function SettingsPage() {
             ) : (
               <p>❌ Orders will be created without inventory validation</p>
             )}
+          </div>
+        </div>
+
+        {/* Currency Settings Section */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">Currency Settings</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              Select the currency to display throughout the application
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Select Currency
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {Object.entries(availableCurrencies).map(([code, currency]) => (
+                  <button
+                    key={code}
+                    onClick={() => handleCurrencyChange(code as CurrencyCode)}
+                    disabled={saving || currencyLoading}
+                    className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                      currentCurrency === code
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                    } ${saving || currencyLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <span 
+                          className="text-2xl currency-symbol"
+                          dangerouslySetInnerHTML={{ __html: currency.symbol }}
+                        />
+                        <div className="text-left">
+                          <div className="font-medium">{currency.name}</div>
+                          <div className="text-sm opacity-75">{currency.code}</div>
+                        </div>
+                      </div>
+                      {currentCurrency === code && (
+                        <div className="text-blue-500">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Currency Preview */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h4 className="font-medium text-gray-900 mb-2">Currency Preview</h4>
+              <div className="text-sm text-gray-700 space-y-1">
+                <div>Sample price: <CurrencySymbol />100.00</div>
+                <div>Selected currency: {availableCurrencies[currentCurrency].name} ({availableCurrencies[currentCurrency].code})</div>
+              </div>
+            </div>
           </div>
         </div>
 

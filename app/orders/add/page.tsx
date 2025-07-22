@@ -2,6 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import CurrencySymbol from '../../components/CurrencySymbol';
+import { 
+  formatWeightAuto, 
+  isWeightBasedProduct, 
+  convertToGrams,
+  parseWeightInput,
+  calculateWeightBasedPrice,
+  getWeightUnits
+} from '@/utils/weightUtils';
+import { useCurrency } from '@/app/contexts/CurrencyContext';
 
 interface Product {
   id: string;
@@ -12,6 +21,10 @@ interface Product {
   isActive: boolean;
   variants?: ProductVariant[];
   addons?: ProductAddon[];
+  // Weight-based fields
+  stockManagementType?: string;
+  pricePerUnit?: number;
+  baseWeightUnit?: string;
 }
 
 interface ProductVariant {
@@ -60,6 +73,10 @@ interface OrderItem {
   quantity: number;
   totalPrice: number;
   addons?: SelectedAddon[];
+  // Weight-based fields
+  weightQuantity?: number; // Weight in grams
+  weightUnit?: string; // Display unit (grams, kg)
+  isWeightBased?: boolean;
 }
 
 interface Customer {
@@ -78,6 +95,7 @@ interface Customer {
 
 export default function AddOrder() {
   const router = useRouter();
+  const { currentCurrency } = useCurrency();
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -98,7 +116,7 @@ export default function AddOrder() {
     taxRate: 10, // 10%
     discountAmount: 0,
     discountType: 'amount', // 'amount' or 'percentage'
-    currency: 'CUSTOM'
+    currency: currentCurrency
   });
 
   // Customer/shipping information
@@ -128,7 +146,10 @@ export default function AddOrder() {
     selectedProductId: '',
     selectedVariantId: '',
     quantity: 1,
-    customPrice: ''
+    customPrice: '',
+    // Weight-based fields
+    weightInput: '',
+    weightUnit: 'grams' as 'grams' | 'kg'
   });
 
   // Group product addon selection
@@ -258,16 +279,42 @@ export default function AddOrder() {
     }
   };
 
+  // Helper function to get price per gram based on product's base weight unit
+  const getPricePerGram = (product: Product): number => {
+    const pricePerUnit = Number(product.pricePerUnit) || 0;
+    if (product.baseWeightUnit === 'kg') {
+      // If stored per kg, convert to per gram
+      return pricePerUnit / 1000;
+    }
+    // If stored per gram or undefined, use as is
+    return pricePerUnit;
+  };
+
   const handleAddProduct = () => {
-    const { selectedProductId, selectedVariantId, quantity, customPrice } = productSelection;
+    const { selectedProductId, selectedVariantId, quantity, customPrice, weightInput, weightUnit } = productSelection;
     
-    if (!selectedProductId || quantity <= 0) {
-      alert('Please select a product and enter a valid quantity');
+    if (!selectedProductId) {
+      alert('Please select a product');
       return;
     }
 
     const product = products.find(p => p.id === selectedProductId);
     if (!product) return;
+
+    const isWeightBased = isWeightBasedProduct(product.stockManagementType || 'quantity');
+
+    // Validate quantity or weight based on product type
+    if (isWeightBased) {
+      if (!weightInput || parseFloat(weightInput) <= 0) {
+        alert('Please enter a valid weight');
+        return;
+      }
+    } else {
+      if (quantity <= 0) {
+        alert('Please enter a valid quantity');
+        return;
+      }
+    }
 
     // For group products, validate that addons are selected if base price is 0
     if (product.productType === 'group') {
@@ -283,6 +330,8 @@ export default function AddOrder() {
     let productName = product.name;
     let variantTitle = '';
     let sku = product.sku || '';
+    let weightInGrams = 0;
+    let finalQuantity = quantity;
 
     if (selectedVariantId && product.variants) {
       variant = product.variants.find(v => v.id === selectedVariantId);
@@ -293,7 +342,15 @@ export default function AddOrder() {
       }
     }
 
-    // Use custom price if provided
+    // Handle weight-based pricing
+    if (isWeightBased) {
+      weightInGrams = convertToGrams(parseFloat(weightInput), weightUnit);
+      const pricePerGram = getPricePerGram(product);
+      price = calculateWeightBasedPrice(weightInGrams, pricePerGram);
+      finalQuantity = 1; // For weight-based products, quantity is always 1 (the weight is the measure)
+    }
+
+    // Use custom price if provided (overrides weight-based calculation)
     if (customPrice) {
       price = parseFloat(customPrice);
     }
@@ -315,10 +372,10 @@ export default function AddOrder() {
     }
 
     // Calculate total price including addons for group products
-    let totalPrice = price * quantity;
+    let totalPrice = price * finalQuantity;
     if (product.productType === 'group' && selectedAddons.length > 0) {
       const addonsPrice = selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0);
-      totalPrice = (price + addonsPrice) * quantity;
+      totalPrice = (price + addonsPrice) * finalQuantity;
     }
 
     const newItem: OrderItem = {
@@ -328,9 +385,13 @@ export default function AddOrder() {
       variantTitle: variantTitle || undefined,
       sku,
       price,
-      quantity,
+      quantity: finalQuantity,
       totalPrice,
-      addons: product.productType === 'group' && selectedAddons.length > 0 ? [...selectedAddons] : undefined
+      addons: product.productType === 'group' && selectedAddons.length > 0 ? [...selectedAddons] : undefined,
+      // Weight-based fields
+      isWeightBased,
+      weightQuantity: isWeightBased ? weightInGrams : undefined,
+      weightUnit: isWeightBased ? weightUnit : undefined
     };
 
     setOrderItems([...orderItems, newItem]);
@@ -340,7 +401,9 @@ export default function AddOrder() {
       selectedProductId: '',
       selectedVariantId: '',
       quantity: 1,
-      customPrice: ''
+      customPrice: '',
+      weightInput: '',
+      weightUnit: 'grams'
     });
     clearSelectedAddons();
   };
@@ -672,7 +735,7 @@ export default function AddOrder() {
           <div className="bg-white border rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4">📦 Add Products</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-gray-700 mb-2">Product</label>
                 <select
@@ -683,8 +746,15 @@ export default function AddOrder() {
                   <option value="">Select a product...</option>
                   {products.map(product => (
                     <option key={product.id} value={product.id}>
-                                      {product.name} - {String.fromCharCode(0xe001)}{Number(product.price).toFixed(2)}
-                {product.productType === 'group' && Number(product.price) === 0 ? ' (Group Product - Price from addons)' : ''}
+                      {product.name} - {
+                        isWeightBasedProduct(product.stockManagementType || 'quantity')
+                          ? product.baseWeightUnit === 'kg'
+                            ? `${Number(product.pricePerUnit).toFixed(2)}/kg`
+                            : `${(Number(product.pricePerUnit) * 1000).toFixed(2)}/kg`
+                          : `${Number(product.price).toFixed(2)}`
+                      }
+                      {product.productType === 'group' && Number(product.price) === 0 ? ' (Group Product - Price from addons)' : ''}
+                      {isWeightBasedProduct(product.stockManagementType || 'quantity') ? ' (Weight-based)' : ''}
                       {!stockManagementEnabled ? ' (No stock limit)' : ''}
                     </option>
                   ))}
@@ -702,7 +772,7 @@ export default function AddOrder() {
                     <option value="">Select variant...</option>
                     {selectedProduct.variants?.filter(v => v.isActive).map(variant => (
                       <option key={variant.id} value={variant.id}>
-                        {variant.title} - {String.fromCharCode(0xe001)}{Number(variant.price).toFixed(2)}
+                        {variant.title} - {Number(variant.price).toFixed(2)}
                         {stockManagementEnabled && variant.inventoryQuantity !== undefined 
                           ? ` (Stock: ${variant.inventoryQuantity})` 
                           : !stockManagementEnabled ? ' (No stock limit)' : ''
@@ -823,16 +893,61 @@ export default function AddOrder() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-gray-700 mb-2">Quantity</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={productSelection.quantity}
-                  onChange={(e) => setProductSelection({...productSelection, quantity: parseInt(e.target.value) || 1})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                />
-              </div>
+              {/* Quantity or Weight input based on product type */}
+              {selectedProduct && isWeightBasedProduct(selectedProduct.stockManagementType || 'quantity') ? (
+                <div>
+                  <label className="block text-gray-700 mb-2">
+                                         Weight 
+                     {selectedProduct.pricePerUnit && (
+                       <span className="text-sm text-gray-500">
+                         (<CurrencySymbol />{
+                           selectedProduct.baseWeightUnit === 'kg'
+                             ? `${Number(selectedProduct.pricePerUnit).toFixed(2)}/kg`
+                             : `${(Number(selectedProduct.pricePerUnit) * 1000).toFixed(2)}/kg`
+                         })
+                       </span>
+                     )}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      value={productSelection.weightInput}
+                      onChange={(e) => setProductSelection({...productSelection, weightInput: e.target.value})}
+                      className="flex-1 p-2 border rounded focus:border-blue-500 focus:outline-none"
+                      placeholder="Enter weight"
+                    />
+                    <select
+                      value={productSelection.weightUnit}
+                      onChange={(e) => setProductSelection({...productSelection, weightUnit: e.target.value as 'grams' | 'kg'})}
+                      className="p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    >
+                      <option value="grams">g</option>
+                      <option value="kg">kg</option>
+                    </select>
+                  </div>
+                                     {productSelection.weightInput && selectedProduct.pricePerUnit && (
+                    <div className="mt-1 text-sm text-green-600">
+                      Price: <CurrencySymbol />{calculateWeightBasedPrice(
+                        convertToGrams(parseFloat(productSelection.weightInput) || 0, productSelection.weightUnit),
+                        getPricePerGram(selectedProduct)
+                      ).toFixed(2)}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-gray-700 mb-2">Quantity</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={productSelection.quantity}
+                    onChange={(e) => setProductSelection({...productSelection, quantity: parseInt(e.target.value) || 1})}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-gray-700 mb-2">Custom Price (optional)</label>
@@ -872,6 +987,11 @@ export default function AddOrder() {
                           {item.sku && (
                             <div className="text-sm text-gray-500">SKU: {item.sku}</div>
                           )}
+                          {item.isWeightBased && item.weightQuantity && (
+                            <div className="text-sm text-blue-600">
+                              ⚖️ Weight: {formatWeightAuto(item.weightQuantity).formattedString}
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-sm">
@@ -891,18 +1011,22 @@ export default function AddOrder() {
                   = <CurrencySymbol />{item.totalPrice.toFixed(2)}
                 </div>
                               </div>
+                            ) : item.isWeightBased ? (
+                              <div className="flex items-center gap-1">
+                                <CurrencySymbol />{item.price.toFixed(2)} (for {formatWeightAuto(item.weightQuantity || 0).formattedString})
+                              </div>
                             ) : (
-                                            <div className="flex items-center gap-1">
-                <CurrencySymbol />{item.price.toFixed(2)} x 
-                <input
-                  type="number"
-                  min="1"
-                  value={item.quantity}
-                  onChange={(e) => handleUpdateItemQuantity(index, parseInt(e.target.value) || 1)}
-                  className="w-16 mx-1 p-1 border rounded text-center"
-                />
-                = <CurrencySymbol />{item.totalPrice.toFixed(2)}
-              </div>
+                              <div className="flex items-center gap-1">
+                                <CurrencySymbol />{item.price.toFixed(2)} x 
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={item.quantity}
+                                  onChange={(e) => handleUpdateItemQuantity(index, parseInt(e.target.value) || 1)}
+                                  className="w-16 mx-1 p-1 border rounded text-center"
+                                />
+                                = <CurrencySymbol />{item.totalPrice.toFixed(2)}
+                              </div>
                             )}
                           </div>
                           <button
@@ -996,7 +1120,7 @@ export default function AddOrder() {
                     onChange={(e) => setOrderData({...orderData, discountType: e.target.value})}
                     className="p-2 border rounded focus:border-blue-500 focus:outline-none currency-symbol"
                   >
-                    <option value="amount">{String.fromCharCode(0xe001)}</option>
+                    <option value="amount">Currency</option>
                     <option value="percentage">%</option>
                   </select>
                 </div>

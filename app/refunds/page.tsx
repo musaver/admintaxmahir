@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import CurrencySymbol from '../components/CurrencySymbol';
 
 export default function RefundsList() {
   const [refunds, setRefunds] = useState([]);
@@ -35,7 +36,12 @@ export default function RefundsList() {
   };
 
   const formatAmount = (amount: string) => {
-    return `$${parseFloat(amount).toFixed(2)}`;
+    return (
+      <span className="flex items-center gap-1">
+        <CurrencySymbol />
+        {parseFloat(amount).toFixed(2)}
+      </span>
+    );
   };
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {

@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import CurrencySymbol from '../../components/CurrencySymbol';
 
 export default function InventoryReports() {
   const [inventory, setInventory] = useState([]);
@@ -130,7 +131,7 @@ export default function InventoryReports() {
             <div className="text-blue-600">Total SKUs</div>
           </div>
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="text-2xl font-bold text-green-800">${analytics.totalValue.toFixed(2)}</div>
+                            <div className="text-2xl font-bold text-green-800"><CurrencySymbol />{analytics.totalValue.toFixed(2)}</div>
             <div className="text-green-600">Total Inventory Value</div>
           </div>
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
@@ -212,7 +213,7 @@ export default function InventoryReports() {
                   <div className="text-sm text-gray-500">{location.totalItems} items</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold">${location.totalValue.toFixed(2)}</div>
+                  <div className="font-semibold"><CurrencySymbol />{location.totalValue.toFixed(2)}</div>
                   <div className="text-sm text-gray-500">{location.totalQuantity} units</div>
                 </div>
               </div>
@@ -233,10 +234,10 @@ export default function InventoryReports() {
                   <div className="flex-1">
                     <div className="font-medium text-sm">{item.product?.name || 'N/A'}</div>
                     <div className="text-xs text-gray-500">
-                                                  {item.inventory.quantity} units × <span className="currency-symbol">{String.fromCharCode(0xe001)}</span>{parseFloat(item.product?.price || '0').toFixed(2)}
+                      {item.inventory.quantity} units × <CurrencySymbol />{parseFloat(item.product?.price || '0').toFixed(2)}
                     </div>
                   </div>
-                  <div className="font-semibold text-green-600">${value.toFixed(2)}</div>
+                  <div className="font-semibold text-green-600"><CurrencySymbol />{value.toFixed(2)}</div>
                 </div>
               );
             })}

@@ -1,9 +1,39 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import ResponsiveTable from '../components/ResponsiveTable';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { 
+  PlusIcon, 
+  MoreVerticalIcon, 
+  EditIcon, 
+  TrashIcon,
+  RefreshCwIcon,
+  UsersIcon,
+  DownloadIcon
+} from 'lucide-react';
+
+interface User {
+  id: string;
+  name?: string;
+  email: string;
+  phone?: string;
+  country?: string;
+  city?: string;
+  address?: string;
+  createdAt: string;
+}
 
 export default function UsersList() {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
@@ -28,7 +58,7 @@ export default function UsersList() {
     if (confirm('Are you sure you want to delete this user?')) {
       try {
         await fetch(`/api/users/${id}`, { method: 'DELETE' });
-        setUsers(users.filter((user: any) => user.id !== id));
+        setUsers(users.filter((user) => user.id !== id));
       } catch (error) {
         console.error('Error deleting user:', error);
       }
@@ -40,7 +70,7 @@ export default function UsersList() {
     try {
       // Convert users data to CSV format
       const csvHeaders = ['ID', 'Name', 'Email', 'Phone', 'Country', 'City', 'Address', 'Created At'];
-      const csvData = users.map((user: any) => [
+      const csvData = users.map((user) => [
         user.id || '',
         user.name || '',
         user.email || '',
@@ -75,79 +105,168 @@ export default function UsersList() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  const getStats = () => {
+    const totalUsers = users.length;
+    const usersWithPhone = users.filter(user => user.phone).length;
+    const usersWithAddress = users.filter(user => user.address).length;
+    
+    return { totalUsers, usersWithPhone, usersWithAddress };
+  };
+
+  const stats = getStats();
+
+  const columns = [
+    {
+      key: 'name',
+      title: 'User',
+      render: (_: any, user: User) => (
+        <div>
+          <div className="font-medium">{user.name || 'No Name'}</div>
+          <div className="text-sm text-muted-foreground">{user.email}</div>
+        </div>
+      )
+    },
+    {
+      key: 'phone',
+      title: 'Phone',
+      render: (_: any, user: User) => (
+        <div className="text-sm">
+          {user.phone || 'No phone'}
+        </div>
+      ),
+      mobileHidden: true
+    },
+    {
+      key: 'location',
+      title: 'Location',
+      render: (_: any, user: User) => (
+        <div className="text-sm">
+          {user.city && user.country 
+            ? `${user.city}, ${user.country}`
+            : user.country || user.city || 'No location'
+          }
+        </div>
+      ),
+      mobileHidden: true
+    },
+    {
+      key: 'address',
+      title: 'Address',
+      render: (_: any, user: User) => (
+        <div className="text-sm max-w-xs truncate">
+          {user.address || 'No address'}
+        </div>
+      ),
+      mobileHidden: true
+    },
+    {
+      key: 'createdAt',
+      title: 'Joined',
+      render: (_: any, user: User) => (
+        <div className="text-sm">
+          {new Date(user.createdAt).toLocaleDateString()}
+        </div>
+      )
+    }
+  ];
+
+  const renderActions = (user: User) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm">
+          <MoreVerticalIcon className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem asChild>
+          <Link href={`/users/edit/${user.id}`} className="flex items-center">
+            <EditIcon className="h-4 w-4 mr-2" />
+            Edit
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={() => handleDelete(user.id)}
+          className="text-red-600 focus:text-red-600"
+        >
+          <TrashIcon className="h-4 w-4 mr-2" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Users</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={fetchUsers}
-            disabled={loading}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Users</h1>
+          <p className="text-muted-foreground">
+            Manage customer accounts and information
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button 
+            onClick={exportUsers} 
+            disabled={exporting || users.length === 0} 
+            variant="outline" 
+            size="sm"
           >
-            {loading ? 'Refreshing...' : '🔄 Refresh'}
-          </button>
-          <button
-            onClick={exportUsers}
-            disabled={exporting || users.length === 0}
-            className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {exporting ? 'Exporting...' : '📊 Export CSV'}
-          </button>
-          <Link 
-            href="/users/add" 
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-          >
-            Add New User
-          </Link>
+            <DownloadIcon className={`h-4 w-4 mr-2 ${exporting ? 'animate-spin' : ''}`} />
+            {exporting ? 'Exporting...' : 'Export CSV'}
+          </Button>
+          <Button onClick={fetchUsers} disabled={loading} variant="outline" size="sm">
+            <RefreshCwIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button asChild>
+            <Link href="/users/add">
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add User
+            </Link>
+          </Button>
         </div>
       </div>
-      
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border p-2 text-left">Name</th>
-              <th className="border p-2 text-left">Email</th>
-              <th className="border p-2 text-left">Created At</th>
-              <th className="border p-2 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.length > 0 ? (
-              users.map((user: any) => (
-                <tr key={user.id}>
-                  <td className="border p-2">{user.name}</td>
-                  <td className="border p-2">{user.email}</td>
-                  <td className="border p-2">{new Date(user.createdAt).toLocaleString()}</td>
-                  <td className="border p-2">
-                    <div className="flex gap-2">
-                      <Link 
-                        href={`/users/edit/${user.id}`}
-                        className="px-2 py-1 bg-green-500 text-white rounded text-sm"
-                      >
-                        Edit
-                      </Link>
-                      <button 
-                        onClick={() => handleDelete(user.id)}
-                        className="px-2 py-1 bg-red-500 text-white rounded text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={4} className="border p-2 text-center">No users found</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <UsersIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsers}</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">With Phone</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats.usersWithPhone}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">With Address</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.usersWithAddress}</div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Users Table */}
+      <ResponsiveTable
+        columns={columns}
+        data={users}
+        loading={loading}
+        emptyMessage="No users found"
+        actions={renderActions}
+      />
     </div>
   );
 } 

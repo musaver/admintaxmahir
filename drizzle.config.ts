@@ -7,8 +7,8 @@ export default {
   dbCredentials: {
     host: '109.106.254.201',
     port: 3306,
-    user: 'u970484384_taskrabbit',
-    password: 'TaskTabbit@123',
-    database: 'u970484384_taskrabbit',
+    user: 'u970484384_weightecomerce',
+    password: 'c@*B6suj',
+    database: 'u970484384_weightecomerce',
   },
 } satisfies Config;

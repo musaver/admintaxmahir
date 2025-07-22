@@ -93,7 +93,11 @@ export default function EditProduct() {
     metaTitle: '',
     metaDescription: '',
     productType: 'simple',
-    banner: '' // Banner image URL
+    banner: '', // Banner image URL
+    // Weight-based stock management fields
+    stockManagementType: 'quantity', // 'quantity' or 'weight'
+    pricePerUnit: '', // Price per gram for weight-based products
+    baseWeightUnit: 'grams' // 'grams' or 'kg'
   });
   
   // Variable product specific states
@@ -179,7 +183,11 @@ export default function EditProduct() {
         metaTitle: product.metaTitle || '',
         metaDescription: product.metaDescription || '',
         productType: product.productType || 'simple',
-        banner: product.banner || '' // Banner image URL
+        banner: product.banner || '', // Banner image URL
+        // Weight-based stock management fields
+        stockManagementType: product.stockManagementType || 'quantity',
+        pricePerUnit: product.pricePerUnit || '',
+        baseWeightUnit: product.baseWeightUnit || 'grams'
       });
       
       setImages(Array.isArray(productImages) ? productImages : []);
@@ -477,6 +485,7 @@ export default function EditProduct() {
         price: formData.price ? parseFloat(formData.price) : (formData.productType === 'group' ? 0 : parseFloat(formData.price)),
         comparePrice: formData.comparePrice ? parseFloat(formData.comparePrice) : null,
         costPrice: formData.costPrice ? parseFloat(formData.costPrice) : null,
+        pricePerUnit: formData.pricePerUnit ? parseFloat(formData.pricePerUnit) : null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
         images: images.length > 0 ? images : null,
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : null,
@@ -586,6 +595,158 @@ export default function EditProduct() {
           </div>
         </div>
 
+        {/* Stock Management Type Selection */}
+        <div className="mb-6 p-4 border rounded-lg bg-blue-50">
+          <h3 className="text-lg font-semibold mb-4">⚖️ Stock Management Type</h3>
+          <div className="space-y-4">
+            <div className="flex gap-6">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="stockManagementType"
+                  value="quantity"
+                  checked={formData.stockManagementType === 'quantity'}
+                  onChange={handleChange}
+                  className="mr-2"
+                />
+                <span className="font-medium">📦 Quantity-Based</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="stockManagementType"
+                  value="weight"
+                  checked={formData.stockManagementType === 'weight'}
+                  onChange={handleChange}
+                  className="mr-2"
+                />
+                <span className="font-medium">⚖️ Weight-Based</span>
+              </label>
+            </div>
+            
+            <div className="text-sm text-gray-600">
+              {formData.stockManagementType === 'quantity' ? (
+                <p>📦 <strong>Quantity-based:</strong> Track inventory by individual units/pieces (e.g., 5 shirts, 10 books)</p>
+              ) : (
+                <p>⚖️ <strong>Weight-based:</strong> Track inventory by weight (e.g., 2.5kg rice, 500g coffee beans)</p>
+              )}
+            </div>
+
+                         {/* Weight-based specific fields */}
+             {formData.stockManagementType === 'weight' && (
+               <div className="mt-4 p-4 bg-white border rounded-lg">
+                 <h4 className="font-medium mb-3">Weight-Based Pricing Configuration</h4>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   <div>
+                     <label className="block text-gray-700 mb-2" htmlFor="pricePerUnit">
+                       Price per {formData.baseWeightUnit === 'kg' ? 'Kilogram' : 'Gram'} <span className="text-red-500">*</span>
+                       <span className="text-sm text-gray-500 block">
+                         {formData.baseWeightUnit === 'kg' 
+                           ? '(e.g., $50 per kg)' 
+                           : '(e.g., $0.05 per gram = $50 per kg)'
+                         }
+                       </span>
+                     </label>
+                     <input
+                       type="number"
+                       id="pricePerUnit"
+                       name="pricePerUnit"
+                       value={formData.pricePerUnit}
+                       onChange={handleChange}
+                       className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                       step={formData.baseWeightUnit === 'kg' ? '0.01' : '0.0001'}
+                       min="0"
+                       placeholder={formData.baseWeightUnit === 'kg' ? '50.00' : '0.0500'}
+                       required={formData.stockManagementType === 'weight'}
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-gray-700 mb-2" htmlFor="costPrice">
+                       Cost per {formData.baseWeightUnit === 'kg' ? 'Kilogram' : 'Gram'} <span className="text-sm text-gray-500">(For profit tracking)</span>
+                     </label>
+                     <input
+                       type="number"
+                       id="costPrice"
+                       name="costPrice"
+                       value={formData.costPrice}
+                       onChange={handleChange}
+                       className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                       step={formData.baseWeightUnit === 'kg' ? '0.01' : '0.0001'}
+                       min="0"
+                       placeholder={formData.baseWeightUnit === 'kg' ? '30.00' : '0.0300'}
+                     />
+                     <p className="text-xs text-gray-500 mt-1">
+                       Used to calculate profit margins for weight-based products
+                     </p>
+                   </div>
+                   <div>
+                     <label className="block text-gray-700 mb-2" htmlFor="baseWeightUnit">
+                       Base Weight Unit
+                     </label>
+                     <select
+                       id="baseWeightUnit"
+                       name="baseWeightUnit"
+                       value={formData.baseWeightUnit}
+                       onChange={handleChange}
+                       className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                     >
+                       <option value="grams">Grams (g)</option>
+                       <option value="kg">Kilograms (kg)</option>
+                     </select>
+                   </div>
+                 </div>
+                 
+                 {formData.pricePerUnit && (
+                   <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+                     <p className="text-sm text-green-700">
+                       <strong>Price Preview:</strong> 
+                       {formData.baseWeightUnit === 'kg' ? (
+                         <>
+                           <CurrencySymbol />{parseFloat(formData.pricePerUnit || '0').toFixed(2)} per kg = 
+                           <CurrencySymbol />{(parseFloat(formData.pricePerUnit || '0') / 1000).toFixed(4)} per gram
+                         </>
+                       ) : (
+                         <>
+                           <CurrencySymbol />{parseFloat(formData.pricePerUnit || '0').toFixed(4)} per gram = 
+                           <CurrencySymbol />{(parseFloat(formData.pricePerUnit || '0') * 1000).toFixed(2)} per kg
+                         </>
+                       )}
+                     </p>
+                     {formData.costPrice && (
+                       <p className="text-sm text-orange-700 mt-1">
+                         <strong>Cost Preview:</strong> 
+                         {formData.baseWeightUnit === 'kg' ? (
+                           <>
+                             <CurrencySymbol />{parseFloat(formData.costPrice || '0').toFixed(2)} per kg = 
+                             <CurrencySymbol />{(parseFloat(formData.costPrice || '0') / 1000).toFixed(4)} per gram
+                           </>
+                         ) : (
+                           <>
+                             <CurrencySymbol />{parseFloat(formData.costPrice || '0').toFixed(4)} per gram = 
+                             <CurrencySymbol />{(parseFloat(formData.costPrice || '0') * 1000).toFixed(2)} per kg
+                           </>
+                         )}
+                       </p>
+                     )}
+                     {formData.pricePerUnit && formData.costPrice && (
+                       <p className="text-sm text-blue-700 mt-1">
+                         <strong>Profit Margin:</strong> 
+                         {(() => {
+                           const price = parseFloat(formData.pricePerUnit || '0');
+                           const cost = parseFloat(formData.costPrice || '0');
+                           const profit = price - cost;
+                           const margin = price > 0 ? (profit / price) * 100 : 0;
+                           return `${margin.toFixed(1)}% (${profit >= 0 ? '+' : ''}<CurrencySymbol />${profit.toFixed(formData.baseWeightUnit === 'kg' ? 2 : 4)} per ${formData.baseWeightUnit === 'kg' ? 'kg' : 'gram'})`;
+                         })()}
+                       </p>
+                     )}
+                   </div>
+                 )}
+               </div>
+             )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Basic Information */}
           <div className="space-y-4">
@@ -676,8 +837,8 @@ export default function EditProduct() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Pricing & Details</h3>
             
-            {/* Only show pricing fields for simple products */}
-            {formData.productType === 'simple' && (
+            {/* Only show pricing fields for simple products and quantity-based */}
+            {formData.productType === 'simple' && formData.stockManagementType === 'quantity' && (
               <>
                 <div>
                   <label className="block text-gray-700 mb-2" htmlFor="price">
@@ -696,8 +857,60 @@ export default function EditProduct() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="comparePrice">
+                    Compare Price <span className="text-sm text-gray-500">(Optional - for showing discounts)</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="comparePrice"
+                    name="comparePrice"
+                    value={formData.comparePrice}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
 
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="costPrice">
+                    Cost Price <span className="text-sm text-gray-500">(For profit tracking)</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="costPrice"
+                    name="costPrice"
+                    value={formData.costPrice}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Used to calculate profit margins and track business performance
+                  </p>
+                </div>
               </>
+            )}
+
+            {/* Weight-based pricing info for simple products */}
+            {formData.productType === 'simple' && formData.stockManagementType === 'weight' && (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <h4 className="font-medium text-yellow-800 mb-2">⚖️ Weight-Based Product Pricing</h4>
+                <p className="text-sm text-yellow-700">
+                  This product uses weight-based pricing. The price per gram is configured above in the Stock Management section.
+                  Customers will select the weight they want, and the price will be calculated automatically.
+                </p>
+                {formData.pricePerUnit && (
+                  <div className="mt-2 text-sm">
+                    <p className="text-yellow-800">
+                      <strong>Current Rate:</strong> <CurrencySymbol />{parseFloat(formData.pricePerUnit).toFixed(4)} per gram
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Show informational message for variable/grouped products */}
@@ -988,7 +1201,7 @@ export default function EditProduct() {
                   .filter(addon => !selectedAddons.some(selected => selected.addonId === addon.id))
                   .map((addon) => (
                     <option key={addon.id} value={addon.id}>
-                      {addon.groupTitle ? `[${addon.groupTitle}] ` : ''}{addon.title} - {String.fromCharCode(0xe001)} {parseFloat(addon.price).toFixed(2)}
+                      {addon.groupTitle ? `[${addon.groupTitle}] ` : ''}{addon.title} - {parseFloat(addon.price).toFixed(2)}
                     </option>
                   ))}
               </select>

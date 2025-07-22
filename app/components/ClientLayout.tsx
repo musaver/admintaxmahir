@@ -1,117 +1,269 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-
 import { useSession } from 'next-auth/react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { 
+  MenuIcon,
+  LayoutDashboardIcon,
+  UsersIcon,
+  PackageIcon,
+  FolderIcon,
+  FolderOpenIcon,
+  PuzzleIcon,
+  TagIcon,
+  WrenchIcon,
+  BarChart3Icon,
+  ShoppingCartIcon,
+  TrendingUpIcon,
+  UndoIcon,
+  DollarSignIcon,
+  PackageCheckIcon,
+  ShieldIcon,
+  LockIcon,
+  FileTextIcon,
+  SettingsIcon,
+  LogOutIcon,
+  XIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
+} from 'lucide-react';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const pathname = usePathname();
-
   const { data: session, status } = useSession();
 
-  if (status === 'loading') return null;
+  // Fetch pending orders count
+  useEffect(() => {
+    const fetchOrdersCount = async () => {
+      try {
+        const response = await fetch('/api/orders/count');
+        if (response.ok) {
+          const data = await response.json();
+          setPendingOrdersCount(data.pendingCount);
+        }
+      } catch (error) {
+        console.error('Error fetching orders count:', error);
+      }
+    };
+
+    if (session) {
+      fetchOrdersCount();
+      // Refresh count every 30 seconds
+      const interval = setInterval(fetchOrdersCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [session]);
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
   if (!session) return <div>{children}</div>;
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: '📊' },
-    { name: 'Customers', href: '/users', icon: '👥' },
-    { name: 'Services', href: '/products', icon: '📦' },
-    { name: 'Categories', href: '/categories', icon: '📂' },
-    /*{ name: 'Subcategories', href: '/subcategories', icon: '📁' },*/
-    { name: 'Addons', href: '/addons', icon: '🧩' },
-    { name: 'Tasks ', href: '/variation-attributes', icon: '🏷️' },
-    /*{ name: 'Product Variants', href: '/product-variants', icon: '🔧' },*/
-    /*{ name: 'Inventory', href: '/inventory', icon: '📈' },*/
-    { name: 'Orders', href: '/orders', icon: '🛒' },
-    /*{ name: 'Returns', href: '/returns', icon: '↩️' },
-    { name: 'Refunds', href: '/refunds', icon: '💰' },
-    { name: 'Shipping Labels', href: '/shipping-labels', icon: '🏷️' },*/
-    { name: 'Admin Users', href: '/admins', icon: '👮' },
-    { name: 'Admin Roles', href: '/roles', icon: '🔐' },
-    { name: 'Admin Logs', href: '/logs', icon: '📋' },
-    { name: 'Settings', href: '/settings', icon: '⚙️' },
-    { name: 'Logout', href: '/logout', icon: '👋' },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboardIcon, category: 'main' },
+    { name: 'Customers', href: '/users', icon: UsersIcon, category: 'main' },
+    { name: 'Services', href: '/products', icon: PackageIcon, category: 'main' },
+    { name: 'Categories', href: '/categories', icon: FolderIcon, category: 'catalog' },
+    { name: 'Subcategories', href: '/subcategories', icon: FolderOpenIcon, category: 'catalog' },
+    { name: 'Addons', href: '/addons', icon: PuzzleIcon, category: 'catalog' },
+    { name: 'Tasks', href: '/variation-attributes', icon: TagIcon, category: 'catalog' },
+    { name: 'Product Variants', href: '/product-variants', icon: WrenchIcon, category: 'catalog' },
+    { name: 'Inventory', href: '/inventory', icon: BarChart3Icon, category: 'operations' },
+    { name: 'Orders', href: '/orders', icon: ShoppingCartIcon, category: 'operations', badge: pendingOrdersCount > 0 ? pendingOrdersCount : null },
+    { name: 'Reports', href: '/reports', icon: TrendingUpIcon, category: 'operations' },
+    { name: 'Returns', href: '/returns', icon: UndoIcon, category: 'operations' },
+    { name: 'Refunds', href: '/refunds', icon: DollarSignIcon, category: 'operations' },
+    { name: 'Shipping Labels', href: '/shipping-labels', icon: PackageCheckIcon, category: 'operations' },
+    { name: 'Admin Users', href: '/admins', icon: ShieldIcon, category: 'admin' },
+    { name: 'Admin Roles', href: '/roles', icon: LockIcon, category: 'admin' },
+    { name: 'Admin Logs', href: '/logs', icon: FileTextIcon, category: 'admin' },
+    { name: 'Settings', href: '/settings', icon: SettingsIcon, category: 'admin' },
+    { name: 'Logout', href: '/logout', icon: LogOutIcon, category: 'admin' },
   ];
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center p-4 bg-white shadow-sm">
-        <button
-          type="button"
-          className="p-2 rounded-md text-gray-500"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
-          <span className="sr-only">Open sidebar</span>
-          {sidebarOpen ? '✕' : '☰'}
-        </button>
-        <h1 className="ml-4 text-lg font-medium">Admin Panel</h1>
+  const categories = {
+    main: { name: 'Main', items: navigation.filter(item => item.category === 'main') },
+    catalog: { name: 'Catalog', items: navigation.filter(item => item.category === 'catalog') },
+    operations: { name: 'Operations', items: navigation.filter(item => item.category === 'operations') },
+    admin: { name: 'Administration', items: navigation.filter(item => item.category === 'admin') },
+  };
+
+  const isActive = (href: string) => {
+    if (href === '/') {
+      return pathname === '/' || pathname === '/dashboard';
+    }
+    return pathname.startsWith(href);
+  };
+
+  const NavItem = ({ item, mobile = false, collapsed = false }: { item: typeof navigation[0], mobile?: boolean, collapsed?: boolean }) => {
+    const active = isActive(item.href);
+    const Icon = item.icon;
+    
+    return (
+      <Link
+        href={item.href}
+        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent ${
+          active ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
+        }`}
+        onClick={() => mobile && setSidebarOpen(false)}
+        title={collapsed ? item.name : undefined}
+      >
+        <Icon className="h-4 w-4 flex-shrink-0" />
+        {!collapsed && (
+          <>
+            <span className="truncate">{item.name}</span>
+            {item.badge && (
+              <Badge variant="secondary" className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs">
+                {item.badge > 99 ? '99+' : item.badge}
+              </Badge>
+            )}
+          </>
+        )}
+        {collapsed && item.badge && (
+          <Badge variant="secondary" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+            {item.badge > 99 ? '99+' : item.badge}
+          </Badge>
+        )}
+      </Link>
+    );
+  };
+
+  const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
+    <div className="flex h-full max-h-screen flex-col gap-2">
+      {/* Header */}
+      <div className={`flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 ${sidebarCollapsed && !mobile ? 'justify-center' : ''}`}>
+        <Link href="/" className={`flex items-center gap-2 font-semibold ${sidebarCollapsed && !mobile ? 'justify-center' : ''}`}>
+          <LayoutDashboardIcon className="h-6 w-6 flex-shrink-0" />
+          {(!sidebarCollapsed || mobile) && <span className="truncate">Admin Panel</span>}
+        </Link>
+        {mobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-auto h-8 w-8"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <XIcon className="h-4 w-4" />
+          </Button>
+        )}
       </div>
-      
-      {/* Sidebar for mobile */}
-      <div className={`fixed inset-0 z-30 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)}></div>
-        <div className="fixed inset-y-0 left-0 w-64 flex flex-col bg-white">
-          <div className="p-4 flex items-center justify-between border-b">
-            <h2 className="text-xl font-semibold">Admin Panel</h2>
-            <button type="button" className="lg:hidden" onClick={() => setSidebarOpen(false)}>✕</button>
-          </div>
-          <nav className="flex-1 overflow-y-auto p-4">
-            
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center px-3 py-2 my-1 text-base rounded-md ${
-                  pathname === item.href || (item.href === '/' && pathname === '/')
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <span className="mr-3">{item.icon}</span>
-                {item.name}
-              </Link>
-            ))}
-          </nav>
+
+      {/* Collapse Toggle Button for Desktop */}
+      {!mobile && (
+        <div className="px-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className={`w-full justify-center ${sidebarCollapsed ? 'px-2' : ''}`}
+          >
+            {sidebarCollapsed ? (
+              <ChevronRightIcon className="h-4 w-4" />
+            ) : (
+              <>
+                <ChevronLeftIcon className="h-4 w-4 mr-2" />
+                Collapse
+              </>
+            )}
+          </Button>
         </div>
-      </div>
-      
-      {/* Static sidebar for desktop */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex-1 flex flex-col min-h-0 bg-white border-r">
-          <div className="p-4 flex items-center border-b">
-            <h2 className="text-xl font-semibold">Admin Panel x</h2>
-          </div>
-          <nav className="flex-1 p-4">
-          
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center px-3 py-2 my-1 text-base rounded-md ${
-                  pathname === item.href || (item.href === '/' && pathname === '/')
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <span className="mr-3">{item.icon}</span>
-                {item.name}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
-      
-      {/* Main content */}
-      <div className="lg:pl-64 flex flex-col flex-1">
-        <main className="flex-1 pt-16 lg:pt-0">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              {children}
+      )}
+
+      {/* Navigation */}
+      <div className="flex-1 overflow-auto py-2">
+        <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+          {Object.entries(categories).map(([key, category]) => (
+            <div key={key} className="mb-4">
+              {(!sidebarCollapsed || mobile) && (
+                <div className="mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {category.name}
+                </div>
+              )}
+              <div className="space-y-1">
+                {category.items.map((item) => (
+                  <div key={item.name} className="relative">
+                    <NavItem item={item} mobile={mobile} collapsed={sidebarCollapsed && !mobile} />
+                  </div>
+                ))}
+              </div>
+              {key !== 'admin' && (!sidebarCollapsed || mobile) && <Separator className="my-4" />}
             </div>
+          ))}
+        </nav>
+      </div>
+
+      {/* User Profile */}
+      <div className="mt-auto p-4">
+        <div className={`flex items-center gap-3 rounded-lg bg-muted/50 p-3 ${sidebarCollapsed && !mobile ? 'justify-center' : ''}`}>
+          <Avatar className="h-8 w-8 flex-shrink-0">
+            <AvatarFallback>
+              {session?.user?.email?.charAt(0).toUpperCase() || 'A'}
+            </AvatarFallback>
+          </Avatar>
+          {(!sidebarCollapsed || mobile) && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                {session?.user?.email || 'Admin User'}
+              </p>
+              <p className="text-xs text-muted-foreground">Administrator</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const sidebarWidth = sidebarCollapsed ? 'md:grid-cols-[80px_1fr] lg:grid-cols-[80px_1fr]' : 'md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]';
+
+  return (
+    <div className={`grid min-h-screen w-full max-w-full overflow-hidden ${sidebarWidth}`}>
+      {/* Desktop Sidebar */}
+      <div className="hidden border-r bg-muted/40 md:block overflow-y-auto">
+        <SidebarContent />
+      </div>
+
+      <div className="flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile Header */}
+        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 md:hidden flex-shrink-0">
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="shrink-0 relative">
+                <MenuIcon className="h-5 w-5" />
+                {pendingOrdersCount > 0 && (
+                  <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                    {pendingOrdersCount > 99 ? '99+' : pendingOrdersCount}
+                  </Badge>
+                )}
+                <span className="sr-only">Toggle navigation menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="flex flex-col p-0">
+              <SidebarContent mobile={true} />
+            </SheetContent>
+          </Sheet>
+          <div className="w-full flex-1 min-w-0">
+            <h1 className="text-lg font-semibold truncate">Admin Panel</h1>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 overflow-auto min-w-0 max-w-full">
+          <div className="w-full max-w-full min-w-0">
+            {children}
           </div>
         </main>
       </div>

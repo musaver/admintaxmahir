@@ -2,6 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import CurrencySymbol from '../../../components/CurrencySymbol';
+import { 
+  formatWeightAuto, 
+  isWeightBasedProduct 
+} from '@/utils/weightUtils';
 
 export default function OrderInvoice() {
   const params = useParams();
@@ -25,6 +29,22 @@ export default function OrderInvoice() {
       if (!orderRes.ok) throw new Error('Order not found');
       
       const orderData = await orderRes.json();
+      
+      // Process items to add weight-based information
+      if (orderData.items) {
+        orderData.items = orderData.items.map((item: any) => {
+          // Determine if item is weight-based by checking if weightQuantity exists and is > 0
+          const weightQuantity = item.weightQuantity ? parseFloat(item.weightQuantity) : 0;
+          const isWeightBased = weightQuantity > 0;
+
+          return {
+            ...item,
+            isWeightBased,
+            weightQuantity: weightQuantity > 0 ? weightQuantity : undefined,
+            weightUnit: item.weightUnit || undefined
+          };
+        });
+      }
       
       setOrder(orderData);
     } catch (err: any) {
@@ -286,7 +306,7 @@ export default function OrderInvoice() {
                     <tr className="border-b-2 border-gray-200">
                       <th className="text-left py-3 px-2">Item</th>
                       <th className="text-left py-3 px-2">SKU</th>
-                      <th className="text-center py-3 px-2">Quantity</th>
+                      <th className="text-center py-3 px-2">Qty/Weight</th>
                       <th className="text-right py-3 px-2">Unit Price</th>
                       <th className="text-right py-3 px-2">Total</th>
                     </tr>
@@ -302,6 +322,11 @@ export default function OrderInvoice() {
                                 {item.variantTitle && (
                                   <div className="text-sm text-gray-500">{item.variantTitle}</div>
                                 )}
+                                {item.isWeightBased && item.weightQuantity && (
+                                  <div className="text-sm text-blue-600">
+                                    ⚖️ Weight: {formatWeightAuto(item.weightQuantity).formattedString}
+                                  </div>
+                                )}
                                 {(() => {
                                   const parsedAddons = parseAddons(item.addons);
                                   return parsedAddons.length > 0 && (
@@ -315,20 +340,40 @@ export default function OrderInvoice() {
                             <td className="py-3 px-2 text-gray-600 font-mono text-sm">
                               {item.sku || 'N/A'}
                             </td>
-                            <td className="py-3 px-2 text-center">{item.quantity}</td>
+                            <td className="py-3 px-2 text-center">
+                              {item.isWeightBased && item.weightQuantity ? (
+                                <div className="text-sm">
+                                  <div>{formatWeightAuto(item.weightQuantity).formattedString}</div>
+                                  <div className="text-xs text-gray-500">(Weight)</div>
+                                </div>
+                              ) : (
+                                item.quantity
+                              )}
+                            </td>
                             <td className="py-3 px-2 text-right">
                               {(() => {
                                 const parsedAddons = parseAddons(item.addons);
-                                return parsedAddons.length > 0 ? (
-                                  <div>
-                                    <div className="text-sm">Base: {formatAmount(item.price)}</div>
-                                    <div className="text-xs text-gray-500">
-                                      +Addons: {formatAmount(parsedAddons.reduce((sum: number, addon: any) => sum + ((Number(addon.price) || 0) * (Number(addon.quantity) || 1)), 0))}
+                                if (parsedAddons.length > 0) {
+                                  return (
+                                    <div>
+                                      <div className="text-sm">Base: {formatAmount(item.price)}</div>
+                                      <div className="text-xs text-gray-500">
+                                        +Addons: {formatAmount(parsedAddons.reduce((sum: number, addon: any) => sum + ((Number(addon.price) || 0) * (Number(addon.quantity) || 1)), 0))}
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : (
-                                  formatAmount(item.price)
-                                );
+                                  );
+                                } else if (item.isWeightBased && item.weightQuantity) {
+                                  return (
+                                    <div className="text-sm">
+                                      {formatAmount(item.price)}
+                                      <div className="text-xs text-gray-500">
+                                        (for {formatWeightAuto(item.weightQuantity).formattedString})
+                                      </div>
+                                    </div>
+                                  );
+                                } else {
+                                  return formatAmount(item.price);
+                                }
                               })()}
                             </td>
                             <td className="py-3 px-2 text-right font-medium">
