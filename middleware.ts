@@ -32,7 +32,9 @@ export async function middleware(request: NextRequest) {
       // Add cookieName for better compatibility
       cookieName: process.env.NODE_ENV === 'production' 
         ? '__Secure-next-auth.session-token' 
-        : 'next-auth.session-token'
+        : 'next-auth.session-token',
+      // Add secure flag for production
+      secureCookie: process.env.NODE_ENV === 'production',
     });
 
     const isAuthPage = pathname === "/login";
