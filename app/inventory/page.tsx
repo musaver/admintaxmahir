@@ -73,7 +73,7 @@ export default function InventoryList() {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [stockManagementEnabled, setStockManagementEnabled] = useState(true);
   const [updatingStockSetting, setUpdatingStockSetting] = useState(false);
-  const [activeTab, setActiveTab] = useState('weight'); // 'quantity' or 'weight'
+  const [activeTab, setActiveTab] = useState('quantity'); // 'quantity' or 'weight'
 
   const fetchInventory = async () => {
     setLoading(true);
@@ -761,7 +761,7 @@ export default function InventoryList() {
       {/* Inventory Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="weight" className="flex items-center gap-2">
+          <TabsTrigger value="weight" className="flex items-center gap-2 hidden">
             <ScaleIcon className="h-4 w-4" />
             Weight-Based ({inventory.filter(item => isWeightBasedProduct(item.product?.stockManagementType || 'quantity')).length})
           </TabsTrigger>

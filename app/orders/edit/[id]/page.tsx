@@ -93,6 +93,23 @@ export default function EditOrder() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [stockManagementEnabled, setStockManagementEnabled] = useState(true);
+  const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
+  
+  // Loyalty points state
+  const [loyaltySettings, setLoyaltySettings] = useState({
+    enabled: false,
+    redemptionValue: 0.01,
+    maxRedemptionPercent: 50,
+    redemptionMinimum: 100,
+    earningRate: 1,
+    earningBasis: 'subtotal',
+    minimumOrder: 0
+  });
+  const [customerPoints, setCustomerPoints] = useState({
+    availablePoints: 0,
+    totalPointsEarned: 0,
+    totalPointsRedeemed: 0
+  });
   
   // Edit states
   const [editData, setEditData] = useState({
@@ -104,7 +121,13 @@ export default function EditOrder() {
     notes: '',
     shippingMethod: '',
     trackingNumber: '',
-    cancelReason: ''
+    cancelReason: '',
+    assignedDriverId: '',
+    deliveryStatus: 'pending',
+    // Loyalty points fields
+    pointsToRedeem: 0,
+    pointsDiscountAmount: 0,
+    useAllPoints: false
   });
 
   const orderStatuses = [
@@ -128,6 +151,29 @@ export default function EditOrder() {
     { value: 'partially_fulfilled', label: 'Partially Fulfilled', description: 'Some items fulfilled' }
   ];
 
+  const deliveryStatuses = [
+    { value: 'pending', label: 'Pending', description: 'Delivery not yet assigned' },
+    { value: 'assigned', label: 'Assigned', description: 'Driver assigned to delivery' },
+    { value: 'picked_up', label: 'Picked Up', description: 'Order picked up by driver' },
+    { value: 'out_for_delivery', label: 'Out for Delivery', description: 'Order out for delivery' },
+    { value: 'delivered', label: 'Delivered', description: 'Order successfully delivered' },
+    { value: 'failed', label: 'Failed', description: 'Delivery attempt failed' }
+  ];
+
+  // Format date and time to "Aug 5, 2025 at 5:57 PM" format
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    };
+    return date.toLocaleDateString('en-US', options).replace(',', ' at');
+  };
+
   useEffect(() => {
     // Get order ID from URL
     const pathParts = window.location.pathname.split('/');
@@ -138,9 +184,11 @@ export default function EditOrder() {
       fetchOrder(id);
     }
     
-    // Fetch stock management setting and addons
+    // Fetch stock management setting, addons, drivers, and loyalty settings
     fetchStockManagementSetting();
     fetchAddons();
+    fetchDrivers();
+    fetchLoyaltySettings();
   }, []);
 
   const fetchStockManagementSetting = async () => {
@@ -162,6 +210,110 @@ export default function EditOrder() {
       }
     } catch (err) {
       console.error('Failed to fetch addons:', err);
+    }
+  };
+
+  const fetchDrivers = async () => {
+    try {
+      const res = await fetch('/api/drivers/available?includeAll=true');
+      const data = await res.json();
+      setAvailableDrivers(data.drivers || []);
+    } catch (error) {
+      console.error('Error fetching drivers:', error);
+    }
+  };
+
+  const fetchLoyaltySettings = async () => {
+    try {
+      const response = await fetch('/api/settings/loyalty');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setLoyaltySettings({
+            enabled: data.settings.loyalty_enabled?.value || false,
+            redemptionValue: data.settings.points_redemption_value?.value || 0.01,
+            maxRedemptionPercent: data.settings.points_max_redemption_percent?.value || 50,
+            redemptionMinimum: data.settings.points_redemption_minimum?.value || 100,
+            earningRate: data.settings.points_earning_rate?.value || 1,
+            earningBasis: data.settings.points_earning_basis?.value || 'subtotal',
+            minimumOrder: data.settings.points_minimum_order?.value || 0
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching loyalty settings:', err);
+    }
+  };
+
+  const fetchCustomerPoints = async (customerId: string) => {
+    try {
+      const response = await fetch(`/api/loyalty/points?userId=${customerId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setCustomerPoints({
+            availablePoints: data.points.availablePoints || 0,
+            totalPointsEarned: data.points.totalPointsEarned || 0,
+            totalPointsRedeemed: data.points.totalPointsRedeemed || 0
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching customer points:', err);
+    }
+  };
+
+  // Points redemption functions
+  const handlePointsRedemption = (pointsToRedeem: number) => {
+    if (pointsToRedeem < 0) pointsToRedeem = 0;
+    if (pointsToRedeem > customerPoints.availablePoints) {
+      pointsToRedeem = customerPoints.availablePoints;
+    }
+
+    // Calculate discount amount based on points
+    const discountAmount = pointsToRedeem * loyaltySettings.redemptionValue;
+    
+    // Get current totals to check max redemption limit
+    const currentSubtotal = Number(order?.subtotal) || 0;
+    const currentDiscount = editData.discountAmount || 0;
+    const maxAllowedDiscount = (currentSubtotal - currentDiscount) * (loyaltySettings.maxRedemptionPercent / 100);
+    
+    const finalDiscountAmount = Math.min(discountAmount, maxAllowedDiscount);
+    const finalPointsToRedeem = Math.floor(finalDiscountAmount / loyaltySettings.redemptionValue);
+
+    setEditData(prev => ({
+      ...prev,
+      pointsToRedeem: finalPointsToRedeem,
+      pointsDiscountAmount: finalDiscountAmount,
+      useAllPoints: false
+    }));
+  };
+
+  const handleUseAllPoints = () => {
+    if (editData.useAllPoints) {
+      // Turn off - clear points
+      setEditData(prev => ({
+        ...prev,
+        pointsToRedeem: 0,
+        pointsDiscountAmount: 0,
+        useAllPoints: false
+      }));
+    } else {
+      // Turn on - use maximum allowed points
+      const currentSubtotal = Number(order?.subtotal) || 0;
+      const currentDiscount = editData.discountAmount || 0;
+      const maxAllowedDiscount = (currentSubtotal - currentDiscount) * (loyaltySettings.maxRedemptionPercent / 100);
+      const maxPointsDiscount = customerPoints.availablePoints * loyaltySettings.redemptionValue;
+      
+      const finalDiscountAmount = Math.min(maxAllowedDiscount, maxPointsDiscount);
+      const finalPointsToRedeem = Math.floor(finalDiscountAmount / loyaltySettings.redemptionValue);
+
+      setEditData(prev => ({
+        ...prev,
+        pointsToRedeem: finalPointsToRedeem,
+        pointsDiscountAmount: finalDiscountAmount,
+        useAllPoints: true
+      }));
     }
   };
 
@@ -203,8 +355,19 @@ export default function EditOrder() {
         notes: orderData.notes || '',
         shippingMethod: orderData.shippingMethod || '',
         trackingNumber: orderData.trackingNumber || '',
-        cancelReason: orderData.cancelReason || ''
+        cancelReason: orderData.cancelReason || '',
+        assignedDriverId: orderData.assignedDriverId || '',
+        deliveryStatus: orderData.deliveryStatus || 'pending',
+        // Loyalty points fields
+        pointsToRedeem: Number(orderData.pointsToRedeem) || 0,
+        pointsDiscountAmount: Number(orderData.pointsDiscountAmount) || 0,
+        useAllPoints: false
       });
+
+      // Fetch customer points if loyalty is enabled and customer exists
+      if (orderData.userId && loyaltySettings.enabled) {
+        fetchCustomerPoints(orderData.userId);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -393,12 +556,37 @@ export default function EditOrder() {
     const taxAmount = Number(order.taxAmount) || 0;
     const shippingAmount = Number(editData.shippingAmount) || 0;
     const discountAmount = Number(editData.discountAmount) || 0;
+    const pointsDiscountAmount = Number(editData.pointsDiscountAmount) || 0;
     
-    // Calculate: subtotal - discount + tax + shipping
-    const discountedSubtotal = subtotal - discountAmount;
+    // Calculate: subtotal - discount - points discount + tax + shipping
+    const discountedSubtotal = subtotal - discountAmount - pointsDiscountAmount;
     const total = discountedSubtotal + taxAmount + shippingAmount;
     
     return Math.max(0, total); // Ensure total is never negative
+  };
+
+  const calculatePointsToEarn = () => {
+    if (!loyaltySettings.enabled || !order?.userId) {
+      return 0;
+    }
+    
+    const subtotal = Number(order.subtotal) || 0;
+    const taxAmount = Number(order.taxAmount) || 0;
+    const shippingAmount = Number(editData.shippingAmount) || 0;
+    const discountAmount = Number(editData.discountAmount) || 0;
+    const pointsDiscountAmount = Number(editData.pointsDiscountAmount) || 0;
+    
+    // Calculate new total for points calculation
+    const discountedSubtotal = subtotal - discountAmount - pointsDiscountAmount;
+    const newTotal = Math.max(0, discountedSubtotal + taxAmount + shippingAmount);
+    
+    const baseAmount = loyaltySettings.earningBasis === 'total' ? newTotal : subtotal;
+    
+    if (baseAmount < loyaltySettings.minimumOrder) {
+      return 0;
+    }
+    
+    return Math.floor(baseAmount * loyaltySettings.earningRate);
   };
 
   if (loading) return <div className="p-8 text-center">Loading order...</div>;
@@ -525,7 +713,42 @@ export default function EditOrder() {
                   </div>
                 </div>
 
-               
+                <div>
+                  <label className="block text-gray-700 mb-2">Assigned Driver</label>
+                  <select
+                    value={editData.assignedDriverId}
+                    onChange={(e) => handleStatusChange('assignedDriverId', e.target.value)}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="">-- No driver assigned --</option>
+                    {availableDrivers.map((driverData) => (
+                      <option key={driverData.driver.id} value={driverData.driver.id}>
+                        {driverData.user.name} - {driverData.driver.vehicleType} ({driverData.driver.vehiclePlateNumber}) - {driverData.driver.status}
+                      </option>
+                    ))}
+                  </select>
+                  {availableDrivers.length === 0 && (
+                    <div className="text-xs text-red-500 mt-1">No drivers available</div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 mb-2">Delivery Status</label>
+                  <select
+                    value={editData.deliveryStatus}
+                    onChange={(e) => handleStatusChange('deliveryStatus', e.target.value)}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  >
+                    {deliveryStatuses.map(status => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {deliveryStatuses.find(s => s.value === editData.deliveryStatus)?.description}
+                  </div>
+                </div>
               </div>
 
               
@@ -587,6 +810,103 @@ export default function EditOrder() {
               </div>
             </form>
           </div>
+
+          {/* Loyalty Points Redemption */}
+          {loyaltySettings.enabled && order?.userId && customerPoints.availablePoints > 0 && (
+            <div className="bg-white border rounded-lg p-6">
+              <h3 className="text-lg font-semibold mb-4">🎁 Loyalty Points</h3>
+              
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-purple-800">Available Points:</span>
+                  <span className="text-lg font-bold text-purple-600">{customerPoints.availablePoints}</span>
+                </div>
+                <div className="text-xs text-purple-600">
+                  Worth up to {formatCurrency(customerPoints.availablePoints * loyaltySettings.redemptionValue)} discount
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Use All Points Toggle */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Use All Available Points</label>
+                    <p className="text-xs text-gray-500">
+                      Apply maximum discount (up to {loyaltySettings.maxRedemptionPercent}% of order)
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleUseAllPoints}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                      editData.useAllPoints ? 'bg-purple-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        editData.useAllPoints ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Manual Points Input */}
+                {!editData.useAllPoints && (
+                  <div>
+                    <label className="block text-gray-700 mb-2">Points to Redeem</label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max={customerPoints.availablePoints}
+                        value={editData.pointsToRedeem}
+                        onChange={(e) => handlePointsRedemption(parseInt(e.target.value) || 0)}
+                        className="flex-1 p-2 border rounded focus:border-purple-500 focus:outline-none"
+                        placeholder={`Min: ${loyaltySettings.redemptionMinimum}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handlePointsRedemption(customerPoints.availablePoints)}
+                        className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                      >
+                        Max
+                      </button>
+                    </div>
+                    {editData.pointsToRedeem > 0 && (
+                      <div className="mt-2 text-sm text-green-600">
+                        Discount: {formatCurrency(editData.pointsDiscountAmount)}
+                      </div>
+                    )}
+                    {editData.pointsToRedeem > 0 && editData.pointsToRedeem < loyaltySettings.redemptionMinimum && (
+                      <div className="mt-2 text-sm text-red-600">
+                        Minimum {loyaltySettings.redemptionMinimum} points required for redemption
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Points Summary */}
+                {editData.pointsToRedeem > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="text-sm text-green-800">
+                      <div className="flex justify-between">
+                        <span>Points to redeem:</span>
+                        <span className="font-medium">{editData.pointsToRedeem}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Discount amount:</span>
+                        <span className="font-medium">{formatCurrency(editData.pointsDiscountAmount)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-green-600 mt-1">
+                        <span>Remaining points:</span>
+                        <span>{customerPoints.availablePoints - editData.pointsToRedeem}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Order Items */}
           <div className="bg-white border rounded-lg p-6">
@@ -820,12 +1140,47 @@ export default function EditOrder() {
                 </div>
               )}
               
+              {editData.pointsDiscountAmount > 0 && (
+                <div className="flex justify-between text-purple-600">
+                  <span>Points Discount ({editData.pointsToRedeem} pts):</span>
+                  <span>-{formatCurrency(editData.pointsDiscountAmount)}</span>
+                </div>
+              )}
+              
               <div className="border-t pt-3">
                 <div className="flex justify-between text-lg font-semibold">
                   <span>Total:</span>
                   <span>{formatCurrency(calculateNewTotal())}</span>
                 </div>
               </div>
+
+              {/* Points Preview */}
+              {loyaltySettings.enabled && order.userId && (
+                <div className="border-t pt-3">
+                  <div className="bg-purple-50 p-3 rounded-lg">
+                    <div className="text-sm font-medium text-purple-800 mb-1">🎁 Loyalty Points</div>
+                    <div className="text-sm text-purple-700">
+                      Points for this order: <strong>{calculatePointsToEarn()} points</strong>
+                      {calculatePointsToEarn() === 0 && loyaltySettings.minimumOrder > 0 && (
+                        <div className="text-xs text-purple-600 mt-1">
+                          (Minimum order: {formatCurrency(loyaltySettings.minimumOrder)})
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-purple-600 mt-2">
+                      {order.status === 'completed' && editData.status === 'completed' ? (
+                        <span className="text-green-600">✅ Points are available</span>
+                      ) : editData.status === 'completed' && order.status !== 'completed' ? (
+                        <span className="text-green-600">✅ Points will be activated when saved</span>
+                      ) : order.status !== 'completed' && editData.status !== 'completed' ? (
+                        <span className="text-yellow-600">⏳ Points are pending completion</span>
+                      ) : (
+                        <span className="text-yellow-600">⏳ Points will remain pending</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Order Timeline */}
@@ -834,11 +1189,11 @@ export default function EditOrder() {
               <div className="text-sm space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Created:</span>
-                  <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                  <span>{formatDateTime(order.createdAt)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Last Updated:</span>
-                  <span>{new Date(order.updatedAt).toLocaleDateString()}</span>
+                  <span>{formatDateTime(order.updatedAt)}</span>
                 </div>
               </div>
             </div>

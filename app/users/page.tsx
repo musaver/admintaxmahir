@@ -30,6 +30,13 @@ interface User {
   city?: string;
   address?: string;
   createdAt: string;
+  loyaltyPoints?: {
+    availablePoints: number;
+    pendingPoints: number;
+    totalPointsEarned: number;
+    totalPointsRedeemed: number;
+    pointsExpiringSoon: number;
+  };
 }
 
 export default function UsersList() {
@@ -69,7 +76,10 @@ export default function UsersList() {
     setExporting(true);
     try {
       // Convert users data to CSV format
-      const csvHeaders = ['ID', 'Name', 'Email', 'Phone', 'Country', 'City', 'Address', 'Created At'];
+      const csvHeaders = [
+        'ID', 'Name', 'Email', 'Phone', 'Country', 'City', 'Address', 'Created At',
+        'Available Points', 'Pending Points', 'Total Earned', 'Total Redeemed', 'Expiring Soon'
+      ];
       const csvData = users.map((user) => [
         user.id || '',
         user.name || '',
@@ -78,7 +88,12 @@ export default function UsersList() {
         user.country || '',
         user.city || '',
         user.address || '',
-        user.createdAt ? new Date(user.createdAt).toLocaleString() : ''
+        user.createdAt ? new Date(user.createdAt).toLocaleString() : '',
+        user.loyaltyPoints?.availablePoints || 0,
+        user.loyaltyPoints?.pendingPoints || 0,
+        user.loyaltyPoints?.totalPointsEarned || 0,
+        user.loyaltyPoints?.totalPointsRedeemed || 0,
+        user.loyaltyPoints?.pointsExpiringSoon || 0
       ]);
 
       // Create CSV content
@@ -110,7 +125,23 @@ export default function UsersList() {
     const usersWithPhone = users.filter(user => user.phone).length;
     const usersWithAddress = users.filter(user => user.address).length;
     
-    return { totalUsers, usersWithPhone, usersWithAddress };
+    // Loyalty points stats
+    const usersWithPoints = users.filter(user => user.loyaltyPoints && user.loyaltyPoints.availablePoints > 0).length;
+    const totalAvailablePoints = users.reduce((sum, user) => sum + (user.loyaltyPoints?.availablePoints || 0), 0);
+    const totalPointsEarned = users.reduce((sum, user) => sum + (user.loyaltyPoints?.totalPointsEarned || 0), 0);
+    const totalPointsRedeemed = users.reduce((sum, user) => sum + (user.loyaltyPoints?.totalPointsRedeemed || 0), 0);
+    const usersWithExpiring = users.filter(user => user.loyaltyPoints && user.loyaltyPoints.pointsExpiringSoon > 0).length;
+    
+    return { 
+      totalUsers, 
+      usersWithPhone, 
+      usersWithAddress,
+      usersWithPoints,
+      totalAvailablePoints,
+      totalPointsEarned,
+      totalPointsRedeemed,
+      usersWithExpiring
+    };
   };
 
   const stats = getStats();
@@ -150,6 +181,45 @@ export default function UsersList() {
       mobileHidden: true
     },
     {
+      key: 'loyaltyPoints',
+      title: 'Loyalty Points',
+      render: (_: any, user: User) => (
+        <div className="text-sm space-y-1">
+          <div className="flex items-center space-x-2 flex-wrap gap-1">
+            <Badge 
+              variant="secondary" 
+              className={`text-xs ${
+                (user.loyaltyPoints?.availablePoints || 0) > 0 
+                  ? 'bg-green-100 text-green-800 border-green-200'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {user.loyaltyPoints?.availablePoints || 0} available
+            </Badge>
+            {user.loyaltyPoints && user.loyaltyPoints.pendingPoints > 0 && (
+              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
+                {user.loyaltyPoints.pendingPoints} pending
+              </Badge>
+            )}
+            {user.loyaltyPoints && user.loyaltyPoints.pointsExpiringSoon > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {user.loyaltyPoints.pointsExpiringSoon} expiring
+              </Badge>
+            )}
+          </div>
+          {user.loyaltyPoints && (user.loyaltyPoints.totalPointsEarned > 0 || user.loyaltyPoints.totalPointsRedeemed > 0) && (
+            <div className="text-xs text-gray-500">
+              <div className="flex justify-between">
+                <span>Earned: {user.loyaltyPoints.totalPointsEarned}</span>
+                <span>Redeemed: {user.loyaltyPoints.totalPointsRedeemed}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ),
+      mobileHidden: true
+    },
+    {
       key: 'address',
       title: 'Address',
       render: (_: any, user: User) => (
@@ -182,6 +252,12 @@ export default function UsersList() {
           <Link href={`/users/edit/${user.id}`} className="flex items-center">
             <EditIcon className="h-4 w-4 mr-2" />
             Edit
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/users/${user.id}/points-history`} className="flex items-center">
+            <Badge className="h-4 w-4 mr-2 bg-purple-600" />
+            Points History
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem 
@@ -229,7 +305,7 @@ export default function UsersList() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -255,6 +331,34 @@ export default function UsersList() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.usersWithAddress}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">With Points</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.usersWithPoints}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Available Points</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.totalAvailablePoints.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.usersWithExpiring}</div>
+            <p className="text-xs text-muted-foreground">users affected</p>
           </CardContent>
         </Card>
       </div>

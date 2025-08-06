@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import ImageUploader from '../../../components/ImageUploader';
 import CurrencySymbol from '../../../components/CurrencySymbol';
 import RichTextEditor from '../../../components/RichTextEditor';
+import TagSelector from '../../../components/TagSelector';
 import VariantManager from '../../../../components/VariantManager';
 import useProductVariants from '../../../../hooks/useProductVariants';
 import { formatPrice, calculatePriceRange, generateSlug, isValidSlug } from '../../../../utils/priceUtils';
@@ -64,6 +65,15 @@ interface SelectedAddon {
   isActive: boolean;
 }
 
+interface SelectedTag {
+  tagId: string;
+  tagName: string;
+  groupId: string;
+  groupName: string;
+  customValue?: string;
+  color?: string;
+}
+
 export default function EditProduct() {
   const router = useRouter();
   const params = useParams();
@@ -83,7 +93,6 @@ export default function EditProduct() {
     costPrice: '',
     categoryId: '',
     subcategoryId: '',
-    tags: '',
     weight: '',
     isFeatured: false,
     isActive: true,
@@ -97,7 +106,13 @@ export default function EditProduct() {
     // Weight-based stock management fields
     stockManagementType: 'quantity', // 'quantity' or 'weight'
     pricePerUnit: '', // Price per gram for weight-based products
-    baseWeightUnit: 'grams' // 'grams' or 'kg'
+    baseWeightUnit: 'grams', // 'grams' or 'kg'
+    // Cannabis-specific fields
+    thc: '',
+    cbd: '',
+    difficulty: '',
+    floweringTime: '',
+    yieldAmount: ''
   });
   
   // Variable product specific states
@@ -108,6 +123,9 @@ export default function EditProduct() {
   // Group product specific states
   const [availableAddons, setAvailableAddons] = useState<Addon[]>([]);
   const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
+  
+  // Tag selection state
+  const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
   
   const [images, setImages] = useState<string[]>([]);
   const [categories, setCategories] = useState([]);
@@ -143,12 +161,13 @@ export default function EditProduct() {
 
   const fetchProductAndInitialData = async () => {
     try {
-      const [productRes, categoriesRes, attributesRes, addonsRes, productAddonsRes] = await Promise.all([
+      const [productRes, categoriesRes, attributesRes, addonsRes, productAddonsRes, productTagsRes] = await Promise.all([
         fetch(`/api/products/${productId}`),
         fetch('/api/categories'),
         fetch('/api/variation-attributes?includeValues=true'),
         fetch('/api/addons'),
-        fetch(`/api/product-addons?productId=${productId}`)
+        fetch(`/api/product-addons?productId=${productId}`),
+        fetch(`/api/product-tags?productId=${productId}`)
       ]);
       
       const product = await productRes.json();
@@ -156,6 +175,7 @@ export default function EditProduct() {
       const attributesData = await attributesRes.json();
       const addonsData = await addonsRes.json();
       const productAddonsData = await productAddonsRes.json();
+      const productTagsData = await productTagsRes.json();
       
       // Parse product data using deep parsing utilities
       const productImages = normalizeProductImages(product.images);
@@ -173,7 +193,6 @@ export default function EditProduct() {
         costPrice: product.costPrice || '',
         categoryId: product.categoryId || '',
         subcategoryId: product.subcategoryId || '',
-        tags: Array.isArray(productTags) ? productTags.join(', ') : '',
         weight: product.weight || '',
         isFeatured: product.isFeatured || false,
         isActive: product.isActive !== undefined ? product.isActive : true,
@@ -187,7 +206,13 @@ export default function EditProduct() {
         // Weight-based stock management fields
         stockManagementType: product.stockManagementType || 'quantity',
         pricePerUnit: product.pricePerUnit || '',
-        baseWeightUnit: product.baseWeightUnit || 'grams'
+        baseWeightUnit: product.baseWeightUnit || 'grams',
+        // Cannabis-specific fields
+        thc: product.thc || '',
+        cbd: product.cbd || '',
+        difficulty: product.difficulty || '',
+        floweringTime: product.floweringTime || '',
+        yieldAmount: product.yieldAmount || ''
       });
       
       setImages(Array.isArray(productImages) ? productImages : []);
@@ -262,6 +287,18 @@ export default function EditProduct() {
       }));
       
       setSelectedAddons(formattedProductAddons);
+      
+      // Convert existing product tags to our format
+      const formattedProductTags = Array.isArray(productTagsData) ? productTagsData.map((item: any) => ({
+        tagId: item.tag.id,
+        tagName: item.tag.name,
+        groupId: item.tag.groupId,
+        groupName: item.tag.group.name,
+        customValue: item.customValue,
+        color: item.tag.color || item.tag.group.color,
+      })) : [];
+      
+      setSelectedTags(formattedProductTags);
       
     } catch (err) {
       console.error(err);
@@ -487,8 +524,14 @@ export default function EditProduct() {
         costPrice: formData.costPrice ? parseFloat(formData.costPrice) : null,
         pricePerUnit: formData.pricePerUnit ? parseFloat(formData.pricePerUnit) : null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
+        // Cannabis-specific fields
+        thc: formData.thc ? parseFloat(formData.thc) : null,
+        cbd: formData.cbd ? parseFloat(formData.cbd) : null,
+        difficulty: formData.difficulty || null,
+        floweringTime: formData.floweringTime || null,
+        yieldAmount: formData.yieldAmount || null,
         images: images.length > 0 ? images : null,
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : null,
+        selectedTags: selectedTags.length > 0 ? selectedTags : null,
         variationAttributes: formData.productType === 'variable' ? selectedAttributes : null,
         variantsToDelete: variantsToDelete.length > 0 ? variantsToDelete : null,
         addons: selectedAddons.length > 0 ? selectedAddons : null,
@@ -553,7 +596,7 @@ export default function EditProduct() {
       
       <form onSubmit={handleSubmit} className="max-w-6xl">
         {/* Product Type Selection */}
-        <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+        <div className="mb-6 p-4 border rounded-lg bg-gray-50 hidden">
           <h3 className="text-lg font-semibold mb-4">Product Type</h3>
           <div className="flex gap-4" >
             <label className="flex items-center">
@@ -596,7 +639,7 @@ export default function EditProduct() {
         </div>
 
         {/* Stock Management Type Selection */}
-        <div className="mb-6 p-4 border rounded-lg bg-blue-50">
+        <div className="mb-6 p-4 border rounded-lg bg-blue-50 hidden">
           <h3 className="text-lg font-semibold mb-4">⚖️ Stock Management Type</h3>
           <div className="space-y-4">
             <div className="flex gap-6">
@@ -830,6 +873,93 @@ export default function EditProduct() {
                 className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                 rows={2}
               />
+            </div>
+
+            {/* Cannabis-specific fields */}
+            <div className="mt-6 p-4 border rounded-lg bg-green-50">
+              <h4 className="text-lg font-semibold mb-4 text-green-800">🌿 Cannabis Properties</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="thc">
+                    THC % <span className="text-sm text-gray-500">(0-100)</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="thc"
+                    name="thc"
+                    value={formData.thc}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="e.g., 25.50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="cbd">
+                    CBD % <span className="text-sm text-gray-500">(0-100)</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="cbd"
+                    name="cbd"
+                    value={formData.cbd}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="e.g., 2.10"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="difficulty">
+                    Difficulty
+                  </label>
+                  <input
+                    type="text"
+                    id="difficulty"
+                    name="difficulty"
+                    value={formData.difficulty}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    placeholder="e.g., Beginner, Intermediate, Advanced"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 mb-2" htmlFor="floweringTime">
+                    Flowering Time
+                  </label>
+                  <input
+                    type="text"
+                    id="floweringTime"
+                    name="floweringTime"
+                    value={formData.floweringTime}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    placeholder="e.g., 8-9 weeks, 55-65 days"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 mb-2" htmlFor="yieldAmount">
+                    Yield
+                  </label>
+                  <input
+                    type="text"
+                    id="yieldAmount"
+                    name="yieldAmount"
+                    value={formData.yieldAmount}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    placeholder="e.g., 400-500g/m², High, Medium, Low"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1077,7 +1207,7 @@ export default function EditProduct() {
         </div>
 
         {/* Hero Banner Manager */}
-        <div className="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl shadow-sm">
+        <div className="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl shadow-sm hidden">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
               <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1185,7 +1315,7 @@ export default function EditProduct() {
 
         {/* Product Addons - Available for all product types */}
         {(
-          <div className="mt-6">
+          <div className="mt-6 hidden">
             <h3 className="text-lg font-semibold mb-4">🧩 Product Addons</h3>
             
             {/* Add New Addon */}
@@ -1417,6 +1547,18 @@ export default function EditProduct() {
               />
               Taxable
             </label>
+          </div>
+        </div>
+
+        {/* Product Tags */}
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-4">🏷️ Product Tags</h3>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <TagSelector
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
+              disabled={submitting}
+            />
           </div>
         </div>
 

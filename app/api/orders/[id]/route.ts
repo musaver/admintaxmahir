@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders, orderItems, productInventory, stockMovements, user, products } from '@/lib/schema';
+import { orders, orderItems, productInventory, stockMovements, user, products, userLoyaltyPoints, loyaltyPointsHistory, settings } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and, isNull } from 'drizzle-orm';
 import { getStockManagementSettingDirect } from '@/lib/stockManagement';
@@ -65,8 +65,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       shippingMethod,
       trackingNumber,
       cancelReason,
+      assignedDriverId,
+      deliveryStatus,
       previousStatus,
-      previousPaymentStatus
+      previousPaymentStatus,
+      // Loyalty points fields
+      pointsToRedeem,
+      pointsDiscountAmount
     } = body;
 
     // Get current order and items for stock management
@@ -102,15 +107,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // Note: Payment status changes no longer affect inventory since stock is deducted at order creation
 
-    // Calculate new total if shipping or discount changed
-    let newTotalAmount = order.totalAmount;
-    if (shippingAmount !== undefined || discountAmount !== undefined) {
-      const newShipping = shippingAmount !== undefined ? shippingAmount : order.shippingAmount;
-      const newDiscount = discountAmount !== undefined ? discountAmount : order.discountAmount;
+    // Calculate new total if shipping, discount, or points discount changed
+    let newTotalAmount: number = Number(order.totalAmount);
+    if (shippingAmount !== undefined || discountAmount !== undefined || pointsDiscountAmount !== undefined) {
+      const newShipping = shippingAmount !== undefined ? shippingAmount : Number(order.shippingAmount);
+      const newDiscount = discountAmount !== undefined ? discountAmount : Number(order.discountAmount);
+      const newPointsDiscount = pointsDiscountAmount !== undefined ? pointsDiscountAmount : Number(order.pointsDiscountAmount);
       
-      // Recalculate: subtotal - discount + tax + shipping
-      const subtotalAfterDiscount = Number(order.subtotal) - newDiscount;
-      newTotalAmount = subtotalAfterDiscount + Number(order.taxAmount || 0) + newShipping;
+      // Recalculate: subtotal - discount - points discount + tax + shipping
+      const subtotalAfterDiscounts = Number(order.subtotal) - newDiscount - newPointsDiscount;
+      newTotalAmount = Math.max(0, subtotalAfterDiscounts + Number(order.taxAmount || 0) + newShipping);
     }
 
     // Update the order
@@ -127,12 +133,68 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (shippingMethod !== undefined) updateData.shippingMethod = shippingMethod;
     if (trackingNumber !== undefined) updateData.trackingNumber = trackingNumber;
     if (cancelReason !== undefined) updateData.cancelReason = cancelReason;
-    if (newTotalAmount !== order.totalAmount) updateData.totalAmount = newTotalAmount;
+    if (assignedDriverId !== undefined) updateData.assignedDriverId = assignedDriverId || null;
+    if (deliveryStatus !== undefined) updateData.deliveryStatus = deliveryStatus;
+    if (pointsToRedeem !== undefined) updateData.pointsToRedeem = pointsToRedeem;
+    if (pointsDiscountAmount !== undefined) updateData.pointsDiscountAmount = pointsDiscountAmount;
+    if (newTotalAmount !== Number(order.totalAmount)) updateData.totalAmount = newTotalAmount;
 
     await db
       .update(orders)
       .set(updateData)
       .where(eq(orders.id, orderId));
+
+    // Handle points redemption changes if points were modified
+    if (pointsToRedeem !== undefined && order.userId && pointsToRedeem > 0) {
+      const currentPointsRedeemed = Number(order.pointsToRedeem) || 0;
+      const pointsDifference = pointsToRedeem - currentPointsRedeemed;
+      
+      if (pointsDifference !== 0) {
+        console.log(`\n=== POINTS REDEMPTION UPDATE ===`);
+        console.log(`Order: ${order.orderNumber}, UserId: ${order.userId}, Points difference: ${pointsDifference}, New discount: ${pointsDiscountAmount}`);
+        
+        try {
+          if (pointsDifference > 0) {
+            // Additional points being redeemed
+            await redeemLoyaltyPointsForEdit(
+              order.userId, 
+              orderId, 
+              pointsDifference, 
+              (Number(pointsDiscountAmount) || 0) - (Number(order.pointsDiscountAmount) || 0),
+              `Additional redemption for order #${order.orderNumber}`
+            );
+            console.log(`✅ Successfully redeemed additional ${pointsDifference} points for user ${order.userId}`);
+          } else {
+            // Points being refunded (negative difference)
+            await refundLoyaltyPoints(
+              order.userId,
+              Math.abs(pointsDifference),
+              `Points refund for order #${order.orderNumber} adjustment`
+            );
+            console.log(`✅ Successfully refunded ${Math.abs(pointsDifference)} points for user ${order.userId}`);
+          }
+        } catch (pointsError) {
+          console.error('❌ Error processing points redemption update:', pointsError);
+          // Don't fail the order update if points processing fails
+        }
+        console.log(`=== END POINTS REDEMPTION UPDATE ===\n`);
+      }
+    }
+
+    // Handle loyalty points when order status changes (integrated logic)
+    console.log(`Points check: status=${status}, previousStatus=${previousStatus}, userId=${order.userId}`);
+    if (status && status !== previousStatus && order.userId) {
+      console.log(`Order status changed from ${previousStatus} to ${status} for order ${order.orderNumber} for user ${order.userId}`);
+      try {
+        await updateLoyaltyPointsStatus(order.userId, orderId, previousStatus, status);
+        console.log(`Successfully processed points status update for user ${order.userId} for order ${order.orderNumber}`);
+      } catch (pointsError) {
+        console.error('Error updating loyalty points status:', pointsError);
+        // Don't fail the order update if points update fails
+      }
+    } else {
+      console.log(`Points status not updated - conditions not met: statusChanged=${status !== previousStatus}, hasUser=${!!order.userId}`);
+    }
 
     // Fetch updated order with items
     const updatedOrderData = await db
@@ -461,4 +523,223 @@ async function restoreInventoryFromOrder(orderItems: any[], orderNumber: string)
       });
     }
   }
+}
+
+// Helper function to update loyalty points status
+async function updateLoyaltyPointsStatus(userId: string, orderId: string, previousStatus: string, newStatus: string) {
+  console.log('=== UPDATE POINTS STATUS FUNCTION ===');
+  console.log('Parameters:', { userId, orderId, previousStatus, newStatus });
+
+  // Check if loyalty is enabled
+  const loyaltyEnabled = await db
+    .select()
+    .from(settings)
+    .where(eq(settings.key, 'loyalty_enabled'))
+    .limit(1);
+
+  if (loyaltyEnabled.length === 0 || loyaltyEnabled[0]?.value !== 'true') {
+    console.log('Loyalty system is disabled');
+    return;
+  }
+
+  // Handle status change to completed - activate pending points
+  if (newStatus === 'completed' && previousStatus !== 'completed') {
+    console.log('Activating pending points for completed order');
+    
+    try {
+      // Get pending points for this order
+      const pendingHistory = await db
+        .select()
+        .from(loyaltyPointsHistory)
+        .where(
+          and(
+            eq(loyaltyPointsHistory.userId, userId),
+            eq(loyaltyPointsHistory.orderId, orderId),
+            eq(loyaltyPointsHistory.status, 'pending'),
+            eq(loyaltyPointsHistory.transactionType, 'earned')
+          )
+        );
+
+      if (pendingHistory.length === 0) {
+        console.log('No pending points found for this order');
+        return;
+      }
+
+      const pointsToActivate = pendingHistory.reduce((sum, record) => sum + (record.points || 0), 0);
+      console.log(`Points to activate: ${pointsToActivate}`);
+
+      // Update user points - move from pending to available
+      const userPoints = await db
+        .select()
+        .from(userLoyaltyPoints)
+        .where(eq(userLoyaltyPoints.userId, userId))
+        .limit(1);
+
+      if (userPoints.length > 0) {
+        const current = userPoints[0];
+        await db.update(userLoyaltyPoints)
+          .set({
+            availablePoints: (current?.availablePoints || 0) + pointsToActivate,
+            pendingPoints: Math.max(0, (current?.pendingPoints || 0) - pointsToActivate),
+            updatedAt: new Date()
+          })
+          .where(eq(userLoyaltyPoints.userId, userId));
+        console.log('Updated user points - moved from pending to available');
+      }
+
+      // Update history records to available status
+      for (const record of pendingHistory) {
+        await db.update(loyaltyPointsHistory)
+          .set({
+            status: 'available',
+            pointsBalance: (userPoints[0]?.availablePoints || 0) + pointsToActivate
+          })
+          .where(eq(loyaltyPointsHistory.id, record.id));
+      }
+      console.log('Updated history records to available status');
+
+      console.log(`Successfully activated ${pointsToActivate} points for user ${userId}`);
+
+    } catch (dbError) {
+      console.error('Database error in update points status:', dbError);
+      throw dbError;
+    }
+  }
+
+  // Handle other status changes (if needed in the future)
+  console.log(`No action needed for status change from ${previousStatus} to ${newStatus}`);
+}
+
+// Helper function to redeem loyalty points for edit order
+async function redeemLoyaltyPointsForEdit(userId: string, orderId: string, pointsToRedeem: number, discountAmount: number, description: string) {
+  console.log('=== REDEEM POINTS FOR EDIT FUNCTION ===');
+  console.log('Parameters:', { userId, orderId, pointsToRedeem, discountAmount, description });
+
+  // Check if loyalty is enabled
+  const loyaltyEnabled = await db
+    .select()
+    .from(settings)
+    .where(eq(settings.key, 'loyalty_enabled'))
+    .limit(1);
+
+  if (loyaltyEnabled.length === 0 || loyaltyEnabled[0]?.value !== 'true') {
+    console.log('Loyalty system is disabled');
+    throw new Error('Loyalty points system is disabled');
+  }
+
+  // Get user's available points
+  const userPoints = await db
+    .select()
+    .from(userLoyaltyPoints)
+    .where(eq(userLoyaltyPoints.userId, userId))
+    .limit(1);
+
+  if (userPoints.length === 0 || (userPoints[0]?.availablePoints || 0) < pointsToRedeem) {
+    console.log(`Insufficient points. Available: ${userPoints[0]?.availablePoints || 0}, Requested: ${pointsToRedeem}`);
+    throw new Error('Insufficient points available');
+  }
+
+  const newBalance = (userPoints[0]?.availablePoints || 0) - pointsToRedeem;
+
+  // Update user points
+  await db.update(userLoyaltyPoints)
+    .set({
+      totalPointsRedeemed: (userPoints[0]?.totalPointsRedeemed || 0) + pointsToRedeem,
+      availablePoints: newBalance,
+      lastRedeemedAt: new Date(),
+      updatedAt: new Date()
+    })
+    .where(eq(userLoyaltyPoints.userId, userId));
+
+  // Add history record
+  await db.insert(loyaltyPointsHistory).values({
+    id: uuidv4(),
+    userId,
+    orderId,
+    transactionType: 'redeemed',
+    status: 'available',
+    points: -pointsToRedeem, // negative for redeemed
+    pointsBalance: newBalance,
+    description: description,
+    orderAmount: null,
+    discountAmount: discountAmount.toString(),
+    expiresAt: null,
+    isExpired: false,
+    processedBy: null,
+    metadata: {
+      pointsToRedeem,
+      discountAmount
+    },
+    createdAt: new Date()
+  });
+
+  console.log(`Successfully redeemed ${pointsToRedeem} points for user ${userId}. New balance: ${newBalance}`);
+}
+
+// Helper function to refund loyalty points
+async function refundLoyaltyPoints(userId: string, pointsToRefund: number, reason: string) {
+  console.log('=== REFUND POINTS FUNCTION ===');
+  console.log('Parameters:', { userId, pointsToRefund, reason });
+
+  // Get user's current points
+  const userPoints = await db
+    .select()
+    .from(userLoyaltyPoints)
+    .where(eq(userLoyaltyPoints.userId, userId))
+    .limit(1);
+
+  if (userPoints.length === 0) {
+    console.log('User loyalty points record not found, creating one');
+    // Create new record if it doesn't exist
+    await db.insert(userLoyaltyPoints).values({
+      id: uuidv4(),
+      userId,
+      totalPointsEarned: 0,
+      totalPointsRedeemed: Math.max(0, -pointsToRefund), // Adjust if refunding
+      availablePoints: pointsToRefund,
+      pendingPoints: 0,
+      pointsExpiringSoon: 0,
+      lastEarnedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+  } else {
+    const currentRecord = userPoints[0];
+    const newBalance = (currentRecord.availablePoints || 0) + pointsToRefund;
+    const newTotalRedeemed = Math.max(0, (currentRecord.totalPointsRedeemed || 0) - pointsToRefund);
+
+    // Update existing record
+    await db.update(userLoyaltyPoints)
+      .set({
+        availablePoints: newBalance,
+        totalPointsRedeemed: newTotalRedeemed,
+        updatedAt: new Date()
+      })
+      .where(eq(userLoyaltyPoints.userId, userId));
+  }
+
+  // Add history record
+  const currentBalance = (userPoints[0]?.availablePoints || 0) + pointsToRefund;
+  await db.insert(loyaltyPointsHistory).values({
+    id: uuidv4(),
+    userId,
+    orderId: null,
+    transactionType: 'manual_adjustment',
+    status: 'available',
+    points: pointsToRefund, // positive for refund
+    pointsBalance: currentBalance,
+    description: reason,
+    orderAmount: null,
+    discountAmount: null,
+    expiresAt: null,
+    isExpired: false,
+    processedBy: 'system',
+    metadata: {
+      adjustmentType: 'refund',
+      previousBalance: userPoints[0]?.availablePoints || 0
+    },
+    createdAt: new Date()
+  });
+
+  console.log(`Successfully refunded ${pointsToRefund} points for user ${userId}. New balance: ${currentBalance}`);
 } 

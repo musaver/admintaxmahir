@@ -70,12 +70,18 @@ export default function OrderInvoice() {
     window.print();
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  // Format date and time to "Aug 5, 2025 at 5:57 PM" format
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
       year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    };
+    return date.toLocaleDateString('en-US', options).replace(',', ' at');
   };
 
   const formatAmount = (amount: string | number) => {
@@ -276,7 +282,7 @@ export default function OrderInvoice() {
                   <div className="text-gray-600 space-y-1">
                     <div className="flex justify-between">
                       <span>Invoice Date:</span>
-                      <span>{formatDate(order.createdAt)}</span>
+                      <span>{formatDateTime(order.createdAt)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Order Status:</span>

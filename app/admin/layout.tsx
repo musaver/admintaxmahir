@@ -16,19 +16,20 @@ export default function AdminLayout({
     { name: 'Customers', href: '/admin/users', icon: '👥' },
     { name: 'Products', href: '/admin/products', icon: '📦' },
     { name: 'Categories', href: '/admin/categories', icon: '📂' },
-    { name: 'Subcategories', href: '/admin/subcategories', icon: '📁' },
-    { name: 'Addons', href: '/admin/addons', icon: '🧩' },
+    { name: 'Tags', href: '/tags', icon: '🏷️' },
+    { name: 'Tag Groups', href: '/tag-groups', icon: '📑' },
+    /*{ name: 'Addons', href: '/admin/addons', icon: '🧩' },
     { name: 'Variation Attributes', href: '/admin/variation-attributes', icon: '🏷️' },
-    { name: 'Product Variants', href: '/admin/product-variants', icon: '🔧' },
+    { name: 'Product Variants', href: '/admin/product-variants', icon: '🔧' },*/
     { name: 'Inventory', href: '/inventory', icon: '📈' },
     { name: 'Inventory Listing', href: '/inventory/listing', icon: '📋' },
     { name: 'Orders', href: '/admin/orders', icon: '🛒' },
-    { name: 'Returns', href: '/admin/returns', icon: '↩️' },
+    /*{ name: 'Returns', href: '/admin/returns', icon: '↩️' },
     { name: 'Refunds', href: '/admin/refunds', icon: '💰' },
     { name: 'Shipping Labels', href: '/admin/shipping-labels', icon: '🏷️' },
     { name: 'Admin Users', href: '/admin/admins', icon: '👮' },
     { name: 'Admin Roles', href: '/admin/roles', icon: '🔐' },
-    { name: 'Admin Logs', href: '/admin/logs', icon: '📋' },
+    { name: 'Admin Logs', href: '/admin/logs', icon: '📋' },*/
   ];
 
   return (

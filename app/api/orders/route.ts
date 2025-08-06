@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders, orderItems, productInventory, stockMovements, products, productVariants, user } from '@/lib/schema';
+import { orders, orderItems, productInventory, stockMovements, products, productVariants, user, drivers, userLoyaltyPoints, loyaltyPointsHistory, settings } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { eq, and, isNull, desc } from 'drizzle-orm';
+import { eq, and, isNull, desc, or } from 'drizzle-orm';
 import { getStockManagementSettingDirect } from '@/lib/stockManagement';
 import { isWeightBasedProduct, convertToGrams } from '@/utils/weightUtils';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    // Fetch orders with their items and customer information
+    // Get query parameters
+    const { searchParams } = new URL(req.url);
+    const assignedDriverId = searchParams.get('assignedDriverId');
+
+    // Build where conditions
+    const whereConditions = [];
+    if (assignedDriverId) {
+      whereConditions.push(eq(orders.assignedDriverId, assignedDriverId));
+    }
+
+    // Fetch orders with their items, customer information, and assigned driver
     const ordersWithDetails = await db
       .select({
         order: orders,
@@ -16,9 +26,10 @@ export async function GET() {
       })
       .from(orders)
       .leftJoin(user, eq(orders.userId, user.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
       .orderBy(desc(orders.createdAt));
 
-    // Fetch order items for each order
+    // Fetch order items and driver information for each order
     const ordersWithItems = await Promise.all(
       ordersWithDetails.map(async (orderData) => {
         const items = await db
@@ -32,10 +43,38 @@ export async function GET() {
           addons: item.addons ? JSON.parse(item.addons as string) : null
         }));
 
+        // Fetch assigned driver information if exists
+        let assignedDriver = null;
+        if (orderData.order.assignedDriverId) {
+          const driverData = await db
+            .select({
+              id: drivers.id,
+              user: {
+                name: user.name,
+                phone: user.phone,
+              },
+              driver: {
+                licenseNumber: drivers.licenseNumber,
+                vehicleType: drivers.vehicleType,
+                vehiclePlateNumber: drivers.vehiclePlateNumber,
+                status: drivers.status,
+              }
+            })
+            .from(drivers)
+            .innerJoin(user, eq(drivers.userId, user.id))
+            .where(eq(drivers.id, orderData.order.assignedDriverId))
+            .limit(1);
+
+          if (driverData.length > 0) {
+            assignedDriver = driverData[0];
+          }
+        }
+
         return {
           ...orderData.order,
           user: orderData.user,
-          items: itemsWithParsedAddons
+          items: itemsWithParsedAddons,
+          assignedDriver
         };
       })
     );
@@ -63,6 +102,14 @@ export async function POST(req: NextRequest) {
       totalAmount,
       currency = 'USD',
       notes,
+      
+      // Driver assignment fields
+      assignedDriverId,
+      deliveryStatus = 'pending',
+      
+      // Loyalty points fields
+      pointsToRedeem = 0,
+      pointsDiscountAmount = 0,
       
       // Billing address
       billingFirstName,
@@ -199,6 +246,14 @@ export async function POST(req: NextRequest) {
       discountAmount: discountAmount || 0,
       totalAmount,
       currency,
+      
+      // Driver assignment fields
+      assignedDriverId: assignedDriverId || null,
+      deliveryStatus,
+      
+      // Loyalty points fields
+      pointsToRedeem: pointsToRedeem || 0,
+      pointsDiscountAmount: pointsDiscountAmount || 0,
       
       // Billing address
       billingFirstName: billingFirstName || null,
@@ -426,12 +481,241 @@ export async function POST(req: NextRequest) {
       .from(orderItems)
       .where(eq(orderItems.orderId, orderId));
 
+    // Handle points redemption if points were used
+    if (pointsToRedeem > 0 && userId) {
+      console.log(`\n=== POINTS REDEMPTION PROCESSING ===`);
+      console.log(`Order: ${orderNumber}, UserId: ${userId}, Points to redeem: ${pointsToRedeem}, Discount: ${pointsDiscountAmount}`);
+      try {
+        await redeemLoyaltyPoints(userId, orderId, pointsToRedeem, pointsDiscountAmount, `Redeemed at checkout for order #${orderNumber}`);
+        console.log(`✅ Successfully redeemed ${pointsToRedeem} points for user ${userId} for order ${orderNumber}`);
+      } catch (pointsError) {
+        console.error('❌ Error redeeming points:', pointsError);
+        // Don't fail the order creation if points redemption fails
+      }
+      console.log(`=== END POINTS REDEMPTION PROCESSING ===\n`);
+    }
+
+    // Award loyalty points directly (integrated logic)
+    console.log(`\n=== LOYALTY POINTS PROCESSING ===`);
+    console.log(`Order: ${orderNumber}, UserId: ${userId}, Status: ${status}`);
+    console.log(`Total: ${totalAmount}, Subtotal: ${subtotal}`);
+    if (userId) {
+      console.log(`Attempting to award points for order ${orderNumber} to user ${userId}`);
+      try {
+        await awardLoyaltyPoints(userId, orderId, totalAmount, subtotal, status);
+        console.log(`✅ Successfully processed points for user ${userId} for order ${orderNumber}`);
+      } catch (pointsError) {
+        console.error('❌ Error awarding loyalty points:', pointsError);
+        // Don't fail the order creation if points awarding fails
+      }
+    } else {
+      console.log(`⚠️ Points not awarded - no userId provided`);
+    }
+    console.log(`=== END LOYALTY POINTS PROCESSING ===\n`);
+
     return NextResponse.json({
       ...createdOrder[0],
-      items: createdItems
+      items: createdItems,
+      orderId: orderId,
+      orderNumber: orderNumber
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating order:', error);
     return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
   }
+}
+
+// Helper function to award loyalty points
+async function awardLoyaltyPoints(userId: string, orderId: string, orderAmount: number, subtotal: number, orderStatus: string) {
+  console.log('=== AWARD POINTS FUNCTION ===');
+  console.log('Parameters:', { userId, orderId, orderAmount, subtotal, orderStatus });
+
+  // Check if loyalty is enabled
+  const loyaltyEnabled = await db
+    .select()
+    .from(settings)
+    .where(eq(settings.key, 'loyalty_enabled'))
+    .limit(1);
+
+  if (loyaltyEnabled.length === 0 || loyaltyEnabled[0]?.value !== 'true') {
+    console.log('Loyalty system is disabled');
+    return;
+  }
+
+  // Get earning settings
+  const [earningBasisSetting, earningRateSetting, minimumOrderSetting] = await Promise.all([
+    db.select().from(settings).where(eq(settings.key, 'points_earning_basis')).limit(1),
+    db.select().from(settings).where(eq(settings.key, 'points_earning_rate')).limit(1),
+    db.select().from(settings).where(eq(settings.key, 'points_minimum_order')).limit(1)
+  ]);
+
+  const earningBasis = earningBasisSetting[0]?.value || 'subtotal';
+  const earningRate = parseFloat(earningRateSetting[0]?.value || '1');
+  const minimumOrder = parseFloat(minimumOrderSetting[0]?.value || '0');
+
+  // Calculate points based on settings
+  const baseAmount = earningBasis === 'total' ? orderAmount : (subtotal || orderAmount);
+  
+  console.log(`Points calculation: baseAmount=${baseAmount}, minimumOrder=${minimumOrder}, earningRate=${earningRate}`);
+  
+  if (baseAmount < minimumOrder) {
+    console.log('Order amount below minimum - no points awarded');
+    return;
+  }
+  
+  const pointsToAward = Math.floor(baseAmount * earningRate);
+
+  if (pointsToAward <= 0) {
+    console.log('No points to award - calculated points is 0');
+    return;
+  }
+
+  // Determine if points should be pending or available based on order status
+  const isCompleted = orderStatus === 'completed';
+  const pointsStatus = isCompleted ? 'available' : 'pending';
+
+  console.log(`Awarding ${pointsToAward} ${pointsStatus} points`);
+
+  // Check if user already has a loyalty points record
+  const existingPoints = await db
+    .select()
+    .from(userLoyaltyPoints)
+    .where(eq(userLoyaltyPoints.userId, userId))
+    .limit(1);
+
+  if (existingPoints.length === 0) {
+    // Create new record
+    console.log('Creating new loyalty points record');
+    await db.insert(userLoyaltyPoints).values({
+      id: uuidv4(),
+      userId: userId,
+      totalPointsEarned: pointsToAward,
+      totalPointsRedeemed: 0,
+      availablePoints: isCompleted ? pointsToAward : 0,
+      pendingPoints: isCompleted ? 0 : pointsToAward,
+      pointsExpiringSoon: 0,
+      lastEarnedAt: new Date(),
+      lastRedeemedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    console.log('Created new loyalty points record');
+  } else {
+    // Update existing record
+    console.log('Updating existing loyalty points record');
+    const current = existingPoints[0];
+    await db.update(userLoyaltyPoints)
+      .set({
+        totalPointsEarned: (current?.totalPointsEarned || 0) + pointsToAward,
+        availablePoints: (current?.availablePoints || 0) + (isCompleted ? pointsToAward : 0),
+        pendingPoints: (current?.pendingPoints || 0) + (isCompleted ? 0 : pointsToAward),
+        lastEarnedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(userLoyaltyPoints.userId, userId));
+    console.log('Updated existing loyalty points record');
+  }
+
+  // Add history record
+  console.log('Creating history record');
+  await db.insert(loyaltyPointsHistory).values({
+    id: uuidv4(),
+    userId: userId,
+    orderId: orderId,
+    transactionType: 'earned',
+    status: pointsStatus,
+    points: pointsToAward,
+    pointsBalance: (existingPoints[0]?.availablePoints || 0) + (isCompleted ? pointsToAward : 0),
+    description: `Points earned from order ${orderId}`,
+    orderAmount: orderAmount.toString(),
+    discountAmount: null,
+    expiresAt: null,
+    isExpired: false,
+    processedBy: null,
+    metadata: null,
+    createdAt: new Date()
+  });
+  console.log('Created history record');
+
+  console.log(`Successfully awarded ${pointsToAward} ${pointsStatus} points to user ${userId}`);
+}
+
+// Helper function to redeem loyalty points
+async function redeemLoyaltyPoints(userId: string, orderId: string, pointsToRedeem: number, discountAmount: number, description?: string) {
+  console.log('=== REDEEM POINTS FUNCTION ===');
+  console.log('Parameters:', { userId, orderId, pointsToRedeem, discountAmount, description });
+
+  // Check if loyalty is enabled
+  const loyaltyEnabled = await db
+    .select()
+    .from(settings)
+    .where(eq(settings.key, 'loyalty_enabled'))
+    .limit(1);
+
+  if (loyaltyEnabled.length === 0 || loyaltyEnabled[0]?.value !== 'true') {
+    console.log('Loyalty system is disabled');
+    throw new Error('Loyalty points system is disabled');
+  }
+
+  // Get user's available points
+  const userPoints = await db
+    .select()
+    .from(userLoyaltyPoints)
+    .where(eq(userLoyaltyPoints.userId, userId))
+    .limit(1);
+
+  if (userPoints.length === 0 || (userPoints[0]?.availablePoints || 0) < pointsToRedeem) {
+    console.log(`Insufficient points. Available: ${userPoints[0]?.availablePoints || 0}, Requested: ${pointsToRedeem}`);
+    throw new Error('Insufficient points available');
+  }
+
+  // Get redemption settings
+  const redemptionMinimumSetting = await db
+    .select()
+    .from(settings)
+    .where(eq(settings.key, 'points_redemption_minimum'))
+    .limit(1);
+
+  const redemptionMinimum = Number(redemptionMinimumSetting[0]?.value || '100');
+
+  if (pointsToRedeem < redemptionMinimum) {
+    console.log(`Points below minimum. Required: ${redemptionMinimum}, Provided: ${pointsToRedeem}`);
+    throw new Error(`Minimum ${redemptionMinimum} points required for redemption`);
+  }
+
+  const newBalance = (userPoints[0]?.availablePoints || 0) - pointsToRedeem;
+
+  // Update user points
+  await db.update(userLoyaltyPoints)
+    .set({
+      totalPointsRedeemed: (userPoints[0]?.totalPointsRedeemed || 0) + pointsToRedeem,
+      availablePoints: newBalance,
+      lastRedeemedAt: new Date(),
+      updatedAt: new Date()
+    })
+    .where(eq(userLoyaltyPoints.userId, userId));
+
+  // Add history record
+  await db.insert(loyaltyPointsHistory).values({
+    id: uuidv4(),
+    userId,
+    orderId,
+    transactionType: 'redeemed',
+    status: 'redeemed',
+    points: -pointsToRedeem, // negative for redeemed
+    pointsBalance: newBalance,
+    description: description || `Redeemed at checkout`,
+    orderAmount: null,
+    discountAmount: discountAmount.toString(),
+    expiresAt: null,
+    isExpired: false,
+    processedBy: null,
+    metadata: {
+      pointsToRedeem,
+      discountAmount
+    },
+    createdAt: new Date()
+  });
+
+  console.log(`Successfully redeemed ${pointsToRedeem} points for user ${userId}. New balance: ${newBalance}`);
 } 

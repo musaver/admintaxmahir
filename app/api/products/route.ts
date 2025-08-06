@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { products, categories, subcategories, productVariants, productAddons } from '@/lib/schema';
+import { products, categories, subcategories, productVariants, productAddons, productTags, tags } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 
 export async function GET() {
   try {
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
       categoryId, 
       subcategoryId, 
       tags, 
+      selectedTags, // New tag system
       weight, 
       dimensions, 
       isFeatured, 
@@ -61,7 +63,13 @@ export async function POST(req: NextRequest) {
       // Weight-based stock management fields
       stockManagementType,
       pricePerUnit,
-      baseWeightUnit
+      baseWeightUnit,
+      // Cannabis-specific fields
+      thc,
+      cbd,
+      difficulty,
+      floweringTime,
+      yieldAmount
     } = await req.json();
     
     // Validate required fields
@@ -117,6 +125,12 @@ export async function POST(req: NextRequest) {
       stockManagementType: stockManagementType || 'quantity',
       pricePerUnit: pricePerUnit ? pricePerUnit.toString() : null,
       baseWeightUnit: baseWeightUnit || 'grams',
+      // Cannabis-specific fields
+      thc: thc ? thc.toString() : null,
+      cbd: cbd ? cbd.toString() : null,
+      difficulty: difficulty || null,
+      floweringTime: floweringTime || null,
+      yieldAmount: yieldAmount || null,
     };
     
     // Start transaction for product and variants
@@ -158,6 +172,61 @@ export async function POST(req: NextRequest) {
       }));
       
       await db.insert(productAddons).values(addonData);
+    }
+    
+    // Handle product tags (new tag system)
+    if (selectedTags && selectedTags.length > 0) {
+      const tagAssignments = [];
+      
+      for (let i = 0; i < selectedTags.length; i++) {
+        const selectedTag = selectedTags[i];
+        let tagId = selectedTag.tagId;
+        
+        // If this is a custom tag (has customValue and temporary ID), create the tag first
+        if (selectedTag.customValue && selectedTag.tagId.startsWith('custom_')) {
+          // Check if a tag with this custom value already exists in the group
+          const existingTag = await db.query.tags.findFirst({
+            where: (tags, { and, eq }) => and(
+              eq(tags.groupId, selectedTag.groupId),
+              eq(tags.name, selectedTag.customValue)
+            ),
+          });
+          
+          if (existingTag) {
+            tagId = existingTag.id;
+          } else {
+            // Create new custom tag
+            const newTagId = nanoid();
+            const slug = selectedTag.customValue.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').trim('-');
+            
+            await db.insert(tags).values({
+              id: newTagId,
+              name: selectedTag.customValue,
+              slug: slug,
+              groupId: selectedTag.groupId,
+              isCustom: true,
+              customValue: selectedTag.customValue,
+              isActive: true,
+              sortOrder: 0,
+            });
+            
+            tagId = newTagId;
+          }
+        }
+        
+        // Create product tag assignment
+        tagAssignments.push({
+          id: nanoid(),
+          productId: newProduct.id,
+          tagId: tagId,
+          customValue: selectedTag.customValue || null,
+          sortOrder: i,
+        });
+      }
+      
+      if (tagAssignments.length > 0) {
+        await db.insert(productTags).values(tagAssignments);
+      }
     }
     
     return NextResponse.json(newProduct, { status: 201 });

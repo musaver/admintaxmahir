@@ -15,7 +15,7 @@ import {
 
 interface Column {
   key: string;
-  title: string;
+  title: string | React.ReactNode;
   render?: (value: any, item: any) => React.ReactNode;
   className?: string;
   mobileHidden?: boolean; // Hide on mobile

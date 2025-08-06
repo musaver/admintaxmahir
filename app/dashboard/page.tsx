@@ -406,7 +406,7 @@ export default function Dashboard() {
       </div>
 
       {/* Financial Dashboard Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 hidden">
         <FinancialCard
           title="Revenue"
           value={loading ? <Skeleton className="h-9 w-24" /> : (

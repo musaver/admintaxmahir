@@ -6,11 +6,17 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Define available currencies (server-side copy)
 const AVAILABLE_CURRENCIES = {
+  'USD': { 
+    name: 'US Dollar', 
+    symbol: '$', // Standard dollar symbol
+    code: 'USD',
+    position: 'before' // before or after the amount
+  },
   'AED': { 
     name: 'Dirham', 
     symbol: '&#xe001;', // Custom font character
     code: 'AED',
-    position: 'before' // before or after the amount
+    position: 'before'
   },
   'PKR': { 
     name: 'Rs (Rupees)', 
@@ -23,7 +29,7 @@ const AVAILABLE_CURRENCIES = {
 type CurrencyCode = keyof typeof AVAILABLE_CURRENCIES;
 
 // Default currency
-const DEFAULT_CURRENCY: CurrencyCode = 'AED';
+const DEFAULT_CURRENCY: CurrencyCode = 'USD';
 const CURRENCY_SETTING_KEY = 'selected_currency';
 
 // Get currency setting from database

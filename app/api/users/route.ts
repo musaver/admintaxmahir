@@ -1,13 +1,46 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { user } from '@/lib/schema';
+import { user, userLoyaltyPoints } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
+import { ne, or, isNull, eq } from 'drizzle-orm';
 
 export async function GET() {
   try {
-    const allUsers = await db.select().from(user);
-    return NextResponse.json(allUsers);
+    // Only fetch users that are not drivers (customer type or null for existing users)
+    const allUsers = await db
+      .select({
+        user: user,
+        loyaltyPoints: userLoyaltyPoints
+      })
+      .from(user)
+      .leftJoin(userLoyaltyPoints, eq(user.id, userLoyaltyPoints.userId))
+      .where(
+        or(
+          ne(user.userType, 'driver'),
+          isNull(user.userType)
+        )
+      );
+
+    // Transform the data to match the expected format
+            const usersWithPoints = allUsers.map(record => ({
+          ...record.user,
+          loyaltyPoints: record.loyaltyPoints ? {
+            availablePoints: record.loyaltyPoints.availablePoints,
+            pendingPoints: record.loyaltyPoints.pendingPoints,
+            totalPointsEarned: record.loyaltyPoints.totalPointsEarned,
+            totalPointsRedeemed: record.loyaltyPoints.totalPointsRedeemed,
+            pointsExpiringSoon: record.loyaltyPoints.pointsExpiringSoon
+          } : {
+            availablePoints: 0,
+            pendingPoints: 0,
+            totalPointsEarned: 0,
+            totalPointsRedeemed: 0,
+            pointsExpiringSoon: 0
+          }
+        }));
+
+    return NextResponse.json(usersWithPoints);
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
@@ -26,7 +59,9 @@ export async function POST(request: Request) {
       name,
       email,
       password: hashedPassword,
-      role: 'user',
+      userType: 'customer', // Set as customer by default
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
     
     await db.insert(user).values(newUser);

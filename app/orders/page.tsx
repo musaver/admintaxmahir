@@ -79,6 +79,22 @@ interface Order {
     name?: string;
     email: string;
   };
+  // Driver assignment fields
+  assignedDriverId?: string;
+  deliveryStatus?: string;
+  assignedDriver?: {
+    id: string;
+    user: {
+      name?: string;
+      phone?: string;
+    };
+    driver: {
+      licenseNumber: string;
+      vehicleType: string;
+      vehiclePlateNumber: string;
+      status: string;
+    };
+  };
 }
 
 export default function OrdersList() {
@@ -89,6 +105,8 @@ export default function OrdersList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
   const [dateRange, setDateRange] = useState({
     startDate: '',
     endDate: ''
@@ -155,8 +173,8 @@ export default function OrdersList() {
       filtered = filtered.filter(order =>
         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.shippingFirstName && order.shippingFirstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (order.shippingLastName && order.shippingLastName.toLowerCase().includes(searchTerm.toLowerCase()))
+        (order.shippingFirstName ? order.shippingFirstName.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+        (order.shippingLastName ? order.shippingLastName.toLowerCase().includes(searchTerm.toLowerCase()) : false)
       );
     }
 
@@ -190,6 +208,105 @@ export default function OrdersList() {
         }
       } catch (error) {
         console.error('Error deleting order:', error);
+      }
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (confirm('Are you sure you want to delete ALL orders? This action cannot be undone and will also delete all related data including order items, stock movements, and loyalty points history.')) {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/orders/delete-all', { method: 'DELETE' });
+        if (res.ok) {
+          setOrders([]);
+          setFilteredOrders([]);
+          setSelectedOrders(new Set());
+          setSelectAll(false);
+          alert('All orders have been deleted successfully.');
+        } else {
+          const errorData = await res.json();
+          alert(`Failed to delete orders: ${errorData.error}`);
+        }
+      } catch (error) {
+        console.error('Error deleting all orders:', error);
+        alert('Error deleting all orders. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedOrders(new Set(filteredOrders.map(order => order.id)));
+    } else {
+      setSelectedOrders(new Set());
+    }
+  };
+
+  const handleSelectOrder = (orderId: string, checked: boolean) => {
+    const newSelected = new Set(selectedOrders);
+    if (checked) {
+      newSelected.add(orderId);
+    } else {
+      newSelected.delete(orderId);
+    }
+    setSelectedOrders(newSelected);
+    setSelectAll(newSelected.size === filteredOrders.length && filteredOrders.length > 0);
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedOrders.size === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${selectedOrders.size} selected order(s)? This action cannot be undone.`)) {
+      try {
+        setLoading(true);
+        const deletePromises = Array.from(selectedOrders).map(orderId =>
+          fetch(`/api/orders/${orderId}`, { method: 'DELETE' })
+        );
+        
+        const results = await Promise.all(deletePromises);
+        const failedDeletes = results.filter(res => !res.ok);
+        
+        if (failedDeletes.length === 0) {
+          // Remove deleted orders from state
+          const remainingOrders = orders.filter(order => !selectedOrders.has(order.id));
+          setOrders(remainingOrders);
+          setFilteredOrders(remainingOrders.filter(order => {
+            // Apply current filters
+            let matches = true;
+            if (searchTerm) {
+              matches = matches && (
+                order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (order.shippingFirstName ? order.shippingFirstName.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+                (order.shippingLastName ? order.shippingLastName.toLowerCase().includes(searchTerm.toLowerCase()) : false)
+              );
+            }
+            if (statusFilter) {
+              matches = matches && order.status === statusFilter;
+            }
+            if (dateRange.startDate || dateRange.endDate) {
+              const orderDate = new Date(order.createdAt);
+              const startDate = dateRange.startDate ? new Date(dateRange.startDate) : null;
+              const endDate = dateRange.endDate ? new Date(dateRange.endDate) : null;
+              if (startDate && orderDate < startDate) matches = false;
+              if (endDate && orderDate > endDate) matches = false;
+            }
+            return matches;
+          }));
+          setSelectedOrders(new Set());
+          setSelectAll(false);
+          alert(`${selectedOrders.size} order(s) deleted successfully.`);
+        } else {
+          alert(`Failed to delete ${failedDeletes.length} order(s). Please try again.`);
+        }
+      } catch (error) {
+        console.error('Error deleting selected orders:', error);
+        alert('Error deleting selected orders. Please try again.');
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -239,6 +356,48 @@ export default function OrdersList() {
       <span className="flex items-center gap-1">
         <CurrencySymbol />{numAmount.toFixed(2)}
       </span>
+    );
+  };
+
+  const getDeliveryStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { label: 'Pending', class: 'bg-gray-100 text-gray-800' },
+      assigned: { label: 'Assigned', class: 'bg-blue-100 text-blue-800' },
+      picked_up: { label: 'Picked Up', class: 'bg-yellow-100 text-yellow-800' },
+      out_for_delivery: { label: 'Out for Delivery', class: 'bg-orange-100 text-orange-800' },
+      delivered: { label: 'Delivered', class: 'bg-green-100 text-green-800' },
+      failed: { label: 'Failed', class: 'bg-red-100 text-red-800' },
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.class}`}>
+        {config.label}
+      </span>
+    );
+  };
+
+  const renderDriverInfo = (order: Order) => {
+    if (!order.assignedDriver) {
+      return <span className="text-sm text-gray-500">No driver assigned</span>;
+    }
+
+    const driver = order.assignedDriver;
+    return (
+      <div className="text-sm">
+        <div className="font-medium text-gray-900">
+          {driver.user.name || 'N/A'}
+        </div>
+        <div className="text-gray-500">
+          {driver.driver.vehicleType} - {driver.driver.vehiclePlateNumber}
+        </div>
+        {driver.user.phone && (
+          <div className="text-gray-500">
+            📞 {driver.user.phone}
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -301,7 +460,41 @@ export default function OrdersList() {
 
   const stats = getOrderStats();
 
+  // Format date and time to "Aug 5, 2025 at 5:57 PM" format
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    };
+    return date.toLocaleDateString('en-US', options).replace(',', ' at');
+  };
+
   const columns = [
+    {
+      key: 'select',
+      title: (
+        <input
+          type="checkbox"
+          checked={selectAll}
+          onChange={(e) => handleSelectAll(e.target.checked)}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+      ),
+      width: '50px',
+      render: (_: any, order: Order) => (
+        <input
+          type="checkbox"
+          checked={selectedOrders.has(order.id)}
+          onChange={(e) => handleSelectOrder(order.id, e.target.checked)}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+      )
+    },
     {
       key: 'orderInfo',
       title: 'Order',
@@ -385,7 +578,7 @@ export default function OrdersList() {
           {formatCurrency(order.totalAmount)}
         </div>
       )
-    },
+    },/*}
     {
       key: 'profit',
       title: 'Profit/Loss',
@@ -415,7 +608,7 @@ export default function OrdersList() {
         );
       },
       mobileHidden: true
-    },
+    },*/
     {
       key: 'status',
       title: 'Status',
@@ -430,15 +623,26 @@ export default function OrdersList() {
       mobileLabel: 'Payment'
     },
     {
+      key: 'driver',
+      title: 'Assigned Driver',
+      width: '180px',
+      render: (_: any, order: Order) => renderDriverInfo(order),
+      mobileHidden: true
+    },
+    {
+      key: 'deliveryStatus',
+      title: 'Delivery Status',
+      width: '130px',
+      render: (_: any, order: Order) => getDeliveryStatusBadge(order.deliveryStatus || 'pending'),
+      mobileLabel: 'Delivery'
+    },
+    {
       key: 'createdAt',
       title: 'Date',
-      width: '120px',
+      width: '140px',
       render: (_: any, order: Order) => (
         <div className="text-sm">
-          <div>{new Date(order.createdAt).toLocaleDateString()}</div>
-          <div className="text-xs text-muted-foreground">
-            {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
+          {formatDateTime(order.createdAt)}
         </div>
       )
     }
@@ -490,6 +694,24 @@ export default function OrdersList() {
             <RefreshCwIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          <Button 
+            onClick={handleDeleteSelected} 
+            disabled={loading || selectedOrders.size === 0} 
+            variant="destructive" 
+            size="sm"
+          >
+            <TrashIcon className="h-4 w-4 mr-2" />
+            Delete Selected ({selectedOrders.size})
+          </Button>
+          <Button 
+            onClick={handleDeleteAll} 
+            disabled={loading || orders.length === 0} 
+            variant="destructive" 
+            size="sm"
+          >
+            <TrashIcon className="h-4 w-4 mr-2" />
+            Delete All
+          </Button>
           <Button asChild>
             <Link href="/orders/add">
               <PlusIcon className="h-4 w-4 mr-2" />
@@ -525,7 +747,7 @@ export default function OrdersList() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
             <TrendingUpIcon className={`h-4 w-4 ${stats.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />

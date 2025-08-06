@@ -56,6 +56,20 @@ interface ProfitReportData {
 
 export default function ProfitsReport() {
   const { currentCurrency } = useCurrency();
+
+  // Format date and time to "Aug 5, 2025 at 5:57 PM" format
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    };
+    return date.toLocaleDateString('en-US', options).replace(',', ' at');
+  };
   const [data, setData] = useState<ProfitReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -213,7 +227,12 @@ export default function ProfitsReport() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">📈 Profit & Loss Report</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+            </svg>
+            <h1 className="text-3xl font-bold text-gray-800">Profit & Loss Report</h1>
+          </div>
           <p className="text-gray-600 mt-1">Analyze profitability and margins across orders</p>
         </div>
         <div className="flex gap-3">
@@ -425,7 +444,7 @@ export default function ProfitsReport() {
                             <div>
                               <div className="font-medium text-gray-900">{order.orderNumber}</div>
                               <div className="text-sm text-gray-500">
-                                {new Date(order.createdAt).toLocaleDateString()} • {order.email}
+                                {formatDateTime(order.createdAt)} • {order.email}
                               </div>
                             </div>
                           </div>

@@ -30,7 +30,7 @@ const CurrencySymbol: React.FC<CurrencySymbolProps> = ({
         className={`currency-symbol ${className}`.trim()}
         style={style}
       >
-        &#xe001; {/* Fallback to Dirham while loading */}
+        $ {/* Fallback to USD while loading */}
       </span>
     );
   }

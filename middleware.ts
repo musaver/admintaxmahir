@@ -9,6 +9,9 @@ export async function middleware(request: NextRequest) {
   // Skip middleware for API routes, static files, and NextAuth routes
   if (
     pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/test') ||
+    pathname.startsWith('/api/debug') ||
+    pathname.startsWith('/api/loyalty') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon.ico') ||
     pathname.endsWith('.svg') ||

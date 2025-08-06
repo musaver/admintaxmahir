@@ -104,6 +104,22 @@ export default function AddOrder() {
   const [error, setError] = useState('');
   const [stockManagementEnabled, setStockManagementEnabled] = useState(true);
   
+  // Loyalty points state
+  const [loyaltySettings, setLoyaltySettings] = useState({
+    enabled: false,
+    earningRate: 1,
+    earningBasis: 'subtotal',
+    redemptionValue: 0.01,
+    maxRedemptionPercent: 50,
+    redemptionMinimum: 100,
+    minimumOrder: 0
+  });
+  const [customerPoints, setCustomerPoints] = useState({
+    availablePoints: 0,
+    totalPointsEarned: 0,
+    totalPointsRedeemed: 0
+  });
+  
   // Order form data
   const [orderData, setOrderData] = useState({
     customerId: '',
@@ -113,10 +129,18 @@ export default function AddOrder() {
     paymentStatus: 'pending',
     notes: '',
     shippingAmount: 0,
-    taxRate: 10, // 10%
+    taxRate: 0, // 10%
     discountAmount: 0,
     discountType: 'amount', // 'amount' or 'percentage'
-    currency: currentCurrency
+    currency: currentCurrency,
+    // Driver assignment fields
+    assignedDriverId: '',
+    deliveryStatus: 'pending',
+    assignmentType: 'manual',
+    // Loyalty points fields
+    pointsToRedeem: 0,
+    pointsDiscountAmount: 0,
+    useAllPoints: false
   });
 
   // Customer/shipping information
@@ -155,6 +179,9 @@ export default function AddOrder() {
   // Group product addon selection
   const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
 
+  // Driver selection
+  const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -166,15 +193,19 @@ export default function AddOrder() {
 
   const fetchInitialData = async () => {
     try {
-      const [productsRes, customersRes, stockSettingRes] = await Promise.all([
+      const [productsRes, customersRes, stockSettingRes, driversRes, loyaltyRes] = await Promise.all([
         fetch('/api/products'),
         fetch('/api/users'),
-        fetch('/api/settings/stock-management')
+        fetch('/api/settings/stock-management'),
+        fetch('/api/drivers/available?includeAll=true'),
+        fetch('/api/settings/loyalty')
       ]);
 
       const productsData = await productsRes.json();
       const customersData = await customersRes.json();
       const stockData = await stockSettingRes.json();
+      const driversData = await driversRes.json();
+      const loyaltyData = await loyaltyRes.json();
 
       // Process products to include variants
       const processedProducts = await Promise.all(
@@ -211,6 +242,25 @@ export default function AddOrder() {
       setProducts(processedProducts);
       setCustomers(customersData);
       setStockManagementEnabled(stockData.stockManagementEnabled || true);
+      setAvailableDrivers(driversData.drivers || []);
+      
+      // Set loyalty settings
+      console.log('Loyalty API response:', loyaltyData);
+      if (loyaltyData.success) {
+        const newSettings = {
+          enabled: loyaltyData.settings.loyalty_enabled?.value === 'true' || loyaltyData.settings.loyalty_enabled?.value === true,
+          earningRate: Number(loyaltyData.settings.points_earning_rate?.value) || 1,
+          earningBasis: loyaltyData.settings.points_earning_basis?.value || 'subtotal',
+          redemptionValue: Number(loyaltyData.settings.points_redemption_value?.value) || 0.01,
+          maxRedemptionPercent: Number(loyaltyData.settings.points_max_redemption_percent?.value) || 50,
+          redemptionMinimum: Number(loyaltyData.settings.points_redemption_minimum?.value) || 100,
+          minimumOrder: Number(loyaltyData.settings.points_minimum_order?.value) || 0
+        };
+        console.log('Setting loyalty settings:', newSettings);
+        setLoyaltySettings(newSettings);
+      } else {
+        console.log('Loyalty settings fetch failed:', loyaltyData);
+      }
     } catch (err) {
       console.error('Error fetching initial data:', err);
       setError('Failed to load initial data');
@@ -272,10 +322,35 @@ export default function AddOrder() {
           billingPostalCode: customer.postalCode || '',
           billingCountry: customer.country || 'US'
         }));
+        
+        // Fetch customer loyalty points if loyalty is enabled
+        if (loyaltySettings.enabled) {
+          fetchCustomerPoints(customerId);
+        }
       }
     } else {
       setCustomerInfo(prev => ({ ...prev, isGuest: true }));
-      setOrderData(prev => ({ ...prev, email: '', phone: '' }));
+      setOrderData(prev => ({ ...prev, email: '', phone: '', pointsToRedeem: 0, pointsDiscountAmount: 0, useAllPoints: false }));
+      setCustomerPoints({ availablePoints: 0, totalPointsEarned: 0, totalPointsRedeemed: 0 });
+    }
+  };
+
+  // Fetch customer loyalty points (simplified)
+  const fetchCustomerPoints = async (customerId: string) => {
+    try {
+      const response = await fetch(`/api/loyalty/points-simple?userId=${customerId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setCustomerPoints({
+            availablePoints: data.points.availablePoints || 0,
+            totalPointsEarned: data.points.totalPointsEarned || 0,
+            totalPointsRedeemed: data.points.totalPointsRedeemed || 0
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching customer points:', err);
     }
   };
 
@@ -288,6 +363,50 @@ export default function AddOrder() {
     }
     // If stored per gram or undefined, use as is
     return pricePerUnit;
+  };
+
+  // Driver assignment functions
+  const handleDriverAssignmentTypeChange = (type: 'manual' | 'automatic') => {
+    setOrderData(prev => ({
+      ...prev,
+      assignmentType: type,
+      assignedDriverId: type === 'automatic' ? '' : prev.assignedDriverId
+    }));
+  };
+
+  const handleAssignDriver = async (orderId: string) => {
+    if (!orderId) return;
+
+    try {
+      const response = await fetch('/api/drivers/assignments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId,
+          driverId: orderData.assignmentType === 'manual' ? orderData.assignedDriverId : null,
+          assignedBy: 'admin', // This should be the current admin user ID
+          assignmentType: orderData.assignmentType,
+          priority: 'normal'
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('Driver assigned successfully:', data);
+        return data;
+      } else {
+        console.warn('Failed to assign driver:', data.error || 'Unknown error');
+        // Don't throw error - just log warning and continue
+        return null;
+      }
+    } catch (error) {
+      console.warn('Error in driver assignment request:', error);
+      // Don't throw error - just log and continue
+      return null;
+    }
   };
 
   const handleAddProduct = () => {
@@ -425,6 +544,92 @@ export default function AddOrder() {
     return addon.addonTitle || addon.title || addon.name || `Addon ${index + 1}`;
   };
 
+  // Points redemption functions
+  const handlePointsRedemption = (pointsToRedeem: number) => {
+    if (pointsToRedeem < 0) pointsToRedeem = 0;
+    if (pointsToRedeem > customerPoints.availablePoints) {
+      pointsToRedeem = customerPoints.availablePoints;
+    }
+
+    // Calculate discount amount based on points
+    const discountAmount = pointsToRedeem * loyaltySettings.redemptionValue;
+    
+    // Get current totals to check max redemption limit
+    const currentTotals = calculateTotals();
+    const maxAllowedDiscount = (currentTotals.subtotal - currentTotals.discountAmount) * (loyaltySettings.maxRedemptionPercent / 100);
+    
+    const finalDiscountAmount = Math.min(discountAmount, maxAllowedDiscount);
+    const finalPointsToRedeem = Math.floor(finalDiscountAmount / loyaltySettings.redemptionValue);
+
+    setOrderData(prev => ({
+      ...prev,
+      pointsToRedeem: finalPointsToRedeem,
+      pointsDiscountAmount: finalDiscountAmount,
+      useAllPoints: false
+    }));
+  };
+
+  const handleUseAllPoints = () => {
+    if (orderData.useAllPoints) {
+      // Turn off - clear points
+      setOrderData(prev => ({
+        ...prev,
+        pointsToRedeem: 0,
+        pointsDiscountAmount: 0,
+        useAllPoints: false
+      }));
+    } else {
+      // Turn on - use maximum allowed points
+      const currentTotals = calculateTotals();
+      const maxAllowedDiscount = (currentTotals.subtotal - currentTotals.discountAmount) * (loyaltySettings.maxRedemptionPercent / 100);
+      const maxPointsDiscount = customerPoints.availablePoints * loyaltySettings.redemptionValue;
+      
+      const finalDiscountAmount = Math.min(maxAllowedDiscount, maxPointsDiscount);
+      const finalPointsToRedeem = Math.floor(finalDiscountAmount / loyaltySettings.redemptionValue);
+
+      setOrderData(prev => ({
+        ...prev,
+        pointsToRedeem: finalPointsToRedeem,
+        pointsDiscountAmount: finalDiscountAmount,
+        useAllPoints: true
+      }));
+    }
+  };
+
+  const calculatePointsToEarn = () => {
+    console.log('calculatePointsToEarn called:', {
+      loyaltyEnabled: loyaltySettings.enabled,
+      customerId: orderData.customerId,
+      loyaltySettings,
+      orderData: { customerId: orderData.customerId, status: orderData.status }
+    });
+
+    if (!loyaltySettings.enabled) {
+      console.log('Points calculation skipped - loyalty disabled');
+      return 0;
+    }
+    
+    const totals = calculateTotals();
+    const baseAmount = loyaltySettings.earningBasis === 'total' ? totals.totalAmount : totals.subtotal;
+    
+    console.log('Points calculation:', {
+      totals,
+      baseAmount,
+      earningBasis: loyaltySettings.earningBasis,
+      earningRate: loyaltySettings.earningRate,
+      minimumOrder: loyaltySettings.minimumOrder
+    });
+    
+    if (baseAmount < loyaltySettings.minimumOrder) {
+      console.log('Points calculation skipped - below minimum order amount');
+      return 0;
+    }
+    
+    const points = Math.floor(baseAmount * loyaltySettings.earningRate);
+    console.log('Points to earn:', points);
+    return points;
+  };
+
   const calculateTotals = () => {
     const subtotal = orderItems.reduce((sum, item) => {
       let itemTotal = item.price * item.quantity;
@@ -444,14 +649,21 @@ export default function AddOrder() {
       ? subtotal * (orderData.discountAmount / 100)
       : orderData.discountAmount;
     const discountedSubtotal = subtotal - discountAmount;
-    const taxAmount = discountedSubtotal * (orderData.taxRate / 100);
-    const totalAmount = discountedSubtotal + taxAmount + orderData.shippingAmount;
+    
+    // Apply points discount
+    const pointsDiscountAmount = orderData.pointsDiscountAmount || 0;
+    const afterPointsDiscount = Math.max(0, discountedSubtotal - pointsDiscountAmount);
+    
+    const taxAmount = afterPointsDiscount * (orderData.taxRate / 100);
+    const totalAmount = afterPointsDiscount + taxAmount + orderData.shippingAmount;
 
     return {
       subtotal,
       discountAmount,
+      pointsDiscountAmount,
       taxAmount,
-      totalAmount
+      totalAmount,
+      afterPointsDiscount
     };
   };
 
@@ -489,6 +701,14 @@ export default function AddOrder() {
         currency: orderData.currency,
         notes: orderData.notes,
         
+        // Driver assignment fields
+        assignedDriverId: orderData.assignedDriverId || null,
+        deliveryStatus: orderData.deliveryStatus,
+        
+        // Loyalty points fields
+        pointsToRedeem: orderData.pointsToRedeem,
+        pointsDiscountAmount: orderData.pointsDiscountAmount,
+        
         // Billing address
         billingFirstName: customerInfo.billingFirstName,
         billingLastName: customerInfo.billingLastName,
@@ -522,6 +742,45 @@ export default function AddOrder() {
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to create order');
+      }
+
+      const orderResponse = await response.json();
+      const orderId = orderResponse.orderId;
+
+      // Create driver assignment record if driver is assigned
+      if (orderData.assignedDriverId && orderData.assignmentType === 'manual') {
+        try {
+          await handleAssignDriver(orderId);
+        } catch (driverError) {
+          console.warn('Order created but driver assignment failed:', driverError);
+          // Don't fail the order creation if driver assignment fails
+          // The order is still created successfully, just without driver assignment
+        }
+      }
+
+      // Redeem loyalty points if any were used
+      if (orderData.pointsToRedeem > 0 && orderData.customerId) {
+        try {
+          const pointsResponse = await fetch('/api/loyalty/points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'redeem_points',
+              userId: orderData.customerId,
+              orderId: orderId,
+              pointsToRedeem: orderData.pointsToRedeem,
+              discountAmount: orderData.pointsDiscountAmount,
+              description: `Redeemed at checkout for order #${orderResponse.orderNumber || orderId}`
+            })
+          });
+          
+          if (!pointsResponse.ok) {
+            console.warn('Order created but points redemption failed:', await pointsResponse.text());
+          }
+        } catch (pointsError) {
+          console.warn('Order created but points redemption failed:', pointsError);
+          // Don't fail the order creation if points redemption fails
+        }
       }
 
       router.push('/orders');
@@ -644,6 +903,103 @@ export default function AddOrder() {
               </div>
             </div>
           </div>
+
+          {/* Loyalty Points Redemption */}
+          {loyaltySettings.enabled && orderData.customerId && customerPoints.availablePoints > 0 && (
+            <div className="bg-white border rounded-lg p-6">
+              <h3 className="text-lg font-semibold mb-4">🎁 Loyalty Points</h3>
+              
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-purple-800">Available Points:</span>
+                  <span className="text-lg font-bold text-purple-600">{customerPoints.availablePoints}</span>
+                </div>
+                <div className="text-xs text-purple-600">
+                  Worth up to <CurrencySymbol />{(customerPoints.availablePoints * loyaltySettings.redemptionValue).toFixed(2)} discount
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {/* Use All Points Toggle */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Use All Available Points</label>
+                    <p className="text-xs text-gray-500">
+                      Apply maximum discount (up to {loyaltySettings.maxRedemptionPercent}% of order)
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleUseAllPoints}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                      orderData.useAllPoints ? 'bg-purple-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        orderData.useAllPoints ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Manual Points Input */}
+                {!orderData.useAllPoints && (
+                  <div>
+                    <label className="block text-gray-700 mb-2">Points to Redeem</label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max={customerPoints.availablePoints}
+                        value={orderData.pointsToRedeem}
+                        onChange={(e) => handlePointsRedemption(parseInt(e.target.value) || 0)}
+                        className="flex-1 p-2 border rounded focus:border-purple-500 focus:outline-none"
+                        placeholder={`Min: ${loyaltySettings.redemptionMinimum}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handlePointsRedemption(customerPoints.availablePoints)}
+                        className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                      >
+                        Max
+                      </button>
+                    </div>
+                    {orderData.pointsToRedeem > 0 && (
+                      <div className="mt-2 text-sm text-green-600">
+                        Discount: <CurrencySymbol />{orderData.pointsDiscountAmount.toFixed(2)}
+                      </div>
+                    )}
+                    {orderData.pointsToRedeem > 0 && orderData.pointsToRedeem < loyaltySettings.redemptionMinimum && (
+                      <div className="mt-2 text-sm text-red-600">
+                        Minimum {loyaltySettings.redemptionMinimum} points required for redemption
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Points Summary */}
+                {orderData.pointsToRedeem > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="text-sm text-green-800">
+                      <div className="flex justify-between">
+                        <span>Points to redeem:</span>
+                        <span className="font-medium">{orderData.pointsToRedeem}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Discount amount:</span>
+                        <span className="font-medium"><CurrencySymbol />{orderData.pointsDiscountAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-green-600 mt-1">
+                        <span>Remaining points:</span>
+                        <span>{customerPoints.availablePoints - orderData.pointsToRedeem}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Billing Address */}
           <div className="bg-white border rounded-lg p-6">
@@ -1138,6 +1494,86 @@ export default function AddOrder() {
               />
             </div>
           </div>
+
+          {/* Driver Assignment */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">🚚 Driver Assignment</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-700 mb-2">Assignment Type</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="assignmentType"
+                      value="manual"
+                      checked={orderData.assignmentType === 'manual'}
+                      onChange={(e) => handleDriverAssignmentTypeChange(e.target.value as 'manual')}
+                      className="mr-2"
+                    />
+                    Manual Assignment
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="assignmentType"
+                      value="automatic"
+                      checked={orderData.assignmentType === 'automatic'}
+                      onChange={(e) => handleDriverAssignmentTypeChange(e.target.value as 'automatic')}
+                      className="mr-2"
+                    />
+                    Automatic (Nearest Driver)
+                  </label>
+                </div>
+              </div>
+
+              {orderData.assignmentType === 'manual' && (
+                <div>
+                  <label className="block text-gray-700 mb-2">Select Driver</label>
+                  <select
+                    value={orderData.assignedDriverId}
+                    onChange={(e) => setOrderData({...orderData, assignedDriverId: e.target.value})}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="">-- Select a driver --</option>
+                    {availableDrivers.map((driverData) => (
+                      <option key={driverData.driver.id} value={driverData.driver.id}>
+                        {driverData.user.name} - {driverData.driver.vehicleType} ({driverData.driver.vehiclePlateNumber}) - {driverData.driver.status}
+                      </option>
+                    ))}
+                  </select>
+                  {availableDrivers.length === 0 && (
+                    <p className="text-sm text-gray-500 mt-1">No drivers available</p>
+                  )}
+                </div>
+              )}
+
+              {orderData.assignmentType === 'automatic' && (
+                <div className="bg-blue-50 p-3 rounded">
+                  <p className="text-sm text-blue-700">
+                    📍 The system will automatically assign the nearest available driver based on the delivery address.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-gray-700 mb-2">Delivery Status</label>
+                <select
+                  value={orderData.deliveryStatus}
+                  onChange={(e) => setOrderData({...orderData, deliveryStatus: e.target.value})}
+                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="assigned">Assigned</option>
+                  <option value="picked_up">Picked Up</option>
+                  <option value="out_for_delivery">Out for Delivery</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Order Summary - Right Side */}
@@ -1158,6 +1594,13 @@ export default function AddOrder() {
                 </div>
               )}
               
+              {totals.pointsDiscountAmount > 0 && (
+                <div className="flex justify-between text-purple-600">
+                  <span>Points Discount ({orderData.pointsToRedeem} pts):</span>
+                  <span className="flex items-center gap-1">-<CurrencySymbol />{totals.pointsDiscountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              
               <div className="flex justify-between">
                 <span>Tax ({orderData.taxRate}%):</span>
                 <span className="flex items-center gap-1"><CurrencySymbol />{totals.taxAmount.toFixed(2)}</span>
@@ -1174,6 +1617,39 @@ export default function AddOrder() {
                   <span className="flex items-center gap-1"><CurrencySymbol />{totals.totalAmount.toFixed(2)}</span>
                 </div>
               </div>
+
+              {/* Points Preview */}
+              {loyaltySettings.enabled && (
+                <div className="border-t pt-3">
+                  <div className="bg-purple-50 p-3 rounded-lg">
+                    <div className="text-sm font-medium text-purple-800 mb-1">🎁 Loyalty Points</div>
+                    <div className="text-sm text-purple-700">
+                      {orderData.customerId ? (
+                        <>Customer will earn: <strong>{calculatePointsToEarn()} points</strong></>
+                      ) : (
+                        <>This order will earn: <strong>{calculatePointsToEarn()} points</strong> (requires customer)</>
+                      )}
+                      {calculatePointsToEarn() === 0 && loyaltySettings.minimumOrder > 0 && (
+                        <div className="text-xs text-purple-600 mt-1">
+                          (Minimum order: <CurrencySymbol />{loyaltySettings.minimumOrder})
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-purple-600 mt-2">
+                      {orderData.status === 'completed' ? (
+                        <span className="text-green-600">✅ Points will be available immediately</span>
+                      ) : (
+                        <span className="text-yellow-600">⏳ Points will be pending until completed</span>
+                      )}
+                    </div>
+                    {!orderData.customerId && (
+                      <div className="text-xs text-orange-600 mt-1">
+                        ⚠️ Select a customer above to award points for this order
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-6 space-y-3">
                 <div className="text-sm text-gray-600">

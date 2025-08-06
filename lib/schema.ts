@@ -29,6 +29,7 @@ export const user = mysqlTable('user', {
   address: varchar("address", { length: 255 }),
   state: varchar("state", { length: 100 }),
   postalCode: varchar("postal_code", { length: 20 }),
+  userType: varchar("user_type", { length: 20 }).default("customer"), // customer, driver, admin
   newsletter: boolean("newsletter").default(false),
   dateOfBirth: datetime("date_of_birth"),
   otp: varchar("otp", { length: 6 }),
@@ -144,6 +145,13 @@ export const products = mysqlTable("products", {
   stockManagementType: varchar("stock_management_type", { length: 20 }).default("quantity"), // 'quantity' or 'weight'
   pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }), // Price per gram for weight-based products
   baseWeightUnit: varchar("base_weight_unit", { length: 10 }).default("grams"), // 'grams' or 'kg'
+  
+  // Cannabis-specific fields
+  thc: decimal("thc", { precision: 5, scale: 2 }), // THC percentage (0.00 - 100.00)
+  cbd: decimal("cbd", { precision: 5, scale: 2 }), // CBD percentage (0.00 - 100.00)
+  difficulty: varchar("difficulty", { length: 50 }), // Growing difficulty level
+  floweringTime: varchar("flowering_time", { length: 100 }), // Time to flower
+  yieldAmount: varchar("yield_amount", { length: 100 }), // Expected yield
   
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
@@ -308,6 +316,7 @@ export const orders = mysqlTable("orders", {
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 3 }).default("USD"),
   
+  deliveryTime: varchar("delivery_time", { length: 255 }),
   // Billing Address
   billingFirstName: varchar("billing_first_name", { length: 100 }),
   billingLastName: varchar("billing_last_name", { length: 100 }),
@@ -336,6 +345,14 @@ export const orders = mysqlTable("orders", {
   // Service scheduling fields
   serviceDate: varchar("service_date", { length: 10 }), // YYYY-MM-DD format
   serviceTime: varchar("service_time", { length: 8 }), // HH:MM format
+  
+  // Driver assignment fields
+  assignedDriverId: varchar("assigned_driver_id", { length: 255 }), // Current assigned driver
+  deliveryStatus: varchar("delivery_status", { length: 30 }).default("pending"), // pending, assigned, picked_up, out_for_delivery, delivered, failed
+  
+  // Loyalty points fields
+  pointsToRedeem: int("points_to_redeem").default(0), // Points redeemed for this order
+  pointsDiscountAmount: decimal("points_discount_amount", { precision: 10, scale: 2 }).default('0.00'), // Discount amount from points
   
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
@@ -457,6 +474,89 @@ export const adminLogs = mysqlTable("admin_logs", {
   createdAt: datetime("createdAt").default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Drivers (extends users with driver-specific fields)
+export const drivers = mysqlTable("drivers", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull().unique(), // Reference to user table
+  licenseNumber: varchar("license_number", { length: 100 }).unique(),
+  vehicleType: varchar("vehicle_type", { length: 100 }), // car, motorcycle, truck, van
+  vehicleMake: varchar("vehicle_make", { length: 100 }),
+  vehicleModel: varchar("vehicle_model", { length: 100 }),
+  vehicleYear: int("vehicle_year"),
+  vehiclePlateNumber: varchar("vehicle_plate_number", { length: 50 }),
+  vehicleColor: varchar("vehicle_color", { length: 50 }),
+  
+  // Location fields
+  baseLocation: varchar("base_location", { length: 255 }), // Fixed base location address
+  baseLatitude: decimal("base_latitude", { precision: 10, scale: 8 }), // GPS coordinates
+  baseLongitude: decimal("base_longitude", { precision: 11, scale: 8 }),
+  currentLatitude: decimal("current_latitude", { precision: 10, scale: 8 }), // Current location
+  currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),
+  
+  // Status and availability
+  status: varchar("status", { length: 20 }).default("offline"), // available, busy, offline
+  isActive: boolean("is_active").default(true),
+  maxDeliveryRadius: int("max_delivery_radius").default(50), // in kilometers
+  
+  // Additional info
+  emergencyContact: varchar("emergency_contact", { length: 20 }),
+  emergencyContactName: varchar("emergency_contact_name", { length: 255 }),
+  dateOfJoining: datetime("date_of_joining").default(sql`CURRENT_TIMESTAMP`),
+  
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Driver Assignments (tracks which driver is assigned to which order)
+export const driverAssignments = mysqlTable("driver_assignments", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  orderId: varchar("order_id", { length: 255 }).notNull(),
+  driverId: varchar("driver_id", { length: 255 }).notNull(),
+  assignedBy: varchar("assigned_by", { length: 255 }).notNull(), // Admin user who assigned
+  assignedAt: datetime("assigned_at").default(sql`CURRENT_TIMESTAMP`),
+  
+  // Assignment details
+  assignmentType: varchar("assignment_type", { length: 20 }).default("manual"), // manual, automatic
+  estimatedDistance: decimal("estimated_distance", { precision: 8, scale: 2 }), // in kilometers
+  estimatedDuration: int("estimated_duration"), // in minutes
+  priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
+  
+  // Delivery status tracking
+  deliveryStatus: varchar("delivery_status", { length: 30 }).default("assigned"), // assigned, picked_up, out_for_delivery, delivered, failed
+  pickedUpAt: datetime("picked_up_at"),
+  outForDeliveryAt: datetime("out_for_delivery_at"),
+  deliveredAt: datetime("delivered_at"),
+  failedAt: datetime("failed_at"),
+  
+  // Delivery details
+  deliveryNotes: text("delivery_notes"),
+  deliveryProof: varchar("delivery_proof", { length: 500 }), // Image URL for delivery proof
+  customerSignature: varchar("customer_signature", { length: 500 }), // Signature image URL
+  failureReason: text("failure_reason"),
+  
+  isActive: boolean("is_active").default(true), // For tracking reassignments
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Driver Assignment History (audit trail for all assignment changes)
+export const driverAssignmentHistory = mysqlTable("driver_assignment_history", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  orderId: varchar("order_id", { length: 255 }).notNull(),
+  assignmentId: varchar("assignment_id", { length: 255 }), // Reference to current assignment
+  
+  // Previous assignment details
+  previousDriverId: varchar("previous_driver_id", { length: 255 }),
+  newDriverId: varchar("new_driver_id", { length: 255 }),
+  
+  // Change details
+  changeType: varchar("change_type", { length: 30 }).notNull(), // assigned, reassigned, unassigned
+  changeReason: text("change_reason"),
+  changedBy: varchar("changed_by", { length: 255 }).notNull(), // Admin user who made the change
+  
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Application Settings
 export const settings = mysqlTable("settings", {
   id: varchar("id", { length: 255 }).primaryKey(),
@@ -469,10 +569,69 @@ export const settings = mysqlTable("settings", {
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+// ✅ User Loyalty Points
+export const userLoyaltyPoints = mysqlTable("user_loyalty_points", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  totalPointsEarned: int("total_points_earned").default(0),
+  totalPointsRedeemed: int("total_points_redeemed").default(0),
+  availablePoints: int("available_points").default(0), // points that can be redeemed
+  pendingPoints: int("pending_points").default(0), // points waiting for order delivery
+  pointsExpiringSoon: int("points_expiring_soon").default(0), // points expiring in next 30 days
+  lastEarnedAt: datetime("last_earned_at"),
+  lastRedeemedAt: datetime("last_redeemed_at"),
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// ✅ Loyalty Points History
+export const loyaltyPointsHistory = mysqlTable("loyalty_points_history", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  orderId: varchar("order_id", { length: 255 }), // reference to order when earned/redeemed
+  transactionType: varchar("transaction_type", { length: 20 }).notNull(), // earned, redeemed, expired, manual_adjustment
+  status: varchar("status", { length: 20 }).default("available"), // pending, available, expired, cancelled
+  points: int("points").notNull(), // positive for earned, negative for redeemed/expired
+  pointsBalance: int("points_balance").notNull(), // user's total available points after this transaction
+  description: text("description"), // e.g., "Earned from order #ORD-123", "Redeemed at checkout"
+  orderAmount: decimal("order_amount", { precision: 10, scale: 2 }), // order amount when points were earned
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }), // discount amount when redeemed
+  expiresAt: datetime("expires_at"), // when these points expire (only for earned points)
+  isExpired: boolean("is_expired").default(false),
+  processedBy: varchar("processed_by", { length: 255 }), // admin user ID for manual adjustments
+  metadata: json("metadata"), // additional data like conversion rates, settings used
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Relations
-export const usersRelations = relations(user, ({ many }) => ({
+export const usersRelations = relations(user, ({ many, one }) => ({
   orders: many(orders),
   returns: many(returns),
+  loyaltyPoints: one(userLoyaltyPoints),
+  loyaltyHistory: many(loyaltyPointsHistory),
+}));
+
+export const userLoyaltyPointsRelations = relations(userLoyaltyPoints, ({ one, many }) => ({
+  user: one(user, {
+    fields: [userLoyaltyPoints.userId],
+    references: [user.id],
+  }),
+  history: many(loyaltyPointsHistory),
+}));
+
+export const loyaltyPointsHistoryRelations = relations(loyaltyPointsHistory, ({ one }) => ({
+  user: one(user, {
+    fields: [loyaltyPointsHistory.userId],
+    references: [user.id],
+  }),
+  order: one(orders, {
+    fields: [loyaltyPointsHistory.orderId],
+    references: [orders.id],
+  }),
+  userLoyaltyPoints: one(userLoyaltyPoints, {
+    fields: [loyaltyPointsHistory.userId],
+    references: [userLoyaltyPoints.userId],
+  }),
 }));
 
 export const categoriesRelations = relations(categories, ({ many, one }) => ({
@@ -549,10 +708,16 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
     fields: [orders.userId],
     references: [user.id],
   }),
+  assignedDriver: one(drivers, {
+    fields: [orders.assignedDriverId],
+    references: [drivers.id],
+  }),
   orderItems: many(orderItems),
   returns: many(returns),
   refunds: many(refunds),
   shippingLabels: many(shippingLabels),
+  driverAssignments: many(driverAssignments),
+  driverAssignmentHistory: many(driverAssignmentHistory),
 }));
 
 export const orderItemsRelations = relations(orderItems, ({ one, many }) => ({
@@ -672,4 +837,139 @@ export const adminLogsRelations = relations(adminLogs, ({ one }) => ({
     fields: [adminLogs.adminId],
     references: [adminUsers.id],
   }),
+}));
+
+export const driversRelations = relations(drivers, ({ one, many }) => ({
+  user: one(user, {
+    fields: [drivers.userId],
+    references: [user.id],
+  }),
+  assignments: many(driverAssignments),
+  assignmentHistory: many(driverAssignmentHistory),
+}));
+
+export const driverAssignmentsRelations = relations(driverAssignments, ({ one, many }) => ({
+  order: one(orders, {
+    fields: [driverAssignments.orderId],
+    references: [orders.id],
+  }),
+  driver: one(drivers, {
+    fields: [driverAssignments.driverId],
+    references: [drivers.id],
+  }),
+  assignedByUser: one(adminUsers, {
+    fields: [driverAssignments.assignedBy],
+    references: [adminUsers.id],
+  }),
+  history: many(driverAssignmentHistory),
+}));
+
+export const driverAssignmentHistoryRelations = relations(driverAssignmentHistory, ({ one }) => ({
+  order: one(orders, {
+    fields: [driverAssignmentHistory.orderId],
+    references: [orders.id],
+  }),
+  assignment: one(driverAssignments, {
+    fields: [driverAssignmentHistory.assignmentId],
+    references: [driverAssignments.id],
+  }),
+  previousDriver: one(drivers, {
+    fields: [driverAssignmentHistory.previousDriverId],
+    references: [drivers.id],
+  }),
+  newDriver: one(drivers, {
+    fields: [driverAssignmentHistory.newDriverId],
+    references: [drivers.id],
+  }),
+  changedByUser: one(adminUsers, {
+    fields: [driverAssignmentHistory.changedBy],
+    references: [adminUsers.id],
+  }),
+}));
+
+// Tag Groups - for organizing tags into categories
+export const tagGroups = mysqlTable("tag_groups", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  description: text("description"),
+  color: varchar("color", { length: 7 }), // Hex color code
+  icon: varchar("icon", { length: 100 }), // Icon name/class
+  allowCustomValues: boolean("allow_custom_values").default(false),
+  isRequired: boolean("is_required").default(false), // If true, products must have at least one tag from this group
+  maxSelections: int("max_selections").default(0), // 0 = unlimited, >0 = limit selections
+  sortOrder: int("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Tags - individual tags that belong to groups
+export const tags = mysqlTable("tags", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull(),
+  description: text("description"),
+  color: varchar("color", { length: 7 }), // Override group color if needed
+  icon: varchar("icon", { length: 100 }), // Override group icon if needed
+  groupId: varchar("group_id", { length: 255 }).notNull(),
+  isCustom: boolean("is_custom").default(false), // True if this was a custom value created by user
+  customValue: text("custom_value"), // Store custom input value if different from name
+  sortOrder: int("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Product Tags - junction table linking products to tags with custom values
+export const productTags = mysqlTable("product_tags", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  productId: varchar("product_id", { length: 255 }).notNull(),
+  tagId: varchar("tag_id", { length: 255 }).notNull(),
+  customValue: text("custom_value"), // For storing custom values when tag allows it
+  sortOrder: int("sort_order").default(0),
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Tag Groups Relations
+export const tagGroupsRelations = relations(tagGroups, ({ many }) => ({
+  tags: many(tags),
+}));
+
+// Tags Relations
+export const tagsRelations = relations(tags, ({ one, many }) => ({
+  group: one(tagGroups, {
+    fields: [tags.groupId],
+    references: [tagGroups.id],
+  }),
+  productTags: many(productTags),
+}));
+
+// Product Tags Relations
+export const productTagsRelations = relations(productTags, ({ one }) => ({
+  product: one(products, {
+    fields: [productTags.productId],
+    references: [products.id],
+  }),
+  tag: one(tags, {
+    fields: [productTags.tagId],
+    references: [tags.id],
+  }),
+}));
+
+// Update Products Relations to include tags
+export const updatedProductsRelations = relations(products, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [products.categoryId],
+    references: [categories.id],
+  }),
+  subcategory: one(subcategories, {
+    fields: [products.subcategoryId],
+    references: [subcategories.id],
+  }),
+  variants: many(productVariants),
+  inventory: many(productInventory),
+  orderItems: many(orderItems),
+  productAddons: many(productAddons),
+  productTags: many(productTags),
 }));

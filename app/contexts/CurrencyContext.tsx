@@ -3,11 +3,17 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 
 // Define available currencies (copied from API route to avoid server imports)
 export const AVAILABLE_CURRENCIES = {
+  'USD': { 
+    name: 'US Dollar', 
+    symbol: '$', // Standard dollar symbol
+    code: 'USD',
+    position: 'before' // before or after the amount
+  },
   'AED': { 
     name: 'Dirham', 
     symbol: '&#xe001;', // Custom font character
     code: 'AED',
-    position: 'before' // before or after the amount
+    position: 'before'
   },
   'PKR': { 
     name: 'Rs (Rupees)', 
@@ -44,7 +50,7 @@ interface CurrencyProviderProps {
 }
 
 export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) => {
-  const [currentCurrency, setCurrentCurrency] = useState<CurrencyCode>('AED');
+  const [currentCurrency, setCurrentCurrency] = useState<CurrencyCode>('USD');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +75,7 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
       console.error('Error fetching currency settings:', err);
       setError(err.message);
       // Fallback to default currency
-      setCurrentCurrency('AED');
+      setCurrentCurrency('USD');
     } finally {
       setLoading(false);
     }

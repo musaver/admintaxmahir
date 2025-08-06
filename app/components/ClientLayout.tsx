@@ -20,6 +20,7 @@ import {
   WrenchIcon,
   BarChart3Icon,
   ShoppingCartIcon,
+  TruckIcon,
   TrendingUpIcon,
   UndoIcon,
   DollarSignIcon,
@@ -76,30 +77,32 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboardIcon, category: 'main' },
     { name: 'Customers', href: '/users', icon: UsersIcon, category: 'main' },
-    { name: 'Services', href: '/products', icon: PackageIcon, category: 'main' },
+    { name: 'Products', href: '/products', icon: PackageIcon, category: 'main' },
+    { name: 'Tags', href: '/tags', icon: TagIcon, category: 'main' },
     
     { name: 'Inventory', href: '/inventory', icon: BarChart3Icon, category: 'operations' },
     { name: 'Orders', href: '/orders', icon: ShoppingCartIcon, category: 'operations', badge: pendingOrdersCount > 0 ? pendingOrdersCount : null },
-    { name: 'Reports', href: '/reports', icon: TrendingUpIcon, category: 'operations' },
+    { name: 'Drivers', href: '/drivers', icon: TruckIcon, category: 'operations' },
+    /*{ name: 'Reports', href: '/reports', icon: TrendingUpIcon, category: 'operations' },
     { name: 'Returns', href: '/returns', icon: UndoIcon, category: 'operations' },
     { name: 'Refunds', href: '/refunds', icon: DollarSignIcon, category: 'operations' },
-    { name: 'Shipping Labels', href: '/shipping-labels', icon: PackageCheckIcon, category: 'operations' },
-    { name: 'Categories', href: '/categories', icon: FolderIcon, category: 'catalog' },
-    { name: 'Subcategories', href: '/subcategories', icon: FolderOpenIcon, category: 'catalog' },
+    { name: 'Shipping Labels', href: '/shipping-labels', icon: PackageCheckIcon, category: 'operations' },*/
+    { name: 'Categories', href: '/categories', icon: FolderIcon, category: 'main' },
+    /*{ name: 'Subcategories', href: '/subcategories', icon: FolderOpenIcon, category: 'catalog' },
     { name: 'Addons', href: '/addons', icon: PuzzleIcon, category: 'catalog' },
     { name: 'Tasks', href: '/variation-attributes', icon: TagIcon, category: 'catalog' },
     { name: 'Product Variants', href: '/product-variants', icon: WrenchIcon, category: 'catalog' },
     { name: 'Admin Users', href: '/admins', icon: ShieldIcon, category: 'admin' },
     { name: 'Admin Roles', href: '/roles', icon: LockIcon, category: 'admin' },
     { name: 'Admin Logs', href: '/logs', icon: FileTextIcon, category: 'admin' },
-    { name: 'Settings', href: '/settings', icon: SettingsIcon, category: 'admin' },
+    { name: 'Settings', href: '/settings', icon: SettingsIcon, category: 'admin' },*/
     { name: 'Logout', href: '/logout', icon: LogOutIcon, category: 'admin' },
   ];
 
   const categories = {
     main: { name: 'Main', items: navigation.filter(item => item.category === 'main') },
     operations: { name: 'Operations', items: navigation.filter(item => item.category === 'operations') },
-    catalog: { name: 'Catalog', items: navigation.filter(item => item.category === 'catalog') },
+    /*catalog: { name: 'Catalog', items: navigation.filter(item => item.category === 'catalog') },*/
     admin: { name: 'Administration', items: navigation.filter(item => item.category === 'admin') },
   };
 
@@ -146,7 +149,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
     <div className="flex h-full max-h-screen flex-col gap-2 fixed">
       {/* Header */}
-      <div className={`flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 ${sidebarCollapsed && !mobile ? 'justify-center' : ''}`}>
+      <div className={`flex h-14 items-center border-b pl-4 lg:h-[60px] lg:pl-6 ${sidebarCollapsed && !mobile ? 'justify-center' : ''}`}>
         <Link href="/" className={`flex items-center gap-2 font-semibold ${sidebarCollapsed && !mobile ? 'justify-center' : ''}`}>
           <LayoutDashboardIcon className="h-6 w-6 flex-shrink-0" />
           {(!sidebarCollapsed || mobile) && <span className="truncate">Admin Panel</span>}
@@ -161,19 +164,18 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             <XIcon className="h-4 w-4" />
           </Button>
         )}
-      </div>
 
-      {/* Collapse Toggle Button for Desktop */}
+        {/* Collapse Toggle Button for Desktop */}
       {!mobile && (
-        <div className="px-4">
+        <div className="px-0 ml-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className={`w-full justify-center ${sidebarCollapsed ? 'px-2' : ''}`}
+            className={`w-full justify-center ${sidebarCollapsed ? '' : ''}`}
           >
             {sidebarCollapsed ? (
-              <ChevronRightIcon className="h-4 w-4" />
+              <ChevronRightIcon className="h-4 " />
             ) : (
               <>
                 <ChevronLeftIcon className="h-4 w-4 mr-2" />
@@ -183,6 +185,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </Button>
         </div>
       )}
+      </div>
+
+      
 
       {/* Navigation */}
       <div className="flex-1 overflow-auto py-2">

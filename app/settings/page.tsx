@@ -35,23 +35,41 @@ export default function SettingsPage() {
     value: 0
   });
 
+  // Loyalty settings
+  const [loyaltySettings, setLoyaltySettings] = useState({
+    loyalty_enabled: { value: false, type: 'boolean', description: '' },
+    points_earning_rate: { value: 1, type: 'number', description: '' },
+    points_earning_basis: { value: 'subtotal', type: 'string', description: '' },
+    points_redemption_value: { value: 0.01, type: 'number', description: '' },
+    points_expiry_months: { value: 12, type: 'number', description: '' },
+    points_minimum_order: { value: 0, type: 'number', description: '' },
+    points_max_redemption_percent: { value: 50, type: 'number', description: '' },
+    points_redemption_minimum: { value: 100, type: 'number', description: '' }
+  });
+
   useEffect(() => {
     fetchSettings();
   }, []);
 
   const fetchSettings = async () => {
     try {
-      const [stockRes, taxRes] = await Promise.all([
+      const [stockRes, taxRes, loyaltyRes] = await Promise.all([
         fetch('/api/settings/stock-management'),
-        fetch('/api/settings/tax-settings')
+        fetch('/api/settings/tax-settings'),
+        fetch('/api/settings/loyalty')
       ]);
       
       const stockData = await stockRes.json();
       const taxData = await taxRes.json();
+      const loyaltyData = await loyaltyRes.json();
       
       setStockManagementEnabled(stockData.stockManagementEnabled);
       setVatTax(taxData.vatTax);
       setServiceTax(taxData.serviceTax);
+      
+      if (loyaltyData.success) {
+        setLoyaltySettings(loyaltyData.settings);
+      }
     } catch (err) {
       console.error(err);
       setError('Failed to load settings');
@@ -160,6 +178,55 @@ export default function SettingsPage() {
       return ((baseAmount * tax.value) / 100).toFixed(2);
     } else {
       return tax.value.toFixed(2);
+    }
+  };
+
+  const handleLoyaltySettingChange = (key: string, value: any) => {
+    setLoyaltySettings(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key as keyof typeof prev],
+        value
+      }
+    }));
+  };
+
+  const handleSaveLoyaltySettings = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      
+      // Validate settings
+      if (loyaltySettings.points_earning_rate.value <= 0) {
+        throw new Error('Points earning rate must be greater than 0');
+      }
+      if (loyaltySettings.points_redemption_value.value <= 0) {
+        throw new Error('Points redemption value must be greater than 0');
+      }
+      if (loyaltySettings.points_max_redemption_percent.value > 100) {
+        throw new Error('Maximum redemption percentage cannot exceed 100%');
+      }
+      if (loyaltySettings.points_redemption_minimum.value < 0) {
+        throw new Error('Minimum redemption points cannot be negative');
+      }
+      
+      const response = await fetch('/api/settings/loyalty', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: loyaltySettings })
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update loyalty settings');
+      }
+      
+      setSuccess('Loyalty settings updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -457,6 +524,210 @@ export default function SettingsPage() {
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save Tax Settings'}
+            </button>
+          </div>
+        </div>
+
+        {/* Loyalty Points Settings Section */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">Loyalty Points System</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              Configure loyalty points earning and redemption settings
+            </p>
+          </div>
+
+          {/* Enable/Disable Loyalty System */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-gray-700">Enable Loyalty Points</h3>
+                <p className="text-sm text-gray-500">Allow customers to earn and redeem loyalty points</p>
+              </div>
+              <button
+                onClick={() => handleLoyaltySettingChange('loyalty_enabled', !loyaltySettings.loyalty_enabled.value)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                  loyaltySettings.loyalty_enabled.value ? 'bg-purple-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    loyaltySettings.loyalty_enabled.value ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {loyaltySettings.loyalty_enabled.value && (
+            <div className="space-y-6 pl-4 border-l-2 border-purple-200">
+              {/* Points Earning Settings */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="text-md font-medium text-gray-700">Points Earning</h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Points per Currency Unit
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={loyaltySettings.points_earning_rate.value}
+                      onChange={(e) => handleLoyaltySettingChange('points_earning_rate', parseFloat(e.target.value) || 0)}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      e.g., 1 = customers earn 1 point per <CurrencySymbol />1 spent
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Calculate Points Based On
+                    </label>
+                    <select
+                      value={loyaltySettings.points_earning_basis.value}
+                      onChange={(e) => handleLoyaltySettingChange('points_earning_basis', e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                    >
+                      <option value="subtotal">Subtotal (before tax/shipping)</option>
+                      <option value="total">Total Amount (including tax/shipping)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Minimum Order Amount
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-gray-500">
+                        <CurrencySymbol />
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={loyaltySettings.points_minimum_order.value}
+                        onChange={(e) => handleLoyaltySettingChange('points_minimum_order', parseFloat(e.target.value) || 0)}
+                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Minimum order amount required to earn points (0 = no minimum)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-md font-medium text-gray-700">Points Redemption</h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Redemption Value per Point
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-gray-500">
+                        <CurrencySymbol />
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        value={loyaltySettings.points_redemption_value.value}
+                        onChange={(e) => handleLoyaltySettingChange('points_redemption_value', parseFloat(e.target.value) || 0)}
+                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                        placeholder="0.01"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      e.g., 0.01 = 1 point = <CurrencySymbol />0.01 discount
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Minimum Points to Redeem
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={loyaltySettings.points_redemption_minimum.value}
+                      onChange={(e) => handleLoyaltySettingChange('points_redemption_minimum', parseInt(e.target.value) || 0)}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="100"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Minimum points required for redemption
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maximum Redemption Percentage
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={loyaltySettings.points_max_redemption_percent.value}
+                      onChange={(e) => handleLoyaltySettingChange('points_max_redemption_percent', parseInt(e.target.value) || 0)}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="50"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Maximum % of order that can be paid with points
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Points Expiry Settings */}
+              <div className="border-t pt-4">
+                <h4 className="text-md font-medium text-gray-700 mb-4">Points Expiry</h4>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Points Expire After (Months)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={loyaltySettings.points_expiry_months.value}
+                    onChange={(e) => handleLoyaltySettingChange('points_expiry_months', parseInt(e.target.value) || 0)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="12"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Number of months after which points expire (0 = never expire)
+                  </p>
+                </div>
+              </div>
+
+              {/* Preview Section */}
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <h4 className="text-md font-medium text-purple-800 mb-2">Preview</h4>
+                <div className="text-sm text-purple-700 space-y-1">
+                  <p>• Customer spends <CurrencySymbol />100 → earns {(100 * loyaltySettings.points_earning_rate.value).toFixed(0)} points</p>
+                  <p>• {loyaltySettings.points_redemption_minimum.value} points = <CurrencySymbol />{(loyaltySettings.points_redemption_minimum.value * loyaltySettings.points_redemption_value.value).toFixed(2)} discount</p>
+                  <p>• Maximum discount on <CurrencySymbol />100 order: <CurrencySymbol />{(100 * loyaltySettings.points_max_redemption_percent.value / 100).toFixed(2)}</p>
+                  {loyaltySettings.points_expiry_months.value > 0 && (
+                    <p>• Points expire after {loyaltySettings.points_expiry_months.value} months</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleSaveLoyaltySettings}
+              disabled={saving}
+              className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : 'Save Loyalty Settings'}
             </button>
           </div>
         </div>

@@ -59,6 +59,20 @@ interface SalesReportData {
 
 export default function SalesReport() {
   const { currentCurrency } = useCurrency();
+
+  // Format date and time to "Aug 5, 2025 at 5:57 PM" format
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    };
+    return date.toLocaleDateString('en-US', options).replace(',', ' at');
+  };
   const [data, setData] = useState<SalesReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -245,23 +259,34 @@ export default function SalesReport() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">💵 Sales Report</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M11,8H13V16H11V8M9,2A1,1 0 0,0 8,3V4H16V3A1,1 0 0,0 15,2H9M19,4H17V6H19A2,2 0 0,1 21,8V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V8A2,2 0 0,1 5,6H7V4H5C3.89,4 3,4.89 3,6V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V6C21,4.89 20.1,4 19,4Z"/>
+            </svg>
+            <h1 className="text-3xl font-bold text-gray-800">Sales Report</h1>
+          </div>
           <p className="text-gray-600 mt-1">Comprehensive sales analytics and performance metrics</p>
         </div>
         <div className="flex gap-3">
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
             disabled={!data}
           >
-            📊 Export CSV
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+            </svg>
+            Export CSV
           </button>
           <button
             onClick={handleExportPDF}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
             disabled={!data}
           >
-            📄 Export PDF
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+            </svg>
+            Export PDF
           </button>
           <Link
             href="/reports"
@@ -274,7 +299,12 @@ export default function SalesReport() {
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-lg border p-6 mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">🔍 Filters</h3>
+        <div className="flex items-center gap-2 mb-4">
+          <svg className="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+          </svg>
+          <h3 className="text-lg font-semibold text-gray-800">Filters</h3>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
@@ -349,7 +379,9 @@ export default function SalesReport() {
       {error && (
         <div className="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
           <div className="flex items-center">
-            <span className="text-red-500 mr-2">⚠️</span>
+            <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
+            </svg>
             Error: {error}
           </div>
         </div>
@@ -365,7 +397,9 @@ export default function SalesReport() {
                   <p className="text-sm font-medium text-gray-600">Total Orders</p>
                   <p className="text-2xl font-bold text-blue-600">{data.summary.totalOrders}</p>
                 </div>
-                <div className="text-3xl">🛒</div>
+                <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19,7H18V6A2,2 0 0,0 16,4H8A2,2 0 0,0 6,6V7H5A3,3 0 0,0 2,10V19A3,3 0 0,0 5,22H19A3,3 0 0,0 22,19V10A3,3 0 0,0 19,7M8,6H16V7H8V6M20,19A1,1 0 0,1 19,20H5A1,1 0 0,1 4,19V10A1,1 0 0,1 5,9H19A1,1 0 0,1 20,10V19Z"/>
+                </svg>
               </div>
             </div>
 
@@ -377,7 +411,9 @@ export default function SalesReport() {
     {formatCurrency(data.summary.totalRevenue)}
                   </p>
                 </div>
-                <div className="text-3xl">💰</div>
+                <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM13.41 18.09L13.41 20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.56 0 2.22-.48 2.22-1.34 0-.81-.68-1.49-2.69-1.95-2.65-.63-4.18-1.64-4.18-3.67 0-1.70 1.22-2.94 3.21-3.39V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.82-2.22-1.82-1.35 0-1.95.48-1.95 1.25 0 .77.83 1.01 3.26 1.69 2.84.78 4.83 1.70 4.83 3.94 0 1.91-1.19 3.02-3.81 3.49z"/>
+                </svg>
               </div>
             </div>
 
@@ -389,7 +425,9 @@ export default function SalesReport() {
     {formatCurrency(data.summary.averageOrderValue)}
                   </p>
                 </div>
-                <div className="text-3xl">📊</div>
+                <svg className="w-8 h-8 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z"/>
+                </svg>
               </div>
             </div>
 
@@ -401,7 +439,9 @@ export default function SalesReport() {
     {formatCurrency(data.summary.totalTax)}
                   </p>
                 </div>
-                <div className="text-3xl">🧾</div>
+                <svg className="w-8 h-8 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                </svg>
               </div>
             </div>
           </div>
@@ -410,7 +450,12 @@ export default function SalesReport() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Sales by Status */}
             <div className="bg-white rounded-xl shadow-lg border p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Sales by Status</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z"/>
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-800">Sales by Status</h3>
+              </div>
               <div className="space-y-3">
                 {data.salesByStatus.map((statusData) => (
                   <div key={statusData.status} className="flex items-center justify-between">
@@ -430,7 +475,12 @@ export default function SalesReport() {
 
             {/* Sales by Payment Status */}
             <div className="bg-white rounded-xl shadow-lg border p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">💳 Sales by Payment Status</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20,8H4V6H20M20,18H4V12H20M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.11,4 20,4Z"/>
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-800">Sales by Payment Status</h3>
+              </div>
               <div className="space-y-3">
                 {data.salesByPaymentStatus.map((paymentData) => (
                   <div key={paymentData.paymentStatus} className="flex items-center justify-between">
@@ -451,7 +501,12 @@ export default function SalesReport() {
 
           {/* Top Products */}
           <div className="bg-white rounded-xl shadow-lg border p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">🏆 Top Products by Revenue</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.46,13.97L5.82,21L12,17.27Z"/>
+              </svg>
+              <h3 className="text-lg font-semibold text-gray-800">Top Products by Revenue</h3>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead>
@@ -483,7 +538,12 @@ export default function SalesReport() {
           {/* Recent Orders */}
           <div className="bg-white rounded-xl shadow-lg border">
             <div className="p-6 border-b">
-              <h3 className="text-lg font-semibold text-gray-800">📋 Recent Orders</h3>
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.11,3 19,3M19,19H5V5H19V19Z"/>
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-800">Recent Orders</h3>
+              </div>
               <p className="text-sm text-gray-600 mt-1">
                 Showing {data.orders.length} orders
               </p>
@@ -514,7 +574,7 @@ export default function SalesReport() {
                         <div className="text-xs text-gray-500">{order.email}</div>
                       </td>
                       <td className="px-4 py-2 text-sm text-gray-900">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {formatDateTime(order.createdAt)}
                       </td>
                       <td className="px-4 py-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(order.status)}`}>
