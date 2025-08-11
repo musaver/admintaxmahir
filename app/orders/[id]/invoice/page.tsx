@@ -496,6 +496,9 @@ export default function OrderInvoice() {
                                 {item.variantTitle && (
                                   <div className="text-sm text-gray-500">{item.variantTitle}</div>
                                 )}
+                                {item.hsCode && (
+                                  <div className="text-xs text-gray-500">HS Code: {item.hsCode}</div>
+                                )}
                                 {item.isWeightBased && item.weightQuantity && (
                                   <div className="text-sm text-blue-600">
                                     ⚖️ Weight: {formatWeightAuto(item.weightQuantity).formattedString}

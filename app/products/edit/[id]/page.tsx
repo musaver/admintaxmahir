@@ -111,6 +111,7 @@ export default function EditProduct() {
     discount: '',
     metaTitle: '',
     metaDescription: '',
+    hsCode: '', // Harmonized System Code
     productType: 'simple',
     banner: '', // Banner image URL
     // Weight-based stock management fields
@@ -215,6 +216,7 @@ export default function EditProduct() {
         taxable: product.taxable !== undefined ? product.taxable : true,
         metaTitle: product.metaTitle || '',
         metaDescription: product.metaDescription || '',
+        hsCode: product.hsCode || '',
         productType: product.productType || 'simple',
         banner: product.banner || '', // Banner image URL
         // Weight-based stock management fields
@@ -1300,6 +1302,24 @@ export default function EditProduct() {
               </p>
             </div>
 
+            <div>
+              <label className="block text-gray-700 mb-2" htmlFor="hsCode">
+                Product HS Code
+              </label>
+              <input
+                type="text"
+                id="hsCode"
+                name="hsCode"
+                value={formData.hsCode}
+                onChange={handleChange}
+                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                placeholder="e.g., 1234.56.78"
+                maxLength={20}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Harmonized System Code for customs and tax classification
+              </p>
+            </div>
 
         {/* Product Gallery Manager */}
         <div className="mt-6 bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl shadow-sm">

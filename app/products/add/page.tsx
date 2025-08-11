@@ -170,6 +170,7 @@ export default function AddProduct() {
     discount: '',
     metaTitle: '',
     metaDescription: '',
+    hsCode: '', // Harmonized System Code
     productType: 'simple', // 'simple' or 'variable'
     banner: '', // Banner image URL
     // Weight-based stock management fields
@@ -1312,6 +1313,25 @@ export default function AddProduct() {
               </select>
               <p className="text-xs text-gray-500 mt-1">
                 This will be used as the default supplier when restocking this product
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 mb-2" htmlFor="hsCode">
+                Product HS Code
+              </label>
+              <input
+                type="text"
+                id="hsCode"
+                name="hsCode"
+                value={formData.hsCode}
+                onChange={handleChange}
+                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                placeholder="e.g., 1234.56.78"
+                maxLength={20}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Harmonized System Code for customs and tax classification
               </p>
             </div>
 

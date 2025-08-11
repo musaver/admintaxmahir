@@ -73,6 +73,7 @@ interface OrderItem {
   productName: string;
   variantTitle?: string;
   sku?: string;
+  hsCode?: string; // Harmonized System Code
   quantity: number;
   price: number;
   totalPrice: number;
@@ -1017,6 +1018,9 @@ export default function EditOrder() {
                           )}
                           {item.sku && (
                             <div className="text-sm text-gray-500">SKU: {item.sku}</div>
+                          )}
+                          {item.hsCode && (
+                            <div className="text-sm text-gray-500">HS Code: {item.hsCode}</div>
                           )}
                           {item.isWeightBased && item.weightQuantity && (
                             <div className="text-sm text-blue-600">

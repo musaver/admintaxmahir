@@ -22,6 +22,7 @@ interface Product {
   supplierId?: string;
   variants?: ProductVariant[];
   addons?: ProductAddon[];
+  hsCode?: string; // Harmonized System Code
   // Weight-based fields
   stockManagementType?: string;
   pricePerUnit?: number;
@@ -79,6 +80,7 @@ interface OrderItem {
   productName: string;
   variantTitle?: string;
   sku?: string;
+  hsCode?: string; // Harmonized System Code
   price: number;
   quantity: number;
   totalPrice: number;
@@ -530,6 +532,7 @@ export default function AddOrder() {
       productName,
       variantTitle: variantTitle || undefined,
       sku,
+      hsCode: product.hsCode,
       price,
       quantity: finalQuantity,
       totalPrice,
@@ -1400,6 +1403,9 @@ export default function AddOrder() {
                           )}
                           {item.sku && (
                             <div className="text-sm text-gray-500">SKU: {item.sku}</div>
+                          )}
+                          {item.hsCode && (
+                            <div className="text-sm text-gray-500">HS Code: {item.hsCode}</div>
                           )}
                           {item.isWeightBased && item.weightQuantity && (
                             <div className="text-sm text-blue-600">

@@ -157,6 +157,9 @@ export const products = mysqlTable("products", {
   metaTitle: varchar("meta_title", { length: 255 }),
   metaDescription: text("meta_description"),
   
+  // HS Code for customs and tax purposes
+  hsCode: varchar("hs_code", { length: 20 }), // Harmonized System Code
+  
   // Variable Product Fields
   productType: varchar("product_type", { length: 50 }).default("simple"), // 'simple' or 'variable'
   variationAttributes: json("variation_attributes"), // Array of {name: string, values: string[]}
