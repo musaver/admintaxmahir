@@ -422,7 +422,7 @@ export default function AddPurchaseOrderPage() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Total Price</label>
                       <div className="px-3 py-2 bg-muted rounded-md text-sm font-medium">
-                        <CurrencySymbol currency={orderData.currency} />
+                        <CurrencySymbol />
                         {item.totalPrice.toFixed(2)}
                       </div>
                     </div>
@@ -447,7 +447,7 @@ export default function AddPurchaseOrderPage() {
               <div className="flex justify-between items-center text-lg font-semibold">
                 <span>Total Amount:</span>
                 <span>
-                  <CurrencySymbol currency={orderData.currency} />
+                  <CurrencySymbol />
                   {calculateSubtotal().toFixed(2)}
                 </span>
               </div>

@@ -586,7 +586,7 @@ export default function AddStockMovement() {
                           setFormData({
                             ...formData,
                             supplierId: e.target.value,
-                            supplier: selectedSupplier ? selectedSupplier.name : ''
+                            supplier: selectedSupplier ? (selectedSupplier as any).name : ''
                           });
                         }}
                         className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"

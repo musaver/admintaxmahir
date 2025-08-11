@@ -89,7 +89,7 @@ export default function PurchaseOrdersPage() {
   const columns = [
     {
       key: 'orderInfo',
-      label: 'Order Information',
+      title: 'Order Information',
       render: (order: PurchaseOrder) => (
         <div className="space-y-1">
           <div className="font-medium">{order.orderNumber}</div>
@@ -106,7 +106,7 @@ export default function PurchaseOrdersPage() {
     },
     {
       key: 'supplier',
-      label: 'Supplier',
+      title: 'Supplier',
       render: (order: PurchaseOrder) => (
         <div className="space-y-1">
           <div className="flex items-center gap-1">
@@ -123,17 +123,17 @@ export default function PurchaseOrdersPage() {
     },
     {
       key: 'amount',
-      label: 'Total Amount',
+      title: 'Total Amount',
       render: (order: PurchaseOrder) => (
         <div className="font-medium">
-          <CurrencySymbol currency={order.currency} />
+          <CurrencySymbol />
           {parseFloat(order.totalAmount).toFixed(2)}
         </div>
       ),
     },
     {
       key: 'delivery',
-      label: 'Expected Delivery',
+      title: 'Expected Delivery',
       render: (order: PurchaseOrder) => (
         <div className="space-y-1">
           {order.expectedDeliveryDate ? (
@@ -149,7 +149,7 @@ export default function PurchaseOrdersPage() {
     },
     {
       key: 'status',
-      label: 'Status',
+      title: 'Status',
       render: (order: PurchaseOrder) => (
         <Badge variant={getStatusColor(order.status)}>
           {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
@@ -158,7 +158,7 @@ export default function PurchaseOrdersPage() {
     },
     {
       key: 'actions',
-      label: 'Actions',
+      title: 'Actions',
       render: (order: PurchaseOrder) => (
         <div className="flex items-center gap-2">
           <Link href={`/orders/${order.id}`}>
