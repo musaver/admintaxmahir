@@ -11,6 +11,11 @@ export default function EditUser() {
     name: '',
     email: '',
     password: '',
+    buyerNTNCNIC: '',
+    buyerBusinessName: '',
+    buyerProvince: '',
+    buyerAddress: '',
+    buyerRegistrationType: '',
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -28,6 +33,11 @@ export default function EditUser() {
           name: userData.name || '',
           email: userData.email || '',
           password: '', // Don't populate password
+          buyerNTNCNIC: userData.buyerNTNCNIC || '',
+          buyerBusinessName: userData.buyerBusinessName || '',
+          buyerProvince: userData.buyerProvince || '',
+          buyerAddress: userData.buyerAddress || '',
+          buyerRegistrationType: userData.buyerRegistrationType || '',
         });
       } catch (err: any) {
         setError(err.message);
@@ -39,7 +49,7 @@ export default function EditUser() {
     fetchUser();
   }, [userId]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -55,6 +65,11 @@ export default function EditUser() {
     const dataToSubmit = {
       name: formData.name,
       email: formData.email,
+      buyerNTNCNIC: formData.buyerNTNCNIC,
+      buyerBusinessName: formData.buyerBusinessName,
+      buyerProvince: formData.buyerProvince,
+      buyerAddress: formData.buyerAddress,
+      buyerRegistrationType: formData.buyerRegistrationType,
       ...(formData.password ? { password: formData.password } : {})
     };
 
@@ -135,6 +150,81 @@ export default function EditUser() {
             onChange={handleChange}
             className="w-full p-2 border rounded"
           />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="buyerNTNCNIC">
+            Buyer NTN/CNIC
+          </label>
+          <input
+            type="text"
+            id="buyerNTNCNIC"
+            name="buyerNTNCNIC"
+            value={formData.buyerNTNCNIC}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="buyerBusinessName">
+            Buyer Business Name
+          </label>
+          <input
+            type="text"
+            id="buyerBusinessName"
+            name="buyerBusinessName"
+            value={formData.buyerBusinessName}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="buyerProvince">
+            Buyer Province
+          </label>
+          <input
+            type="text"
+            id="buyerProvince"
+            name="buyerProvince"
+            value={formData.buyerProvince}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="buyerAddress">
+            Buyer Address
+          </label>
+          <input
+            type="text"
+            id="buyerAddress"
+            name="buyerAddress"
+            value={formData.buyerAddress}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="buyerRegistrationType">
+            Buyer Registration Type
+          </label>
+          <select
+            id="buyerRegistrationType"
+            name="buyerRegistrationType"
+            value={formData.buyerRegistrationType}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          >
+            <option value="">Select Registration Type</option>
+            <option value="individual">Individual</option>
+            <option value="company">Company</option>
+            <option value="partnership">Partnership</option>
+            <option value="sole_proprietorship">Sole Proprietorship</option>
+          </select>
         </div>
         
         <div className="flex gap-4">

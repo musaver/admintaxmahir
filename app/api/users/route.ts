@@ -49,7 +49,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password } = await request.json();
+    const { 
+      name, 
+      email, 
+      password, 
+      buyerNTNCNIC, 
+      buyerBusinessName, 
+      buyerProvince, 
+      buyerAddress, 
+      buyerRegistrationType 
+    } = await request.json();
     
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -60,6 +69,11 @@ export async function POST(request: Request) {
       email,
       password: hashedPassword,
       userType: 'customer', // Set as customer by default
+      buyerNTNCNIC: buyerNTNCNIC || null,
+      buyerBusinessName: buyerBusinessName || null,
+      buyerProvince: buyerProvince || null,
+      buyerAddress: buyerAddress || null,
+      buyerRegistrationType: buyerRegistrationType || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

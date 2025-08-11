@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import CurrencySymbol from '../../../components/CurrencySymbol';
 import { 
   formatWeightAuto, 
@@ -24,6 +25,7 @@ export default function AddStockMovement() {
     notes: '',
     costPrice: 0,
     supplier: '',
+    supplierId: '',
     // Weight-based fields
     weightQuantity: '',
     weightUnit: 'grams' as 'grams' | 'kg'
@@ -31,6 +33,7 @@ export default function AddStockMovement() {
   
   const [products, setProducts] = useState([]);
   const [variants, setVariants] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [currentInventory, setCurrentInventory] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -91,12 +94,23 @@ export default function AddStockMovement() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products');
-      const data = await response.json();
-      setProducts(data);
+      const [productsRes, suppliersRes] = await Promise.all([
+        fetch('/api/products'),
+        fetch('/api/suppliers'),
+      ]);
+      
+      if (productsRes.ok) {
+        const productsData = await productsRes.json();
+        setProducts(productsData);
+      }
+
+      if (suppliersRes.ok) {
+        const suppliersData = await suppliersRes.json();
+        setSuppliers(suppliersData.filter((s: any) => s.isActive));
+      }
     } catch (err) {
-      console.error('Error fetching products:', err);
-      setError('Failed to load products');
+      console.error('Error fetching data:', err);
+      setError('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -251,6 +265,7 @@ export default function AddStockMovement() {
       const submitData = {
         ...formData,
         variantId: formData.variantId || null,
+        supplierId: formData.supplierId || null,
         // Add weight fields if it's a weight-based product
         ...(isWeightBased && {
           weightQuantity: parseFloat(formData.weightQuantity),
@@ -559,18 +574,34 @@ export default function AddStockMovement() {
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 mb-2" htmlFor="supplier">
-                        Supplier
+                      <label className="block text-gray-700 mb-2" htmlFor="supplierId">
+                        Supplier <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
-                        id="supplier"
-                        name="supplier"
-                        value={formData.supplier}
-                        onChange={handleChange}
+                      <select
+                        id="supplierId"
+                        name="supplierId"
+                        value={formData.supplierId}
+                        onChange={(e) => {
+                          const selectedSupplier = suppliers.find((s: any) => s.id === e.target.value);
+                          setFormData({
+                            ...formData,
+                            supplierId: e.target.value,
+                            supplier: selectedSupplier ? selectedSupplier.name : ''
+                          });
+                        }}
                         className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        placeholder="Supplier name"
-                      />
+                        required
+                      >
+                        <option value="">Select a supplier...</option>
+                        {suppliers.map((supplier: any) => (
+                          <option key={supplier.id} value={supplier.id}>
+                            {supplier.name} {supplier.companyName && `(${supplier.companyName})`}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Required for stock in movements. <Link href="/suppliers/add" className="text-blue-500 hover:underline">Add new supplier</Link>
+                      </p>
                     </div>
                   </>
                 )}

@@ -23,6 +23,7 @@ interface StockMovement {
   notes?: string;
   costPrice?: string;
   supplier?: string;
+  supplierId?: string;
   processedBy?: string;
 }
 
@@ -135,7 +136,8 @@ export default function StockMovements() {
         movement.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         movement.variantTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         movement.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        movement.reference?.toLowerCase().includes(searchTerm.toLowerCase())
+        movement.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        movement.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -286,7 +288,7 @@ export default function StockMovements() {
             <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
             <input
               type="text"
-              placeholder="Search products, reasons, references..."
+              placeholder="Search products, suppliers, reasons, references..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -345,6 +347,7 @@ export default function StockMovements() {
                 <th className="border-b p-3 text-left font-semibold">Variant</th>
                 <th className="border-b p-3 text-left font-semibold">Type</th>
                 <th className="border-b p-3 text-left font-semibold">Quantity/Weight</th>
+                <th className="border-b p-3 text-left font-semibold">Supplier</th>
                 <th className="border-b p-3 text-left font-semibold">Reason</th>
                 <th className="border-b p-3 text-left font-semibold">Location</th>
                 <th className="border-b p-3 text-left font-semibold">Reference</th>
@@ -397,6 +400,18 @@ export default function StockMovements() {
                         )}
                       </div>
                     </td>
+                    <td className="border-b p-3">
+                      {movement.supplier ? (
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-800">{movement.supplier}</div>
+                          {movement.supplierId && (
+                            <div className="text-xs text-gray-500">ID: {movement.supplierId}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No supplier</span>
+                      )}
+                    </td>
                     <td className="border-b p-3">{movement.reason}</td>
                     <td className="border-b p-3">{movement.location}</td>
                     <td className="border-b p-3">{movement.reference || '-'}</td>
@@ -404,7 +419,7 @@ export default function StockMovements() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="border-b p-8 text-center text-gray-500">
+                  <td colSpan={10} className="border-b p-8 text-center text-gray-500">
                     {searchTerm || movementFilter !== 'all' || dateRange.startDate || dateRange.endDate
                       ? 'No stock movements match your filters' 
                       : 'No stock movements recorded yet'

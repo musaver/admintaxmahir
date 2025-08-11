@@ -48,6 +48,7 @@ export async function GET() {
       notes: movement.notes,
       costPrice: movement.costPrice,
       supplier: movement.supplier,
+      supplierId: movement.supplierId,
       processedBy: movement.processedBy,
       createdAt: movement.createdAt?.toISOString() || new Date().toISOString(),
     }));
@@ -74,7 +75,8 @@ export async function POST(req: NextRequest) {
       reference, 
       notes,
       costPrice,
-      supplier 
+      supplier,
+      supplierId 
     } = await req.json();
     
     // Get product to determine stock management type
@@ -159,6 +161,7 @@ export async function POST(req: NextRequest) {
             availableWeight: (newWeightQuantity - parseFloat(current.reservedWeight || '0')).toString(),
             lastRestockDate: movementType === 'in' ? new Date() : current.lastRestockDate,
             supplier: (movementType === 'in' && supplier) ? supplier : current.supplier,
+            supplierId: (movementType === 'in' && supplierId) ? supplierId : current.supplierId,
           })
           .where(eq(productInventory.id, current.id));
       } else {
@@ -188,6 +191,7 @@ export async function POST(req: NextRequest) {
             availableQuantity: newQuantity - (current.reservedQuantity || 0),
             lastRestockDate: movementType === 'in' ? new Date() : current.lastRestockDate,
             supplier: (movementType === 'in' && supplier) ? supplier : current.supplier,
+            supplierId: (movementType === 'in' && supplierId) ? supplierId : current.supplierId,
           })
           .where(eq(productInventory.id, current.id));
       }
@@ -220,6 +224,7 @@ export async function POST(req: NextRequest) {
           reorderWeightQuantity: '0.00',
           location: location || null,
           supplier: supplier || null,
+          supplierId: supplierId || null,
           lastRestockDate: movementType === 'in' ? new Date() : null,
         });
       } else {
@@ -242,6 +247,7 @@ export async function POST(req: NextRequest) {
           reorderWeightQuantity: '0.00',
           location: location || null,
           supplier: supplier || null,
+          supplierId: supplierId || null,
           lastRestockDate: movementType === 'in' ? new Date() : null,
         });
       }
@@ -272,6 +278,7 @@ export async function POST(req: NextRequest) {
       notes: notes || null,
       costPrice: costPrice || null,
       supplier: supplier || null,
+      supplierId: supplierId || null,
       processedBy: null, // TODO: Add current admin user ID when authentication is implemented
       createdAt: new Date(),
     });
@@ -297,6 +304,7 @@ export async function POST(req: NextRequest) {
       notes: notes || null,
       costPrice: costPrice || null,
       supplier: supplier || null,
+      supplierId: supplierId || null,
       createdAt: new Date(),
     };
     
@@ -320,7 +328,7 @@ export async function DELETE(req: NextRequest) {
     // However, for admin purposes, we'll allow it with a warning.
     
     // Delete all stock movements with the provided IDs
-    const deletedMovements = await db
+    await db
       .delete(stockMovements)
       .where(inArray(stockMovements.id, ids));
     

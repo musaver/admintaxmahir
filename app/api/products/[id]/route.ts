@@ -55,6 +55,15 @@ export async function PUT(
     // Cannabis-specific decimal fields
     if (productData.thc) productData.thc = productData.thc.toString();
     if (productData.cbd) productData.cbd = productData.cbd.toString();
+    // Tax and discount decimal fields
+    if (productData.taxAmount) productData.taxAmount = productData.taxAmount.toString();
+    if (productData.taxPercentage) productData.taxPercentage = productData.taxPercentage.toString();
+    if (productData.priceIncludingTax) productData.priceIncludingTax = productData.priceIncludingTax.toString();
+    if (productData.priceExcludingTax) productData.priceExcludingTax = productData.priceExcludingTax.toString();
+    if (productData.extraTax) productData.extraTax = productData.extraTax.toString();
+    if (productData.furtherTax) productData.furtherTax = productData.furtherTax.toString();
+    if (productData.fedPayableTax) productData.fedPayableTax = productData.fedPayableTax.toString();
+    if (productData.discount) productData.discount = productData.discount.toString();
 
     // Convert arrays/objects to JSON strings
     if (productData.images) productData.images = JSON.stringify(productData.images);

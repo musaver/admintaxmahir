@@ -34,6 +34,14 @@ export const user = mysqlTable('user', {
   dateOfBirth: datetime("date_of_birth"),
   otp: varchar("otp", { length: 6 }),
   otpExpiry: datetime("otp_expiry"),
+  
+  // Buyer-specific fields
+  buyerNTNCNIC: varchar("buyer_ntn_cnic", { length: 100 }),
+  buyerBusinessName: varchar("buyer_business_name", { length: 255 }),
+  buyerProvince: varchar("buyer_province", { length: 100 }),
+  buyerAddress: varchar("buyer_address", { length: 500 }),
+  buyerRegistrationType: varchar("buyer_registration_type", { length: 50 }),
+  
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -126,6 +134,7 @@ export const products = mysqlTable("products", {
   banner: varchar("banner", { length: 500 }), // Banner image URL
   categoryId: varchar("category_id", { length: 255 }),
   subcategoryId: varchar("subcategory_id", { length: 255 }),
+  supplierId: varchar("supplier_id", { length: 255 }), // Reference to preferred supplier
   tags: json("tags"), // Array of tags
   weight: decimal("weight", { precision: 8, scale: 2 }),
   dimensions: json("dimensions"), // {length, width, height}
@@ -134,6 +143,17 @@ export const products = mysqlTable("products", {
   isDigital: boolean("is_digital").default(false),
   requiresShipping: boolean("requires_shipping").default(true),
   taxable: boolean("taxable").default(true),
+  
+  // Tax and discount fields
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default('0.00'),
+  taxPercentage: decimal("tax_percentage", { precision: 5, scale: 2 }).default('0.00'),
+  priceIncludingTax: decimal("price_including_tax", { precision: 10, scale: 2 }).default('0.00'),
+  priceExcludingTax: decimal("price_excluding_tax", { precision: 10, scale: 2 }).default('0.00'),
+  extraTax: decimal("extra_tax", { precision: 10, scale: 2 }).default('0.00'),
+  furtherTax: decimal("further_tax", { precision: 10, scale: 2 }).default('0.00'),
+  fedPayableTax: decimal("fed_payable_tax", { precision: 10, scale: 2 }).default('0.00'),
+  discount: decimal("discount", { precision: 10, scale: 2 }).default('0.00'),
+  
   metaTitle: varchar("meta_title", { length: 255 }),
   metaDescription: text("meta_description"),
   
@@ -265,7 +285,8 @@ export const productInventory = mysqlTable("product_inventory", {
   reorderWeightQuantity: decimal("reorder_weight_quantity", { precision: 12, scale: 2 }).default('0.00'), // Reorder quantity in grams
   
   location: varchar("location", { length: 255 }),
-  supplier: varchar("supplier", { length: 255 }),
+  supplierId: varchar("supplier_id", { length: 255 }), // Reference to suppliers table
+  supplier: varchar("supplier", { length: 255 }), // Legacy field - keeping for backward compatibility
   lastRestockDate: datetime("last_restock_date"),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
@@ -294,7 +315,8 @@ export const stockMovements = mysqlTable("stock_movements", {
   reference: varchar("reference", { length: 255 }), // PO number, invoice, etc.
   notes: text("notes"),
   costPrice: decimal("cost_price", { precision: 10, scale: 2 }),
-  supplier: varchar("supplier", { length: 255 }),
+  supplierId: varchar("supplier_id", { length: 255 }), // Reference to suppliers table
+  supplier: varchar("supplier", { length: 255 }), // Legacy field - keeping for backward compatibility
   processedBy: varchar("processed_by", { length: 255 }), // Admin user who made the change
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -354,6 +376,19 @@ export const orders = mysqlTable("orders", {
   pointsToRedeem: int("points_to_redeem").default(0), // Points redeemed for this order
   pointsDiscountAmount: decimal("points_discount_amount", { precision: 10, scale: 2 }).default('0.00'), // Discount amount from points
   
+  // Purchase Order fields (for supplier orders)
+  orderType: varchar("order_type", { length: 20 }).default("customer"), // customer, purchase_order
+  supplierId: varchar("supplier_id", { length: 255 }), // Reference to suppliers table for purchase orders
+  purchaseOrderNumber: varchar("purchase_order_number", { length: 100 }), // PO number for supplier orders
+  expectedDeliveryDate: datetime("expected_delivery_date"), // Expected delivery from supplier
+  
+  // Invoice and validation fields
+  invoiceType: varchar("invoice_type", { length: 100 }),
+  invoiceRefNo: varchar("invoice_ref_no", { length: 255 }),
+  scenarioId: varchar("scenario_id", { length: 255 }),
+  invoiceNumber: varchar("invoice_number", { length: 255 }),
+  validationResponse: text("validation_response"),
+  
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -379,6 +414,17 @@ export const orderItems = mysqlTable("order_items", {
   costPrice: decimal("cost_price", { precision: 10, scale: 2 }), // Cost price at time of sale
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
   totalCost: decimal("total_cost", { precision: 10, scale: 2 }), // Total cost (costPrice * quantity/weight)
+  
+  // Tax and discount fields for each item
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default('0.00'),
+  taxPercentage: decimal("tax_percentage", { precision: 5, scale: 2 }).default('0.00'),
+  priceIncludingTax: decimal("price_including_tax", { precision: 10, scale: 2 }).default('0.00'),
+  priceExcludingTax: decimal("price_excluding_tax", { precision: 10, scale: 2 }).default('0.00'),
+  extraTax: decimal("extra_tax", { precision: 10, scale: 2 }).default('0.00'),
+  furtherTax: decimal("further_tax", { precision: 10, scale: 2 }).default('0.00'),
+  fedPayableTax: decimal("fed_payable_tax", { precision: 10, scale: 2 }).default('0.00'),
+  discount: decimal("discount", { precision: 10, scale: 2 }).default('0.00'),
+  
   productImage: varchar("product_image", { length: 500 }),
   addons: json("addons"), // Store selected addons as JSON
   groupTitle: varchar("group_title", { length: 255 }), // Add group title for addon groups
@@ -557,6 +603,52 @@ export const driverAssignmentHistory = mysqlTable("driver_assignment_history", {
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Suppliers
+export const suppliers = mysqlTable("suppliers", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  companyName: varchar("company_name", { length: 255 }),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  fax: varchar("fax", { length: 20 }),
+  website: varchar("website", { length: 500 }),
+  taxId: varchar("tax_id", { length: 100 }), // Business registration/tax ID
+  
+  // Primary Contact
+  primaryContactName: varchar("primary_contact_name", { length: 255 }),
+  primaryContactEmail: varchar("primary_contact_email", { length: 255 }),
+  primaryContactPhone: varchar("primary_contact_phone", { length: 20 }),
+  primaryContactMobile: varchar("primary_contact_mobile", { length: 20 }),
+  
+  // Secondary Contact
+  secondaryContactName: varchar("secondary_contact_name", { length: 255 }),
+  secondaryContactEmail: varchar("secondary_contact_email", { length: 255 }),
+  secondaryContactPhone: varchar("secondary_contact_phone", { length: 20 }),
+  secondaryContactMobile: varchar("secondary_contact_mobile", { length: 20 }),
+  
+  // Address Information
+  address: varchar("address", { length: 500 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+  country: varchar("country", { length: 100 }),
+  
+  // Business Information
+  paymentTerms: varchar("payment_terms", { length: 100 }), // Net 30, Net 60, etc.
+  currency: varchar("currency", { length: 3 }).default("USD"),
+  notes: text("notes"),
+  
+  // Seller Information
+  sellerNTNCNIC: varchar("seller_ntn_cnic", { length: 100 }),
+  sellerBusinessName: varchar("seller_business_name", { length: 255 }),
+  sellerProvince: varchar("seller_province", { length: 100 }),
+  sellerAddress: varchar("seller_address", { length: 500 }),
+  
+  isActive: boolean("is_active").default(true),
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Application Settings
 export const settings = mysqlTable("settings", {
   id: varchar("id", { length: 255 }).primaryKey(),
@@ -685,6 +777,10 @@ export const productInventoryRelations = relations(productInventory, ({ one, man
     fields: [productInventory.variantId],
     references: [productVariants.id],
   }),
+  supplier: one(suppliers, {
+    fields: [productInventory.supplierId],
+    references: [suppliers.id],
+  }),
   stockMovements: many(stockMovements),
 }));
 
@@ -701,6 +797,10 @@ export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
     fields: [stockMovements.variantId],
     references: [productVariants.id],
   }),
+  supplier: one(suppliers, {
+    fields: [stockMovements.supplierId],
+    references: [suppliers.id],
+  }),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -711,6 +811,10 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   assignedDriver: one(drivers, {
     fields: [orders.assignedDriverId],
     references: [drivers.id],
+  }),
+  supplier: one(suppliers, {
+    fields: [orders.supplierId],
+    references: [suppliers.id],
   }),
   orderItems: many(orderItems),
   returns: many(returns),
@@ -957,7 +1061,15 @@ export const productTagsRelations = relations(productTags, ({ one }) => ({
   }),
 }));
 
-// Update Products Relations to include tags
+// Suppliers Relations
+export const suppliersRelations = relations(suppliers, ({ many }) => ({
+  products: many(products),
+  productInventory: many(productInventory),
+  stockMovements: many(stockMovements),
+  orders: many(orders),
+}));
+
+// Update Products Relations to include tags and supplier
 export const updatedProductsRelations = relations(products, ({ one, many }) => ({
   category: one(categories, {
     fields: [products.categoryId],
@@ -966,6 +1078,10 @@ export const updatedProductsRelations = relations(products, ({ one, many }) => (
   subcategory: one(subcategories, {
     fields: [products.subcategoryId],
     references: [subcategories.id],
+  }),
+  supplier: one(suppliers, {
+    fields: [products.supplierId],
+    references: [suppliers.id],
   }),
   variants: many(productVariants),
   inventory: many(productInventory),

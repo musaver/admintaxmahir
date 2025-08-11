@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { user } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
+import bcrypt from 'bcrypt';
 
 export async function GET(
   req: NextRequest,
@@ -31,6 +32,14 @@ export async function PUT(
   try {
     const { id } = await params;
     const data = await req.json();
+
+    // Hash password if provided
+    if (data.password) {
+      data.password = await bcrypt.hash(data.password, 10);
+    }
+
+    // Set updatedAt timestamp
+    data.updatedAt = new Date();
 
     await db
       .update(user)

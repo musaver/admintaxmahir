@@ -8,11 +8,16 @@ export default function AddUser() {
     name: '',
     email: '',
     password: '',
+    buyerNTNCNIC: '',
+    buyerBusinessName: '',
+    buyerProvince: '',
+    buyerAddress: '',
+    buyerRegistrationType: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -98,8 +103,82 @@ export default function AddUser() {
             value={formData.password}
             onChange={handleChange}
             className="w-full p-2 border rounded"
-            required
           />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="buyerNTNCNIC">
+            Buyer NTN/CNIC
+          </label>
+          <input
+            type="text"
+            id="buyerNTNCNIC"
+            name="buyerNTNCNIC"
+            value={formData.buyerNTNCNIC}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="buyerBusinessName">
+            Buyer Business Name
+          </label>
+          <input
+            type="text"
+            id="buyerBusinessName"
+            name="buyerBusinessName"
+            value={formData.buyerBusinessName}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="buyerProvince">
+            Buyer Province
+          </label>
+          <input
+            type="text"
+            id="buyerProvince"
+            name="buyerProvince"
+            value={formData.buyerProvince}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="buyerAddress">
+            Buyer Address
+          </label>
+          <input
+            type="text"
+            id="buyerAddress"
+            name="buyerAddress"
+            value={formData.buyerAddress}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2" htmlFor="buyerRegistrationType">
+            Buyer Registration Type
+          </label>
+          <select
+            id="buyerRegistrationType"
+            name="buyerRegistrationType"
+            value={formData.buyerRegistrationType}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          >
+            <option value="">Select Registration Type</option>
+            <option value="individual">Individual</option>
+            <option value="company">Company</option>
+            <option value="partnership">Partnership</option>
+            <option value="sole_proprietorship">Sole Proprietorship</option>
+          </select>
         </div>
         
         <div className="flex gap-4">

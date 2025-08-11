@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders, orderItems, productInventory, stockMovements, products, productVariants, user, drivers, userLoyaltyPoints, loyaltyPointsHistory, settings } from '@/lib/schema';
+import { orders, orderItems, productInventory, stockMovements, products, productVariants, user, drivers, userLoyaltyPoints, loyaltyPointsHistory, settings, suppliers } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and, isNull, desc, or } from 'drizzle-orm';
 import { getStockManagementSettingDirect } from '@/lib/stockManagement';
@@ -11,21 +11,27 @@ export async function GET(req: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(req.url);
     const assignedDriverId = searchParams.get('assignedDriverId');
+    const orderType = searchParams.get('orderType');
 
     // Build where conditions
     const whereConditions = [];
     if (assignedDriverId) {
       whereConditions.push(eq(orders.assignedDriverId, assignedDriverId));
     }
+    if (orderType) {
+      whereConditions.push(eq(orders.orderType, orderType));
+    }
 
-    // Fetch orders with their items, customer information, and assigned driver
+    // Fetch orders with their items, customer information, supplier information, and assigned driver
     const ordersWithDetails = await db
       .select({
         order: orders,
         user: user,
+        supplier: suppliers,
       })
       .from(orders)
       .leftJoin(user, eq(orders.userId, user.id))
+      .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
       .orderBy(desc(orders.createdAt));
 
@@ -73,6 +79,9 @@ export async function GET(req: NextRequest) {
         return {
           ...orderData.order,
           user: orderData.user,
+          supplier: orderData.supplier,
+          supplierName: orderData.supplier?.name,
+          supplierCompany: orderData.supplier?.companyName,
           items: itemsWithParsedAddons,
           assignedDriver
         };
@@ -103,6 +112,12 @@ export async function POST(req: NextRequest) {
       currency = 'USD',
       notes,
       
+      // Purchase Order fields
+      orderType = 'customer',
+      supplierId,
+      purchaseOrderNumber,
+      expectedDeliveryDate,
+      
       // Driver assignment fields
       assignedDriverId,
       deliveryStatus = 'pending',
@@ -110,6 +125,13 @@ export async function POST(req: NextRequest) {
       // Loyalty points fields
       pointsToRedeem = 0,
       pointsDiscountAmount = 0,
+      
+      // Invoice and validation fields
+      invoiceType,
+      invoiceRefNo,
+      scenarioId,
+      invoiceNumber,
+      validationResponse,
       
       // Billing address
       billingFirstName,
@@ -255,6 +277,19 @@ export async function POST(req: NextRequest) {
       pointsToRedeem: pointsToRedeem || 0,
       pointsDiscountAmount: pointsDiscountAmount || 0,
       
+      // Purchase Order fields
+      orderType: orderType || 'customer',
+      supplierId: supplierId || null,
+      purchaseOrderNumber: purchaseOrderNumber || null,
+      expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : null,
+      
+      // Invoice and validation fields
+      invoiceType: invoiceType || null,
+      invoiceRefNo: invoiceRefNo || null,
+      scenarioId: scenarioId || null,
+      invoiceNumber: invoiceNumber || null,
+      validationResponse: validationResponse || null,
+      
       // Billing address
       billingFirstName: billingFirstName || null,
       billingLastName: billingLastName || null,
@@ -353,6 +388,15 @@ export async function POST(req: NextRequest) {
         // Weight-based fields
         weightQuantity: item.weightQuantity ? item.weightQuantity.toString() : '0.00',
         weightUnit: item.weightUnit || null,
+        // Tax and discount fields
+        taxAmount: item.taxAmount ? item.taxAmount.toString() : '0.00',
+        taxPercentage: item.taxPercentage ? item.taxPercentage.toString() : '0.00',
+        priceIncludingTax: item.priceIncludingTax ? item.priceIncludingTax.toString() : '0.00',
+        priceExcludingTax: item.priceExcludingTax ? item.priceExcludingTax.toString() : '0.00',
+        extraTax: item.extraTax ? item.extraTax.toString() : '0.00',
+        furtherTax: item.furtherTax ? item.furtherTax.toString() : '0.00',
+        fedPayableTax: item.fedPayableTax ? item.fedPayableTax.toString() : '0.00',
+        discount: item.discount ? item.discount.toString() : '0.00',
         createdAt: new Date(),
       });
 

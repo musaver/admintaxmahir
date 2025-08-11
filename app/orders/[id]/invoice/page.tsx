@@ -222,14 +222,21 @@ export default function OrderInvoice() {
                 <div>
                   <h1 className="text-3xl font-bold text-gray-800">INVOICE</h1>
                   <p className="text-gray-600 mt-2">Invoice #{order.orderNumber}</p>
+                  {order.invoiceNumber && (
+                    <p className="text-gray-600 mt-1">Invoice Number: {order.invoiceNumber}</p>
+                  )}
+                  {order.invoiceRefNo && (
+                    <p className="text-gray-600 mt-1">Ref No: {order.invoiceRefNo}</p>
+                  )}
                 </div>
                 <div className="text-right">
-                  <h2 className="text-2xl font-bold text-blue-600">Quick Repair Homes</h2>
+                  <h2 className="text-2xl font-bold text-blue-600"> Hisaab360 </h2>
                   <div className="text-gray-600 mt-2">
-                    <p>Sobha Sapphire, Business Bay</p>
-                    <p> Dubai</p>
-                    <p>Phone: +971 50 125 8142</p>
-                    <p>Email: info@quickrepairhomes.com</p>
+                    <p>Alrasheed arcade second floor</p>
+                    <p> Flat no 1 mujahid street ,</p>
+                    <p> Defence road , Rawalpindi</p>
+                    <p>Phone: +92 335 5836 228</p>
+                    <p>Email: support@hisaab360.com</p>
                   </div>
                 </div>
               </div>
@@ -238,41 +245,182 @@ export default function OrderInvoice() {
             {/* Invoice Details */}
             <div className="p-8 border-b border-gray-200">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Bill To */}
+                {/* Supplier */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Bill To:</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">🏢 Supplier:</h3>
                   <div className="text-gray-600">
-                    <p className="font-medium">{order.billingFirstName} {order.billingLastName}</p>
-                    <p>{order.email}</p>
-                    {order.phone && <p>{order.phone}</p>}
-                    <div className="mt-2">
-                      {order.billingAddress1 && <p>{order.billingAddress1}</p>}
-                      {order.billingAddress2 && <p>{order.billingAddress2}</p>}
-                      <p>
-                        {order.billingCity && `${order.billingCity}, `}
-                        {order.billingState && `${order.billingState} `}
-                        {order.billingPostalCode}
-                      </p>
-                      {order.billingCountry && <p>{order.billingCountry}</p>}
-                    </div>
+                    {/* Primary: Show seller business fields from order */}
+                    { order.supplier ? (
+                      /* Fallback: Show supplier table data if seller fields are empty */
+                      <>
+                        {order.supplier.name && <p className="font-medium">{order.supplier.name}</p>} 
+                        {order.supplier.sellerBusinessName && <p className="text-sm text-gray-500">{order.supplier.sellerBusinessName}</p>}
+                        {order.supplier.email && <p className="mt-1 text-sm text-gray-500">{order.supplier.email}</p>}
+                        {order.supplier.sellerNTNCNIC && <p className="text-sm text-gray-500">NTN / CNIC: {order.supplier.sellerNTNCNIC}</p>}
+                        {order.supplier.sellerProvince && <p className="text-sm text-gray-500">Province: {order.supplier.sellerProvince}</p>}
+                        {order.supplier.sellerAddress && <p className="text-sm text-gray-500">Address: {order.supplier.sellerAddress}</p>}
+
+                        
+                        
+                        
+                        {order.supplier.fax && <p>Fax: {order.supplier.fax}</p>}
+                        {order.supplier.website && <p className="text-blue-600 text-sm break-all">{order.supplier.website}</p>}
+                        {order.supplier.taxId && (
+                          <div className="mt-2">
+                            <span className="text-xs text-gray-500">Tax ID: </span>
+                            <span className="font-mono text-sm">{order.supplier.taxId}</span>
+                          </div>
+                        )}
+                        
+                        {/* Address from supplier table */}
+                        {(order.supplier.addressLine1 || order.supplier.addressLine2 || order.supplier.city || order.supplier.state || order.supplier.postalCode || order.supplier.country) && (
+                          <div className="mt-3 pt-2 border-t border-gray-200">
+                            <p className="text-xs font-medium text-gray-700 mb-1">Address:</p>
+                            {order.supplier.addressLine1 && <p className="text-sm">{order.supplier.addressLine1}</p>}
+                            {order.supplier.addressLine2 && <p className="text-sm">{order.supplier.addressLine2}</p>}
+                            <p className="text-sm">
+                              {order.supplier.city && `${order.supplier.city}, `}
+                              {order.supplier.state && `${order.supplier.state} `}
+                              {order.supplier.postalCode}
+                            </p>
+                            {order.supplier.country && <p className="text-sm">{order.supplier.country}</p>}
+                          </div>
+                        )}
+                        
+                        {/* Primary Contact */}
+                        {(order.supplier.primaryContactName || order.supplier.primaryContactEmail || order.supplier.primaryContactPhone || order.supplier.primaryContactMobile) && (
+                          <div className="mt-3 pt-2 border-t border-gray-200">
+                            <p className="text-xs font-medium text-gray-700 mb-1">Primary Contact:</p>
+                            {order.supplier.primaryContactName && <p className="text-sm">{order.supplier.primaryContactName}</p>}
+                            {order.supplier.primaryContactEmail && <p className="text-sm">{order.supplier.primaryContactEmail}</p>}
+                            {order.supplier.primaryContactPhone && <p className="text-sm">Phone: {order.supplier.primaryContactPhone}</p>}
+                            {order.supplier.primaryContactMobile && <p className="text-sm">Mobile: {order.supplier.primaryContactMobile}</p>}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-gray-400 italic">No supplier information</p>
+                    )}
                   </div>
                 </div>
 
-                {/* Ship To */}
+                {/* Buyer */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Delivered To:</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">👤 Buyer:</h3>
                   <div className="text-gray-600">
-                    <p className="font-medium">{order.shippingFirstName} {order.shippingLastName}</p>
-                    <div className="mt-2">
-                      {order.shippingAddress1 && <p>{order.shippingAddress1}</p>}
-                      {order.shippingAddress2 && <p>{order.shippingAddress2}</p>}
-                      <p>
-                        {order.shippingCity && `${order.shippingCity}, `}
-                        {order.shippingState && `${order.shippingState} `}
-                        {order.shippingPostalCode}
-                      </p>
-                      {order.shippingCountry && <p>{order.shippingCountry}</p>}
-                    </div>
+                    {/* Primary: Show buyer business fields from order */}
+                    {(order.buyerBusinessName || order.buyerNTNCNIC || order.buyerProvince || order.buyerAddress || order.buyerRegistrationType) ? (
+                      <>
+                        {order.buyerBusinessName && <p className="font-medium">{order.buyerBusinessName}</p>}
+                        {order.buyerNTNCNIC && (
+                          <div className="mt-1">
+                            <span className="text-xs text-gray-500">NTN/CNIC: </span>
+                            <span className="font-mono text-sm">{order.buyerNTNCNIC}</span>
+                          </div>
+                        )}
+                        {order.buyerRegistrationType && (
+                          <div className="mt-1">
+                            <span className="text-xs text-gray-500">Registration Type: </span>
+                            <span className="text-sm capitalize">{order.buyerRegistrationType}</span>
+                          </div>
+                        )}
+                        {order.buyerAddress && <p className="mt-1">{order.buyerAddress}</p>}
+                        {order.buyerProvince && <p className="text-sm">{order.buyerProvince} Province</p>}
+                        
+                        {/* Contact info from order */}
+                        {(order.email || order.phone) && (
+                          <div className="mt-3 pt-2 border-t border-gray-200">
+                            <p className="text-xs font-medium text-gray-700 mb-1">Contact Information:</p>
+                            {order.email && <p className="text-sm">{order.email}</p>}
+                            {order.phone && <p className="text-sm">Phone: {order.phone}</p>}
+                          </div>
+                        )}
+                      </>
+                    ) : order.user ? (
+                      /* Fallback: Show user table data if buyer fields are empty */
+                      <>
+                        {/* Basic User Information */}
+                        {(order.user.name || order.user.firstName || order.user.lastName) && (
+                          <p className="font-medium">
+                            {order.user.name || `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim()}
+                          </p>
+                        )}
+                        {order.user.displayName && order.user.displayName !== order.user.name && (
+                          <p className="text-sm text-gray-500">Display Name: {order.user.displayName}</p>
+                        )}
+                        {order.user.username && <p className="text-sm text-gray-500">Username: @{order.user.username}</p>}
+                        
+                        {/* Contact Information */}
+                        {order.user.email && <p className="mt-1 text-sm text-gray-500">{order.user.email} </p>}
+                        {order.user.phone && <p className="text-sm text-gray-500">Phone: {order.user.phone}</p>}
+                        {order.user.buyerNTNCNIC && <p className="text-sm text-gray-500">NTN / CNIC: {order.user.buyerNTNCNIC}</p>}
+                        {order.user.buyerProvince && <p className="text-sm text-gray-500">Province: {order.user.buyerProvince}</p>}
+                        {order.user.buyerAddress && <p className="text-sm text-gray-500">Address: {order.user.buyerAddress}</p>}
+                        {order.user.buyerRegistrationType && <p className="text-sm text-gray-500">Registration Type: {order.user.buyerRegistrationType}</p>}
+                        
+                        {/* User Type & Profile */}
+                        {order.user.userType && order.user.userType !== 'customer' && (
+                          <p className="text-xs text-blue-600 capitalize">User Type: {order.user.userType}</p>
+                        )}
+                        {order.user.profilePicture && (
+                          <div className="mt-2">
+                            <img src={order.user.profilePicture} alt="Profile" className="w-8 h-8 rounded-full" />
+                          </div>
+                        )}
+                        
+                        {/* Address Information */}
+                        {(order.user.address || order.user.city || order.user.state || order.user.postalCode || order.user.country) && (
+                          <div className="mt-3 pt-2 border-t border-gray-200">
+                            <p className="text-xs font-medium text-gray-700 mb-1">Address:</p>
+                            {order.user.address && <p className="text-sm">{order.user.address}</p>}
+                            <p className="text-sm">
+                              {order.user.city && `${order.user.city}, `}
+                              {order.user.state && `${order.user.state} `}
+                              {order.user.postalCode}
+                            </p>
+                            {order.user.country && <p className="text-sm">{order.user.country}</p>}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      /* Final fallback: Show billing information if no user and no buyer business data */
+                      <>
+                        <p className="font-medium">{order.billingFirstName} {order.billingLastName}</p>
+                        {order.email && <p className="mt-1">{order.email}</p>}
+                        {order.phone && <p>Phone: {order.phone}</p>}
+                        
+                        {/* Billing Address */}
+                        {(order.billingAddress1 || order.billingAddress2 || order.billingCity || order.billingState || order.billingPostalCode || order.billingCountry) && (
+                          <div className="mt-3 pt-2 border-t border-gray-200">
+                            <p className="text-xs font-medium text-gray-700 mb-1">Billing Address:</p>
+                            {order.billingAddress1 && <p className="text-sm">{order.billingAddress1}</p>}
+                            {order.billingAddress2 && <p className="text-sm">{order.billingAddress2}</p>}
+                            <p className="text-sm">
+                              {order.billingCity && `${order.billingCity}, `}
+                              {order.billingState && `${order.billingState} `}
+                              {order.billingPostalCode}
+                            </p>
+                            {order.billingCountry && <p className="text-sm">{order.billingCountry}</p>}
+                          </div>
+                        )}
+                        
+                        {/* Shipping Address if different */}
+                        {(order.shippingFirstName && (order.shippingFirstName !== order.billingFirstName || order.shippingLastName !== order.billingLastName)) && (
+                          <div className="mt-3 pt-2 border-t border-gray-200">
+                            <p className="text-xs font-medium text-gray-700 mb-1">Shipping Address:</p>
+                            <p className="text-sm font-medium">{order.shippingFirstName} {order.shippingLastName}</p>
+                            {order.shippingAddress1 && <p className="text-sm">{order.shippingAddress1}</p>}
+                            {order.shippingAddress2 && <p className="text-sm">{order.shippingAddress2}</p>}
+                            <p className="text-sm">
+                              {order.shippingCity && `${order.shippingCity}, `}
+                              {order.shippingState && `${order.shippingState} `}
+                              {order.shippingPostalCode}
+                            </p>
+                            {order.shippingCountry && <p className="text-sm">{order.shippingCountry}</p>}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -281,21 +429,41 @@ export default function OrderInvoice() {
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">Invoice Information:</h3>
                   <div className="text-gray-600 space-y-1">
                     <div className="flex justify-between">
-                      <span>Invoice Date:</span>
-                      <span>{formatDateTime(order.createdAt)}</span>
+                      <span className="text-sm text-gray-500">Invoice Date:</span>
+                      <span className='text-sm text-gray-500'>{formatDateTime(order.createdAt)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Order Status:</span>
-                      <span className="capitalize">{order.status}</span>
+                      <span className='text-sm text-gray-500'>Order Status:</span>
+                      <span className="text-sm text-gray-500 capitalize">{order.status}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Payment Status:</span>
-                      <span className="capitalize">{order.paymentStatus}</span>
+                      <span className='text-sm text-gray-500'>Payment Status:</span>
+                      <span className="capitalize text-sm text-gray-500">{order.paymentStatus}</span>
                     </div>
+                    {order.invoiceType && (
+                      <div className="flex justify-between">
+                        <span className='text-sm text-gray-500'>Invoice Type:</span>
+                        <span className="text-sm text-gray-500">{order.invoiceType}</span>
+                      </div>
+                    )}
+                    {order.scenarioId && (
+                      <div className="flex justify-between">
+                        <span className='text-sm text-gray-500'>Scenario ID:</span>
+                        <span className="text-sm text-gray-500 font-mono">{order.scenarioId}</span>
+                      </div>
+                    )}
+                    {order.validationResponse && (
+                      <div className="mt-2">
+                        <span className='text-sm text-gray-500'>Validation:</span>
+                        <div className="text-xs text-gray-400 mt-1 p-2 bg-gray-50 rounded font-mono max-h-20 overflow-y-auto">
+                          {order.validationResponse}
+                        </div>
+                      </div>
+                    )}
                     {order.trackingNumber && (
                       <div className="flex justify-between">
-                        <span>Tracking:</span>
-                        <span className="font-mono text-sm">{order.trackingNumber}</span>
+                        <span className='text-sm text-gray-500'>Tracking:</span>
+                        <span className="font-mono text-sm text-gray-500">{order.trackingNumber}</span>
                       </div>
                     )}
                   </div>
@@ -448,6 +616,67 @@ export default function OrderInvoice() {
                                 </tr>
                               );
                             })()}
+                          
+                          {/* Tax and Discount details row */}
+                          {(item.taxAmount || item.taxPercentage || item.discount || item.extraTax || item.furtherTax || item.fedPayableTax || item.priceIncludingTax || item.priceExcludingTax) && (
+                            <tr className="border-b border-gray-50 bg-green-25">
+                              <td colSpan={5} className="py-3 px-2 pl-8">
+                                <div className="text-xs text-gray-600">
+                                  <div className="font-medium mb-2 text-gray-700">💰 Tax & Discount Details:</div>
+                                  <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                                    {(Number(item.taxAmount) || 0) > 0 && (
+                                      <div className="flex justify-between">
+                                        <span>Tax Amount:</span>
+                                        <span className="font-medium">{formatAmount(item.taxAmount || 0)}</span>
+                                      </div>
+                                    )}
+                                    {(Number(item.taxPercentage) || 0) > 0 && (
+                                      <div className="flex justify-between">
+                                        <span>Tax Percentage:</span>
+                                        <span className="font-medium">{Number(item.taxPercentage || 0).toFixed(2)}%</span>
+                                      </div>
+                                    )}
+                                    {(Number(item.priceIncludingTax) || 0) > 0 && (
+                                      <div className="flex justify-between">
+                                        <span>Price Inc. Tax:</span>
+                                        <span className="font-medium">{formatAmount(item.priceIncludingTax || 0)}</span>
+                                      </div>
+                                    )}
+                                    {(Number(item.priceExcludingTax) || 0) > 0 && (
+                                      <div className="flex justify-between">
+                                        <span>Price Ex. Tax:</span>
+                                        <span className="font-medium">{formatAmount(item.priceExcludingTax || 0)}</span>
+                                      </div>
+                                    )}
+                                    {(Number(item.extraTax) || 0) > 0 && (
+                                      <div className="flex justify-between">
+                                        <span>Extra Tax:</span>
+                                        <span className="font-medium">{formatAmount(item.extraTax || 0)}</span>
+                                      </div>
+                                    )}
+                                    {(Number(item.furtherTax) || 0) > 0 && (
+                                      <div className="flex justify-between">
+                                        <span>Further Tax:</span>
+                                        <span className="font-medium">{formatAmount(item.furtherTax || 0)}</span>
+                                      </div>
+                                    )}
+                                    {(Number(item.fedPayableTax) || 0) > 0 && (
+                                      <div className="flex justify-between">
+                                        <span>FED Payable Tax:</span>
+                                        <span className="font-medium">{formatAmount(item.fedPayableTax || 0)}</span>
+                                      </div>
+                                    )}
+                                    {(Number(item.discount) || 0) > 0 && (
+                                      <div className="flex justify-between">
+                                        <span>Discount:</span>
+                                        <span className="font-medium text-green-600">-{formatAmount(item.discount || 0)}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
                         </React.Fragment>
                       ))
                     ) : (
@@ -506,7 +735,7 @@ export default function OrderInvoice() {
             <div className="p-8 border-t border-gray-200 text-center text-gray-600">
               <p className="text-sm">Thank you for your business!</p>
               <p className="text-xs mt-2">
-                For questions about this invoice, please contact us at info@quickrepairhomes.com
+                For questions about this invoice, please contact us at support@hisaab360.com
               </p>
             </div>
           </div>

@@ -152,12 +152,22 @@ export default function AddProduct() {
     costPrice: '',
     categoryId: '',
     subcategoryId: '',
+    supplierId: '',
     weight: '',
     isFeatured: false,
     isActive: true,
     isDigital: false,
     requiresShipping: true,
     taxable: true,
+    // Tax and discount fields
+    taxAmount: '',
+    taxPercentage: '',
+    priceIncludingTax: '',
+    priceExcludingTax: '',
+    extraTax: '',
+    furtherTax: '',
+    fedPayableTax: '',
+    discount: '',
     metaTitle: '',
     metaDescription: '',
     productType: 'simple', // 'simple' or 'variable'
@@ -191,6 +201,7 @@ export default function AddProduct() {
   const [images, setImages] = useState<string[]>([]);
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -235,19 +246,22 @@ export default function AddProduct() {
 
   const fetchInitialData = async () => {
     try {
-      const [categoriesRes, attributesRes, addonsRes] = await Promise.all([
+      const [categoriesRes, attributesRes, addonsRes, suppliersRes] = await Promise.all([
         fetch('/api/categories'),
         fetch('/api/variation-attributes?includeValues=true'),
-        fetch('/api/addons')
+        fetch('/api/addons'),
+        fetch('/api/suppliers')
       ]);
       
       const categoriesData = await categoriesRes.json();
       const attributesData = await attributesRes.json();
       const addonsData = await addonsRes.json();
+      const suppliersData = await suppliersRes.json();
       
       setCategories(categoriesData);
       setAvailableAttributes(attributesData);
       setAvailableAddons(addonsData.filter((addon: any) => addon.isActive));
+      setSuppliers(suppliersData.filter((supplier: any) => supplier.isActive));
     } catch (err) {
       console.error(err);
       setError('Failed to load initial data');
@@ -595,6 +609,15 @@ export default function AddProduct() {
         difficulty: formData.difficulty || null,
         floweringTime: formData.floweringTime || null,
         yieldAmount: formData.yieldAmount || null,
+        // Tax and discount fields
+        taxAmount: formData.taxAmount ? parseFloat(formData.taxAmount) : null,
+        taxPercentage: formData.taxPercentage ? parseFloat(formData.taxPercentage) : null,
+        priceIncludingTax: formData.priceIncludingTax ? parseFloat(formData.priceIncludingTax) : null,
+        priceExcludingTax: formData.priceExcludingTax ? parseFloat(formData.priceExcludingTax) : null,
+        extraTax: formData.extraTax ? parseFloat(formData.extraTax) : null,
+        furtherTax: formData.furtherTax ? parseFloat(formData.furtherTax) : null,
+        fedPayableTax: formData.fedPayableTax ? parseFloat(formData.fedPayableTax) : null,
+        discount: formData.discount ? parseFloat(formData.discount) : null,
         images: images.length > 0 ? images : null,
         selectedTags: selectedTags.length > 0 ? selectedTags : null,
         // Enhanced variation data structure
@@ -640,7 +663,7 @@ export default function AddProduct() {
       
       <form onSubmit={handleSubmit} className="max-w-6xl">
         {/* Product Type Selection */}
-        <div className="mb-6 p-4 border rounded-lg bg-gray-50 hidden">
+        <div className="mb-6 p-4 border rounded-lg bg-gray-50 ">
           <h3 className="text-lg font-semibold mb-4">Product Type</h3>
           <div className="flex gap-4">
             <label className="flex items-center">
@@ -680,7 +703,7 @@ export default function AddProduct() {
         </div>
 
         {/* Stock Management Type Selection */}
-        <div className="mb-6 p-4 border rounded-lg bg-blue-50 hidden">
+        <div className="mb-6 p-4 border rounded-lg bg-blue-50 ">
           <h3 className="text-lg font-semibold mb-4">⚖️ Stock Management Type</h3>
           <div className="space-y-4">
             <div className="flex gap-6">
@@ -1045,7 +1068,7 @@ export default function AddProduct() {
                   />
                 </div>
 
-                <div className="hidden">
+                <div className="">
                   <label className="block text-gray-700 mb-2" htmlFor="costPrice">
                     Cost Price <span className="text-sm text-gray-500">(For profit tracking)</span>
                   </label>
@@ -1063,6 +1086,149 @@ export default function AddProduct() {
                   <p className="text-xs text-gray-500 mt-1">
                     Used to calculate profit margins and track business performance
                   </p>
+                </div>
+
+                {/* Tax and Discount Fields */}
+                <div className="mt-6 p-4 border rounded-lg bg-green-50">
+                  <h4 className="text-lg font-semibold mb-4 text-green-800">💰 Tax & Discount Configuration</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-700 mb-2" htmlFor="taxAmount">
+                        Tax Amount
+                      </label>
+                      <input
+                        type="number"
+                        id="taxAmount"
+                        name="taxAmount"
+                        value={formData.taxAmount}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 mb-2" htmlFor="taxPercentage">
+                        Tax Percentage (%)
+                      </label>
+                      <input
+                        type="number"
+                        id="taxPercentage"
+                        name="taxPercentage"
+                        value={formData.taxPercentage}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 mb-2" htmlFor="priceIncludingTax">
+                        Price Including Tax
+                      </label>
+                      <input
+                        type="number"
+                        id="priceIncludingTax"
+                        name="priceIncludingTax"
+                        value={formData.priceIncludingTax}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 mb-2" htmlFor="priceExcludingTax">
+                        Price Excluding Tax
+                      </label>
+                      <input
+                        type="number"
+                        id="priceExcludingTax"
+                        name="priceExcludingTax"
+                        value={formData.priceExcludingTax}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 mb-2" htmlFor="extraTax">
+                        Extra Tax
+                      </label>
+                      <input
+                        type="number"
+                        id="extraTax"
+                        name="extraTax"
+                        value={formData.extraTax}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 mb-2" htmlFor="furtherTax">
+                        Further Tax
+                      </label>
+                      <input
+                        type="number"
+                        id="furtherTax"
+                        name="furtherTax"
+                        value={formData.furtherTax}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 mb-2" htmlFor="fedPayableTax">
+                        FED Payable Tax
+                      </label>
+                      <input
+                        type="number"
+                        id="fedPayableTax"
+                        name="fedPayableTax"
+                        value={formData.fedPayableTax}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 mb-2" htmlFor="discount">
+                        Discount Amount
+                      </label>
+                      <input
+                        type="number"
+                        id="discount"
+                        name="discount"
+                        value={formData.discount}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
                 </div>
               </>
             )}
@@ -1124,6 +1290,29 @@ export default function AddProduct() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 mb-2" htmlFor="supplierId">
+                Preferred Supplier
+              </label>
+              <select
+                id="supplierId"
+                name="supplierId"
+                value={formData.supplierId}
+                onChange={handleChange}
+                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+              >
+                <option value="">Select a supplier (optional)</option>
+                {suppliers.map((supplier: any) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name} {supplier.companyName && `(${supplier.companyName})`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                This will be used as the default supplier when restocking this product
+              </p>
             </div>
 
             {/* Product Gallery Manager */}
@@ -1231,7 +1420,7 @@ export default function AddProduct() {
         </div>
 
         {/* Hero Banner Manager */}
-        <div className="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl shadow-sm hidden">
+        <div className="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl shadow-sm ">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
               <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1557,7 +1746,7 @@ export default function AddProduct() {
 
         {/* Product Addons - Available for all product types */}
         {(
-          <div className="mt-6 hidden">
+          <div className="mt-6 ">
             <h3 className="text-lg font-semibold mb-4">🧩 Product Addons</h3>
             
             {/* Add New Addon */}

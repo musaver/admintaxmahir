@@ -48,6 +48,13 @@ interface Order {
   trackingNumber?: string;
   cancelReason?: string;
   
+  // Invoice and validation fields
+  invoiceType?: string;
+  invoiceRefNo?: string;
+  scenarioId?: string;
+  invoiceNumber?: string;
+  validationResponse?: string;
+  
   createdAt: string;
   updatedAt: string;
   
@@ -74,6 +81,15 @@ interface OrderItem {
   isWeightBased?: boolean;
   weightQuantity?: number; // Weight in grams
   weightUnit?: string; // Display unit (grams, kg)
+  // Tax and discount fields
+  taxAmount?: number;
+  taxPercentage?: number;
+  priceIncludingTax?: number;
+  priceExcludingTax?: number;
+  extraTax?: number;
+  furtherTax?: number;
+  fedPayableTax?: number;
+  discount?: number;
   addons?: Array<{
     addonId: string;
     addonTitle?: string;
@@ -127,7 +143,13 @@ export default function EditOrder() {
     // Loyalty points fields
     pointsToRedeem: 0,
     pointsDiscountAmount: 0,
-    useAllPoints: false
+    useAllPoints: false,
+    // Invoice and validation fields
+    invoiceType: '',
+    invoiceRefNo: '',
+    scenarioId: '',
+    invoiceNumber: '',
+    validationResponse: ''
   });
 
   const orderStatuses = [
@@ -361,7 +383,13 @@ export default function EditOrder() {
         // Loyalty points fields
         pointsToRedeem: Number(orderData.pointsToRedeem) || 0,
         pointsDiscountAmount: Number(orderData.pointsDiscountAmount) || 0,
-        useAllPoints: false
+        useAllPoints: false,
+        // Invoice and validation fields
+        invoiceType: orderData.invoiceType || '',
+        invoiceRefNo: orderData.invoiceRefNo || '',
+        scenarioId: orderData.scenarioId || '',
+        invoiceNumber: orderData.invoiceNumber || '',
+        validationResponse: orderData.validationResponse || ''
       });
 
       // Fetch customer points if loyalty is enabled and customer exists
@@ -791,6 +819,63 @@ export default function EditOrder() {
                   placeholder="Internal notes about this order..."
                 />
               </div>
+              
+              {/* Invoice & Validation Fields */}
+              <div className="mb-4">
+                <h4 className="text-lg font-semibold mb-4">🧾 Invoice & Validation</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-700 mb-2">Invoice Type</label>
+                    <input
+                      type="text"
+                      value={editData.invoiceType}
+                      onChange={(e) => setEditData({...editData, invoiceType: e.target.value})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                      placeholder="e.g., Sales Invoice, Pro Forma"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 mb-2">Invoice Ref No</label>
+                    <input
+                      type="text"
+                      value={editData.invoiceRefNo}
+                      onChange={(e) => setEditData({...editData, invoiceRefNo: e.target.value})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                      placeholder="Reference number"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 mb-2">Scenario ID</label>
+                    <input
+                      type="text"
+                      value={editData.scenarioId}
+                      onChange={(e) => setEditData({...editData, scenarioId: e.target.value})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                      placeholder="Scenario identifier"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 mb-2">Invoice Number</label>
+                    <input
+                      type="text"
+                      value={editData.invoiceNumber}
+                      onChange={(e) => setEditData({...editData, invoiceNumber: e.target.value})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                      placeholder="Invoice number"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-gray-700 mb-2">Validation Response</label>
+                  <textarea
+                    value={editData.validationResponse}
+                    onChange={(e) => setEditData({...editData, validationResponse: e.target.value})}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    rows={4}
+                    placeholder="Validation response data..."
+                  />
+                </div>
+              </div>
 
               <div className="flex gap-4">
                 <button
@@ -1036,6 +1121,63 @@ export default function EditOrder() {
                         </div>
                       );
                     })()}
+                    
+                    {/* Display tax and discount information */}
+                    {(Number(item.taxAmount) || Number(item.taxPercentage) || Number(item.discount) || Number(item.extraTax) || Number(item.furtherTax) || Number(item.fedPayableTax) || Number(item.priceIncludingTax) || Number(item.priceExcludingTax)) > 0 && (
+                      <div className="mt-3 pl-4 border-l-2 border-green-200">
+                        <div className="text-sm font-medium text-gray-700 mb-2">💰 Tax & Discount Details:</div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {(Number(item.taxAmount) || 0) > 0 && (
+                            <div className="flex justify-between">
+                              <span>Tax Amount:</span>
+                              <span>{formatCurrency(Number(item.taxAmount || 0))}</span>
+                            </div>
+                          )}
+                          {(Number(item.taxPercentage) || 0) > 0 && (
+                            <div className="flex justify-between">
+                              <span>Tax %:</span>
+                              <span>{Number(item.taxPercentage || 0).toFixed(2)}%</span>
+                            </div>
+                          )}
+                          {(Number(item.priceIncludingTax) || 0) > 0 && (
+                            <div className="flex justify-between">
+                              <span>Price Inc. Tax:</span>
+                              <span>{formatCurrency(Number(item.priceIncludingTax || 0))}</span>
+                            </div>
+                          )}
+                          {(Number(item.priceExcludingTax) || 0) > 0 && (
+                            <div className="flex justify-between">
+                              <span>Price Ex. Tax:</span>
+                              <span>{formatCurrency(Number(item.priceExcludingTax || 0))}</span>
+                            </div>
+                          )}
+                          {(Number(item.extraTax) || 0) > 0 && (
+                            <div className="flex justify-between">
+                              <span>Extra Tax:</span>
+                              <span>{formatCurrency(Number(item.extraTax || 0))}</span>
+                            </div>
+                          )}
+                          {(Number(item.furtherTax) || 0) > 0 && (
+                            <div className="flex justify-between">
+                              <span>Further Tax:</span>
+                              <span>{formatCurrency(Number(item.furtherTax || 0))}</span>
+                            </div>
+                          )}
+                          {(Number(item.fedPayableTax) || 0) > 0 && (
+                            <div className="flex justify-between">
+                              <span>FED Tax:</span>
+                              <span>{formatCurrency(Number(item.fedPayableTax || 0))}</span>
+                            </div>
+                          )}
+                          {(Number(item.discount) || 0) > 0 && (
+                            <div className="flex justify-between">
+                              <span>Discount:</span>
+                              <span>{formatCurrency(Number(item.discount || 0))}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -95,6 +95,12 @@ interface Order {
       status: string;
     };
   };
+  // Invoice and validation fields
+  invoiceType?: string;
+  invoiceRefNo?: string;
+  scenarioId?: string;
+  invoiceNumber?: string;
+  validationResponse?: string;
 }
 
 export default function OrdersList() {
@@ -643,6 +649,54 @@ export default function OrdersList() {
       render: (_: any, order: Order) => (
         <div className="text-sm">
           {formatDateTime(order.createdAt)}
+        </div>
+      )
+    },
+    {
+      key: 'invoiceNumber',
+      title: 'Invoice #',
+      width: '120px',
+      render: (_: any, order: Order) => (
+        <div className="text-sm">
+          {order.invoiceNumber ? (
+            <div className="font-mono text-xs bg-blue-50 px-2 py-1 rounded">
+              {order.invoiceNumber}
+            </div>
+          ) : (
+            <span className="text-gray-400">-</span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'invoiceType',
+      title: 'Invoice Type',
+      width: '120px',
+      render: (_: any, order: Order) => (
+        <div className="text-sm">
+          {order.invoiceType ? (
+            <Badge variant="outline" className="text-xs">
+              {order.invoiceType}
+            </Badge>
+          ) : (
+            <span className="text-gray-400">-</span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'invoiceRefNo',
+      title: 'Ref No',
+      width: '100px',
+      render: (_: any, order: Order) => (
+        <div className="text-sm">
+          {order.invoiceRefNo ? (
+            <div className="font-mono text-xs">
+              {order.invoiceRefNo}
+            </div>
+          ) : (
+            <span className="text-gray-400">-</span>
+          )}
         </div>
       )
     }

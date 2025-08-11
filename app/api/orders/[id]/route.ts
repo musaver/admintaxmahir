@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { orders, orderItems, productInventory, stockMovements, user, products, userLoyaltyPoints, loyaltyPointsHistory, settings } from '@/lib/schema';
+import { orders, orderItems, productInventory, stockMovements, user, products, userLoyaltyPoints, loyaltyPointsHistory, settings, suppliers } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and, isNull } from 'drizzle-orm';
 import { getStockManagementSettingDirect } from '@/lib/stockManagement';
@@ -10,14 +10,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id: orderId } = await params;
 
-    // Fetch order with customer information
+    // Fetch order with customer and supplier information
     const orderData = await db
       .select({
         order: orders,
         user: user,
+        supplier: suppliers,
       })
       .from(orders)
       .leftJoin(user, eq(orders.userId, user.id))
+      .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
       .where(eq(orders.id, orderId))
       .limit(1);
 
@@ -40,6 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const order = {
       ...orderData[0].order,
       user: orderData[0].user,
+      supplier: orderData[0].supplier,
       items: itemsWithParsedAddons
     };
 
@@ -71,7 +74,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       previousPaymentStatus,
       // Loyalty points fields
       pointsToRedeem,
-      pointsDiscountAmount
+      pointsDiscountAmount,
+      // Invoice and validation fields
+      invoiceType,
+      invoiceRefNo,
+      scenarioId,
+      invoiceNumber,
+      validationResponse
     } = body;
 
     // Get current order and items for stock management
@@ -137,6 +146,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (deliveryStatus !== undefined) updateData.deliveryStatus = deliveryStatus;
     if (pointsToRedeem !== undefined) updateData.pointsToRedeem = pointsToRedeem;
     if (pointsDiscountAmount !== undefined) updateData.pointsDiscountAmount = pointsDiscountAmount;
+    if (invoiceType !== undefined) updateData.invoiceType = invoiceType;
+    if (invoiceRefNo !== undefined) updateData.invoiceRefNo = invoiceRefNo;
+    if (scenarioId !== undefined) updateData.scenarioId = scenarioId;
+    if (invoiceNumber !== undefined) updateData.invoiceNumber = invoiceNumber;
+    if (validationResponse !== undefined) updateData.validationResponse = validationResponse;
     if (newTotalAmount !== Number(order.totalAmount)) updateData.totalAmount = newTotalAmount;
 
     await db

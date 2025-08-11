@@ -42,6 +42,11 @@ interface ProductWithCategory {
     id: string;
     name: string;
   } | null;
+  supplier: {
+    id: string;
+    name: string;
+    companyName?: string;
+  } | null;
 }
 
 export default function ProductsList() {
@@ -181,6 +186,25 @@ export default function ProductsList() {
       render: (_: any, item: ProductWithCategory) => (
         <div className="text-sm">
           {item.category ? item.category.name : 'No Category'}
+        </div>
+      ),
+      mobileHidden: true
+    },
+    {
+      key: 'supplier',
+      title: 'Supplier',
+      render: (_: any, item: ProductWithCategory) => (
+        <div className="text-sm">
+          {item.supplier ? (
+            <div>
+              <div className="font-medium">{item.supplier.name}</div>
+              {item.supplier.companyName && (
+                <div className="text-xs text-muted-foreground">{item.supplier.companyName}</div>
+              )}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">No Supplier</span>
+          )}
         </div>
       ),
       mobileHidden: true

@@ -62,6 +62,11 @@ interface InventoryItem {
     id: string;
     title: string;
   };
+  supplier?: {
+    id: string;
+    name: string;
+    companyName?: string;
+  };
 }
 
 export default function InventoryList() {
@@ -150,7 +155,9 @@ export default function InventoryList() {
       filtered = filtered.filter((item: InventoryItem) =>
         item.product?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.variant?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.inventory.location?.toLowerCase().includes(searchTerm.toLowerCase())
+        item.inventory.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.supplier?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.supplier?.companyName?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -419,6 +426,25 @@ export default function InventoryList() {
       mobileHidden: true
     },
     {
+      key: 'supplier',
+      title: 'Supplier',
+      render: (_: any, item: InventoryItem) => (
+        <div className="text-sm">
+          {item.supplier ? (
+            <div>
+              <div className="font-medium text-gray-800">{item.supplier.name}</div>
+              {item.supplier.companyName && (
+                <div className="text-xs text-gray-500">{item.supplier.companyName}</div>
+              )}
+            </div>
+          ) : (
+            <span className="text-gray-400">No supplier</span>
+          )}
+        </div>
+      ),
+      mobileHidden: true
+    },
+    {
       key: 'lastRestock',
       title: 'Last Restock',
       render: (_: any, item: InventoryItem) => (
@@ -522,6 +548,25 @@ export default function InventoryList() {
       title: 'Reorder Point',
       render: (_: any, item: InventoryItem) => (
         <div className="text-sm">{item.inventory.reorderPoint}</div>
+      ),
+      mobileHidden: true
+    },
+    {
+      key: 'supplier',
+      title: 'Supplier',
+      render: (_: any, item: InventoryItem) => (
+        <div className="text-sm">
+          {item.supplier ? (
+            <div>
+              <div className="font-medium text-gray-800">{item.supplier.name}</div>
+              {item.supplier.companyName && (
+                <div className="text-xs text-gray-500">{item.supplier.companyName}</div>
+              )}
+            </div>
+          ) : (
+            <span className="text-gray-400">No supplier</span>
+          )}
+        </div>
       ),
       mobileHidden: true
     },
@@ -712,7 +757,7 @@ export default function InventoryList() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <Input
-                placeholder="Product name, variant, location..."
+                placeholder="Product name, variant, location, supplier..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />

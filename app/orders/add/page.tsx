@@ -19,12 +19,22 @@ interface Product {
   price: number;
   productType: string;
   isActive: boolean;
+  supplierId?: string;
   variants?: ProductVariant[];
   addons?: ProductAddon[];
   // Weight-based fields
   stockManagementType?: string;
   pricePerUnit?: number;
   baseWeightUnit?: string;
+  // Tax and discount fields
+  taxAmount?: number;
+  taxPercentage?: number;
+  priceIncludingTax?: number;
+  priceExcludingTax?: number;
+  extraTax?: number;
+  furtherTax?: number;
+  fedPayableTax?: number;
+  discount?: number;
 }
 
 interface ProductVariant {
@@ -77,6 +87,15 @@ interface OrderItem {
   weightQuantity?: number; // Weight in grams
   weightUnit?: string; // Display unit (grams, kg)
   isWeightBased?: boolean;
+  // Tax and discount fields
+  taxAmount?: number;
+  taxPercentage?: number;
+  priceIncludingTax?: number;
+  priceExcludingTax?: number;
+  extraTax?: number;
+  furtherTax?: number;
+  fedPayableTax?: number;
+  discount?: number;
 }
 
 interface Customer {
@@ -140,7 +159,15 @@ export default function AddOrder() {
     // Loyalty points fields
     pointsToRedeem: 0,
     pointsDiscountAmount: 0,
-    useAllPoints: false
+    useAllPoints: false,
+    // Supplier field
+    supplierId: '' as string,
+    // Invoice and validation fields
+    invoiceType: '',
+    invoiceRefNo: '',
+    scenarioId: '',
+    invoiceNumber: '',
+    validationResponse: ''
   });
 
   // Customer/shipping information
@@ -510,10 +537,24 @@ export default function AddOrder() {
       // Weight-based fields
       isWeightBased,
       weightQuantity: isWeightBased ? weightInGrams : undefined,
-      weightUnit: isWeightBased ? weightUnit : undefined
+      weightUnit: isWeightBased ? weightUnit : undefined,
+      // Tax and discount fields from product
+      taxAmount: product.taxAmount || 0,
+      taxPercentage: product.taxPercentage || 0,
+      priceIncludingTax: product.priceIncludingTax || 0,
+      priceExcludingTax: product.priceExcludingTax || 0,
+      extraTax: product.extraTax || 0,
+      furtherTax: product.furtherTax || 0,
+      fedPayableTax: product.fedPayableTax || 0,
+      discount: product.discount || 0
     };
 
     setOrderItems([...orderItems, newItem]);
+    
+    // Set supplier_id from the product if not already set
+    if (product.supplierId && !orderData.supplierId) {
+      setOrderData(prev => ({...prev, supplierId: product.supplierId || ''}));
+    }
     
     // Reset selection
     setProductSelection({
@@ -700,6 +741,16 @@ export default function AddOrder() {
         totalAmount: totals.totalAmount,
         currency: orderData.currency,
         notes: orderData.notes,
+        
+        // Supplier field
+        supplierId: orderData.supplierId || null,
+        
+        // Invoice and validation fields
+        invoiceType: orderData.invoiceType || null,
+        invoiceRefNo: orderData.invoiceRefNo || null,
+        scenarioId: orderData.scenarioId || null,
+        invoiceNumber: orderData.invoiceNumber || null,
+        validationResponse: orderData.validationResponse || null,
         
         // Driver assignment fields
         assignedDriverId: orderData.assignedDriverId || null,
@@ -1330,7 +1381,14 @@ export default function AddOrder() {
             {/* Order Items List */}
             {orderItems.length > 0 && (
               <div className="mt-6">
-                <h4 className="font-medium mb-3">Order Items</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium">Order Items</h4>
+                  {orderData.supplierId && (
+                    <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded">
+                      🏢 Supplier Products
+                    </div>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {orderItems.map((item, index) => (
                     <div key={index} className="p-3 bg-gray-50 rounded">
@@ -1409,6 +1467,63 @@ export default function AddOrder() {
                               <span>Addons subtotal per product:</span>
                               <span className="flex items-center gap-1"><CurrencySymbol />{item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0).toFixed(2)}</span>
                             </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Display tax and discount information */}
+                      {(Number(item.taxAmount) || Number(item.taxPercentage) || Number(item.discount) || Number(item.extraTax) || Number(item.furtherTax) || Number(item.fedPayableTax) || Number(item.priceIncludingTax) || Number(item.priceExcludingTax)) > 0 && (
+                        <div className="mt-3 pl-4 border-l-2 border-green-200">
+                          <div className="text-sm font-medium text-gray-700 mb-2">💰 Tax & Discount Details:</div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {(Number(item.taxAmount) || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span>Tax Amount:</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.taxAmount || 0).toFixed(2)}</span>
+                              </div>
+                            )}
+                            {(Number(item.taxPercentage) || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span>Tax %:</span>
+                                <span>{Number(item.taxPercentage || 0).toFixed(2)}%</span>
+                              </div>
+                            )}
+                            {(Number(item.priceIncludingTax) || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span>Price Inc. Tax:</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.priceIncludingTax || 0).toFixed(2)}</span>
+                              </div>
+                            )}
+                            {(Number(item.priceExcludingTax) || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span>Price Ex. Tax:</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.priceExcludingTax || 0).toFixed(2)}</span>
+                              </div>
+                            )}
+                            {(Number(item.extraTax) || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span>Extra Tax:</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.extraTax || 0).toFixed(2)}</span>
+                              </div>
+                            )}
+                            {(Number(item.furtherTax) || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span>Further Tax:</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.furtherTax || 0).toFixed(2)}</span>
+                              </div>
+                            )}
+                            {(Number(item.fedPayableTax) || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span>FED Tax:</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.fedPayableTax || 0).toFixed(2)}</span>
+                              </div>
+                            )}
+                            {(Number(item.discount) || 0) > 0 && (
+                              <div className="flex justify-between">
+                                <span>Discount:</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.discount || 0).toFixed(2)}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1491,6 +1606,65 @@ export default function AddOrder() {
                 className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                 rows={3}
                 placeholder="Internal notes about this order..."
+              />
+            </div>
+          </div>
+
+          {/* Invoice & Validation Fields */}
+          <div className="bg-white border rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">🧾 Invoice & Validation</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-700 mb-2">Invoice Type</label>
+                <input
+                  type="text"
+                  value={orderData.invoiceType}
+                  onChange={(e) => setOrderData({...orderData, invoiceType: e.target.value})}
+                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  placeholder="e.g., Sales Invoice, Pro Forma"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-2">Invoice Ref No</label>
+                <input
+                  type="text"
+                  value={orderData.invoiceRefNo}
+                  onChange={(e) => setOrderData({...orderData, invoiceRefNo: e.target.value})}
+                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  placeholder="Reference number"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-2">Scenario ID</label>
+                <input
+                  type="text"
+                  value={orderData.scenarioId}
+                  onChange={(e) => setOrderData({...orderData, scenarioId: e.target.value})}
+                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  placeholder="Scenario identifier"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-2">Invoice Number</label>
+                <input
+                  type="text"
+                  value={orderData.invoiceNumber}
+                  onChange={(e) => setOrderData({...orderData, invoiceNumber: e.target.value})}
+                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  placeholder="Invoice number"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-gray-700 mb-2">Validation Response</label>
+              <textarea
+                value={orderData.validationResponse}
+                onChange={(e) => setOrderData({...orderData, validationResponse: e.target.value})}
+                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                rows={4}
+                placeholder="Validation response data..."
               />
             </div>
           </div>

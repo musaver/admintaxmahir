@@ -32,7 +32,8 @@ import {
   LogOutIcon,
   XIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  BuildingIcon
 } from 'lucide-react';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -81,28 +82,30 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     { name: 'Tags', href: '/tags', icon: TagIcon, category: 'main' },
     
     { name: 'Inventory', href: '/inventory', icon: BarChart3Icon, category: 'operations' },
-    { name: 'Orders', href: '/orders', icon: ShoppingCartIcon, category: 'operations', badge: pendingOrdersCount > 0 ? pendingOrdersCount : null },
+    { name: 'Suppliers', href: '/suppliers', icon: BuildingIcon, category: 'operations' },
+    { name: 'Customer Orders', href: '/orders', icon: ShoppingCartIcon, category: 'operations', badge: pendingOrdersCount > 0 ? pendingOrdersCount : null },
+    { name: 'Purchase Orders', href: '/orders/purchase', icon: ShoppingCartIcon, category: 'operations' },
     { name: 'Drivers', href: '/drivers', icon: TruckIcon, category: 'operations' },
-    /*{ name: 'Reports', href: '/reports', icon: TrendingUpIcon, category: 'operations' },
+    { name: 'Reports', href: '/reports', icon: TrendingUpIcon, category: 'operations' },
     { name: 'Returns', href: '/returns', icon: UndoIcon, category: 'operations' },
     { name: 'Refunds', href: '/refunds', icon: DollarSignIcon, category: 'operations' },
-    { name: 'Shipping Labels', href: '/shipping-labels', icon: PackageCheckIcon, category: 'operations' },*/
+    { name: 'Shipping Labels', href: '/shipping-labels', icon: PackageCheckIcon, category: 'operations' },
     { name: 'Categories', href: '/categories', icon: FolderIcon, category: 'main' },
-    /*{ name: 'Subcategories', href: '/subcategories', icon: FolderOpenIcon, category: 'catalog' },
+    { name: 'Subcategories', href: '/subcategories', icon: FolderOpenIcon, category: 'catalog' },
     { name: 'Addons', href: '/addons', icon: PuzzleIcon, category: 'catalog' },
     { name: 'Tasks', href: '/variation-attributes', icon: TagIcon, category: 'catalog' },
     { name: 'Product Variants', href: '/product-variants', icon: WrenchIcon, category: 'catalog' },
     { name: 'Admin Users', href: '/admins', icon: ShieldIcon, category: 'admin' },
     { name: 'Admin Roles', href: '/roles', icon: LockIcon, category: 'admin' },
     { name: 'Admin Logs', href: '/logs', icon: FileTextIcon, category: 'admin' },
-    { name: 'Settings', href: '/settings', icon: SettingsIcon, category: 'admin' },*/
+    { name: 'Settings', href: '/settings', icon: SettingsIcon, category: 'admin' },
     { name: 'Logout', href: '/logout', icon: LogOutIcon, category: 'admin' },
   ];
 
   const categories = {
     main: { name: 'Main', items: navigation.filter(item => item.category === 'main') },
     operations: { name: 'Operations', items: navigation.filter(item => item.category === 'operations') },
-    /*catalog: { name: 'Catalog', items: navigation.filter(item => item.category === 'catalog') },*/
+    catalog: { name: 'Catalog', items: navigation.filter(item => item.category === 'catalog') },
     admin: { name: 'Administration', items: navigation.filter(item => item.category === 'admin') },
   };
 

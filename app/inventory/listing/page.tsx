@@ -64,6 +64,7 @@ interface QuickStockUpdate {
 export default function InventoryListing() {
   const [inventory, setInventory] = useState<ProductInventory[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<ProductInventory[]>([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -78,6 +79,7 @@ export default function InventoryListing() {
     reason: 'Purchase Order',
     reference: '',
     location: '',
+    supplierId: '',
     // Weight-based fields
     weightQuantity: '',
     weightUnit: 'grams' as 'grams' | 'kg'
@@ -106,17 +108,25 @@ export default function InventoryListing() {
   const fetchInventoryData = async () => {
     setLoading(true);
     try {
-      // Use the new inventory listing API endpoint
-      const response = await fetch('/api/inventory/listing');
-      const inventoryData = await response.json();
+      const [inventoryRes, suppliersRes] = await Promise.all([
+        fetch('/api/inventory/listing'),
+        fetch('/api/suppliers'),
+      ]);
       
-      if (!response.ok) {
+      if (inventoryRes.ok) {
+        const inventoryData = await inventoryRes.json();
+        setInventory(inventoryData);
+      } else {
+        const inventoryData = await inventoryRes.json();
         throw new Error(inventoryData.error || 'Failed to fetch inventory data');
       }
 
-      setInventory(inventoryData);
+      if (suppliersRes.ok) {
+        const suppliersData = await suppliersRes.json();
+        setSuppliers(suppliersData.filter((s: any) => s.isActive));
+      }
     } catch (err) {
-      console.error('Error fetching inventory data:', err);
+      console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
@@ -205,6 +215,7 @@ export default function InventoryListing() {
       reason: 'Purchase Order',
       reference: '',
       location: '',
+      supplierId: '',
       weightQuantity: '',
       weightUnit: 'grams'
     });
@@ -236,7 +247,8 @@ export default function InventoryListing() {
         movementType: 'in',
         reason: quickAddForm.reason,
         location: quickAddForm.location,
-        reference: quickAddForm.reference
+        reference: quickAddForm.reference,
+        supplierId: quickAddForm.supplierId || null
       };
 
       if (quickAddData.isWeightBased) {
@@ -759,7 +771,7 @@ export default function InventoryListing() {
                 />
               </div>
 
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-gray-700 mb-2">Location</label>
                 <input
                   type="text"
@@ -768,6 +780,25 @@ export default function InventoryListing() {
                   className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                   placeholder="Warehouse, shelf, etc."
                 />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-gray-700 mb-2">
+                  Supplier <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={quickAddForm.supplierId}
+                  onChange={(e) => setQuickAddForm({...quickAddForm, supplierId: e.target.value})}
+                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  required
+                >
+                  <option value="">Select a supplier...</option>
+                  {suppliers.map((supplier: any) => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.name} {supplier.companyName && `(${supplier.companyName})`}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex gap-3">

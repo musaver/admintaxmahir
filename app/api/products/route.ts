@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { products, categories, subcategories, productVariants, productAddons, productTags, tags } from '@/lib/schema';
+import { products, categories, subcategories, productVariants, productAddons, productTags, tags, suppliers } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -17,11 +17,17 @@ export async function GET() {
         subcategory: {
           id: subcategories.id,
           name: subcategories.name
+        },
+        supplier: {
+          id: suppliers.id,
+          name: suppliers.name,
+          companyName: suppliers.companyName
         }
       })
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
-      .leftJoin(subcategories, eq(products.subcategoryId, subcategories.id));
+      .leftJoin(subcategories, eq(products.subcategoryId, subcategories.id))
+      .leftJoin(suppliers, eq(products.supplierId, suppliers.id));
       
     return NextResponse.json(allProducts);
   } catch (error) {
@@ -45,6 +51,7 @@ export async function POST(req: NextRequest) {
       banner,
       categoryId, 
       subcategoryId, 
+      supplierId,
       tags, 
       selectedTags, // New tag system
       weight, 
@@ -69,7 +76,16 @@ export async function POST(req: NextRequest) {
       cbd,
       difficulty,
       floweringTime,
-      yieldAmount
+      yieldAmount,
+      // Tax and discount fields
+      taxAmount,
+      taxPercentage,
+      priceIncludingTax,
+      priceExcludingTax,
+      extraTax,
+      furtherTax,
+      fedPayableTax,
+      discount
     } = await req.json();
     
     // Validate required fields
@@ -109,6 +125,7 @@ export async function POST(req: NextRequest) {
       banner: banner || null,
       categoryId: categoryId || null,
       subcategoryId: subcategoryId || null,
+      supplierId: supplierId || null,
       tags: tags ? JSON.stringify(tags) : null,
       weight: weight ? weight.toString() : null,
       dimensions: dimensions ? JSON.stringify(dimensions) : null,
@@ -131,6 +148,15 @@ export async function POST(req: NextRequest) {
       difficulty: difficulty || null,
       floweringTime: floweringTime || null,
       yieldAmount: yieldAmount || null,
+      // Tax and discount fields
+      taxAmount: taxAmount ? taxAmount.toString() : null,
+      taxPercentage: taxPercentage ? taxPercentage.toString() : null,
+      priceIncludingTax: priceIncludingTax ? priceIncludingTax.toString() : null,
+      priceExcludingTax: priceExcludingTax ? priceExcludingTax.toString() : null,
+      extraTax: extraTax ? extraTax.toString() : null,
+      furtherTax: furtherTax ? furtherTax.toString() : null,
+      fedPayableTax: fedPayableTax ? fedPayableTax.toString() : null,
+      discount: discount ? discount.toString() : null,
     };
     
     // Start transaction for product and variants

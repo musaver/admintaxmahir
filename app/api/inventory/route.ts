@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { productInventory, products, productVariants } from '@/lib/schema';
+import { productInventory, products, productVariants, suppliers } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, inArray } from 'drizzle-orm';
 import { convertToGrams, isWeightBasedProduct } from '@/utils/weightUtils';
@@ -13,6 +13,7 @@ export async function GET() {
         product: {
           id: products.id,
           name: products.name,
+          price: products.price,
           stockManagementType: products.stockManagementType,
           pricePerUnit: products.pricePerUnit,
           baseWeightUnit: products.baseWeightUnit
@@ -20,11 +21,17 @@ export async function GET() {
         variant: {
           id: productVariants.id,
           title: productVariants.title
+        },
+        supplier: {
+          id: suppliers.id,
+          name: suppliers.name,
+          companyName: suppliers.companyName
         }
       })
       .from(productInventory)
       .leftJoin(products, eq(productInventory.productId, products.id))
-      .leftJoin(productVariants, eq(productInventory.variantId, productVariants.id));
+      .leftJoin(productVariants, eq(productInventory.variantId, productVariants.id))
+      .leftJoin(suppliers, eq(productInventory.supplierId, suppliers.id));
       
     return NextResponse.json(allInventory);
   } catch (error) {
