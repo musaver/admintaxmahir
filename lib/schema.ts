@@ -405,6 +405,7 @@ export const orderItems = mysqlTable("order_items", {
   productName: varchar("product_name", { length: 255 }).notNull(),
   variantTitle: varchar("variant_title", { length: 255 }),
   sku: varchar("sku", { length: 100 }),
+  hsCode: varchar("hs_code", { length: 20 }), // Harmonized System Code
   
   // Quantity-based order fields
   quantity: int("quantity").notNull().default(0),

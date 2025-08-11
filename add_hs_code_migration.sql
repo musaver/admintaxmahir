@@ -1,4 +1,4 @@
--- Add HS Code field to products table
+-- Add HS Code field to products and order_items tables
 -- This migration adds the hsCode column to store Harmonized System Codes
 
 -- Add hsCode column to products table
@@ -6,8 +6,14 @@ ALTER TABLE products
 ADD COLUMN hs_code VARCHAR(20) NULL
 COMMENT 'Harmonized System Code for customs and tax classification';
 
--- Add index on hs_code for better query performance (optional)
+-- Add hsCode column to order_items table
+ALTER TABLE order_items 
+ADD COLUMN hs_code VARCHAR(20) NULL
+COMMENT 'Harmonized System Code for customs and tax classification';
+
+-- Add indexes on hs_code for better query performance (optional)
 CREATE INDEX idx_products_hs_code ON products(hs_code);
+CREATE INDEX idx_order_items_hs_code ON order_items(hs_code);
 
 -- Verification query (run this after the migration to check):
 -- SELECT COUNT(*) as total_products, 

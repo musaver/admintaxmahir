@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { eq, and, isNull, desc, or } from 'drizzle-orm';
 import { getStockManagementSettingDirect } from '@/lib/stockManagement';
 import { isWeightBasedProduct, convertToGrams } from '@/utils/weightUtils';
+import { sendInvoiceEmails } from '@/lib/email';
 
 export async function GET(req: NextRequest) {
   try {
@@ -378,6 +379,7 @@ export async function POST(req: NextRequest) {
         productName: item.productName,
         variantTitle: item.variantTitle || null,
         sku: item.sku || null,
+        hsCode: item.hsCode || null,
         quantity: item.quantity,
         price: item.price,
         costPrice: costPrice ? costPrice.toString() : null,
@@ -556,6 +558,79 @@ export async function POST(req: NextRequest) {
       console.log(`⚠️ Points not awarded - no userId provided`);
     }
     console.log(`=== END LOYALTY POINTS PROCESSING ===\n`);
+
+    // Send invoice emails to customer and supplier
+    console.log(`=== SENDING INVOICE EMAILS ===`);
+    try {
+      // Prepare order data for email
+      const orderForEmail = {
+        id: orderId,
+        orderNumber,
+        email,
+        phone: phone || '',
+        status,
+        subtotal: parseFloat(subtotal.toString()),
+        taxAmount: parseFloat((taxAmount || 0).toString()),
+        shippingAmount: parseFloat((shippingAmount || 0).toString()),
+        discountAmount: parseFloat((discountAmount || 0).toString()),
+        totalAmount: parseFloat(totalAmount.toString()),
+        currency,
+        billingFirstName,
+        billingLastName,
+        billingAddress1,
+        billingCity,
+        billingState,
+        billingPostalCode,
+        billingCountry,
+        createdAt: new Date().toISOString(),
+        items: createdItems.map(item => ({
+          productName: item.productName,
+          variantTitle: item.variantTitle || undefined,
+          sku: item.sku || undefined,
+          hsCode: item.hsCode || undefined,
+          quantity: item.quantity,
+          price: parseFloat(item.price.toString()),
+          totalPrice: parseFloat(item.totalPrice.toString()),
+          isWeightBased: item.weightQuantity ? parseFloat(item.weightQuantity.toString()) > 0 : false,
+          weightQuantity: item.weightQuantity ? parseFloat(item.weightQuantity.toString()) : undefined,
+          weightUnit: item.weightUnit || undefined,
+        }))
+      };
+
+      // Get supplier information if supplierId is provided
+      let supplierForEmail = undefined;
+      if (supplierId) {
+        const supplierData = await db
+          .select()
+          .from(suppliers)
+          .where(eq(suppliers.id, supplierId))
+          .limit(1);
+        
+        if (supplierData.length > 0 && supplierData[0].email) {
+          supplierForEmail = {
+            id: supplierData[0].id,
+            name: supplierData[0].name,
+            email: supplierData[0].email,
+            companyName: supplierData[0].companyName || undefined
+          };
+        }
+      }
+
+      // Send emails
+      const emailResults = await sendInvoiceEmails(orderForEmail, supplierForEmail);
+      
+      console.log('Email results:', emailResults);
+      if (emailResults.errors.length > 0) {
+        console.error('Email errors:', emailResults.errors);
+        // Don't fail the order creation if email sending fails
+      } else {
+        console.log('✅ Invoice emails sent successfully');
+      }
+    } catch (emailError) {
+      console.error('❌ Error sending invoice emails:', emailError);
+      // Don't fail the order creation if email sending fails
+    }
+    console.log(`=== END EMAIL PROCESSING ===\n`);
 
     return NextResponse.json({
       ...createdOrder[0],
