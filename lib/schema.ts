@@ -336,7 +336,7 @@ export const orders = mysqlTable("orders", {
   shippingAmount: decimal("shipping_amount", { precision: 10, scale: 2 }).default('0.00'),
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default('0.00'),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 3 }).default("USD"),
+  currency: varchar("currency", { length: 3 }).default("PKR"),
   
   deliveryTime: varchar("delivery_time", { length: 255 }),
   // Billing Address
@@ -635,7 +635,7 @@ export const suppliers = mysqlTable("suppliers", {
   
   // Business Information
   paymentTerms: varchar("payment_terms", { length: 100 }), // Net 30, Net 60, etc.
-  currency: varchar("currency", { length: 3 }).default("USD"),
+  currency: varchar("currency", { length: 3 }).default("PKR"),
   notes: text("notes"),
   
   // Seller Information

@@ -50,7 +50,7 @@ interface CurrencyProviderProps {
 }
 
 export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) => {
-  const [currentCurrency, setCurrentCurrency] = useState<CurrencyCode>('USD');
+  const [currentCurrency, setCurrentCurrency] = useState<CurrencyCode>('PKR');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,7 +75,7 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
       console.error('Error fetching currency settings:', err);
       setError(err.message);
       // Fallback to default currency
-      setCurrentCurrency('USD');
+      setCurrentCurrency('PKR');
     } finally {
       setLoading(false);
     }

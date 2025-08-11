@@ -29,7 +29,7 @@ const AVAILABLE_CURRENCIES = {
 type CurrencyCode = keyof typeof AVAILABLE_CURRENCIES;
 
 // Default currency
-const DEFAULT_CURRENCY: CurrencyCode = 'USD';
+const DEFAULT_CURRENCY: CurrencyCode = 'PKR';
 const CURRENCY_SETTING_KEY = 'selected_currency';
 
 // Get currency setting from database
