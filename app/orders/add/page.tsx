@@ -89,6 +89,11 @@ interface OrderItem {
   weightQuantity?: number; // Weight in grams
   weightUnit?: string; // Display unit (grams, kg)
   isWeightBased?: boolean;
+  // UOM for non-weight based products
+  uom?: string;
+  // Additional fields
+  itemSerialNumber?: string; // Item serial number
+  sroScheduleNumber?: string; // SRO / Schedule Number
   // Tax and discount fields
   taxAmount?: number;
   taxPercentage?: number;
@@ -212,7 +217,23 @@ export default function AddOrder() {
     customPrice: '',
     // Weight-based fields
     weightInput: '',
-    weightUnit: 'grams' as 'grams' | 'kg'
+    weightUnit: 'grams' as 'grams' | 'kg',
+    // UOM field for non-weight based products
+    uom: '',
+    // Additional editable fields
+    hsCode: '',
+    itemSerialNumber: '',
+    sroScheduleNumber: '',
+    productName: '',
+    // Editable tax and price fields
+    taxAmount: 0,
+    taxPercentage: 0,
+    priceIncludingTax: 0,
+    priceExcludingTax: 0,
+    extraTax: 0,
+    furtherTax: 0,
+    fedPayableTax: 0,
+    discountAmount: 0
   });
 
   // Group product addon selection
@@ -225,10 +246,53 @@ export default function AddOrder() {
     fetchInitialData();
   }, []);
 
-  // Clear selected addons when product changes
+  // Clear selected addons when product changes and populate editable fields
   useEffect(() => {
     setSelectedAddons([]);
-  }, [productSelection.selectedProductId]);
+    
+    // Populate editable fields when product is selected
+    if (productSelection.selectedProductId) {
+      const product = products.find(p => p.id === productSelection.selectedProductId);
+      if (product) {
+        setProductSelection(prev => ({
+          ...prev,
+          // Populate additional fields from product
+          hsCode: product.hsCode || '',
+          productName: product.name || '',
+          // Keep existing values for fields that should be manually entered
+          itemSerialNumber: prev.itemSerialNumber,
+          sroScheduleNumber: prev.sroScheduleNumber,
+          // Populate tax and price fields
+          taxAmount: product.taxAmount || 0,
+          taxPercentage: product.taxPercentage || 0,
+          priceIncludingTax: product.priceIncludingTax || 0,
+          priceExcludingTax: product.priceExcludingTax || 0,
+          extraTax: product.extraTax || 0,
+          furtherTax: product.furtherTax || 0,
+          fedPayableTax: product.fedPayableTax || 0,
+          discountAmount: product.discount || 0
+        }));
+      }
+    } else {
+      // Reset editable fields when no product is selected
+      setProductSelection(prev => ({
+        ...prev,
+        uom: '',
+        hsCode: '',
+        itemSerialNumber: '',
+        sroScheduleNumber: '',
+        productName: '',
+        taxAmount: 0,
+        taxPercentage: 0,
+        priceIncludingTax: 0,
+        priceExcludingTax: 0,
+        extraTax: 0,
+        furtherTax: 0,
+        fedPayableTax: 0,
+        discountAmount: 0
+      }));
+    }
+  }, [productSelection.selectedProductId, products]);
 
   const fetchInitialData = async () => {
     try {
@@ -548,10 +612,10 @@ export default function AddOrder() {
     const newItem: OrderItem = {
       productId: selectedProductId,
       variantId: selectedVariantId || undefined,
-      productName,
+      productName: productSelection.productName || productName,
       variantTitle: variantTitle || undefined,
       sku,
-      hsCode: product.hsCode,
+      hsCode: productSelection.hsCode || product.hsCode,
       price,
       quantity: finalQuantity,
       totalPrice,
@@ -560,15 +624,20 @@ export default function AddOrder() {
       isWeightBased,
       weightQuantity: isWeightBased ? weightInGrams : undefined,
       weightUnit: isWeightBased ? weightUnit : undefined,
-      // Tax and discount fields from product
-      taxAmount: product.taxAmount || 0,
-      taxPercentage: product.taxPercentage || 0,
-      priceIncludingTax: product.priceIncludingTax || 0,
-      priceExcludingTax: product.priceExcludingTax || 0,
-      extraTax: product.extraTax || 0,
-      furtherTax: product.furtherTax || 0,
-      fedPayableTax: product.fedPayableTax || 0,
-      discount: product.discount || 0
+      // UOM for non-weight based products
+      uom: !isWeightBased ? productSelection.uom : undefined,
+      // Additional editable fields
+      itemSerialNumber: productSelection.itemSerialNumber || undefined,
+      sroScheduleNumber: productSelection.sroScheduleNumber || undefined,
+      // Tax and discount fields from editable selection
+      taxAmount: productSelection.taxAmount || 0,
+      taxPercentage: productSelection.taxPercentage || 0,
+      priceIncludingTax: productSelection.priceIncludingTax || 0,
+      priceExcludingTax: productSelection.priceExcludingTax || 0,
+      extraTax: productSelection.extraTax || 0,
+      furtherTax: productSelection.furtherTax || 0,
+      fedPayableTax: productSelection.fedPayableTax || 0,
+      discount: productSelection.discountAmount || 0
     };
 
     setOrderItems([...orderItems, newItem]);
@@ -585,7 +654,20 @@ export default function AddOrder() {
       quantity: 1,
       customPrice: '',
       weightInput: '',
-      weightUnit: 'grams'
+      weightUnit: 'grams',
+      uom: '',
+      hsCode: '',
+      itemSerialNumber: '',
+      sroScheduleNumber: '',
+      productName: '',
+      taxAmount: 0,
+      taxPercentage: 0,
+      priceIncludingTax: 0,
+      priceExcludingTax: 0,
+      extraTax: 0,
+      furtherTax: 0,
+      fedPayableTax: 0,
+      discountAmount: 0
     });
     clearSelectedAddons();
   };
@@ -1452,12 +1534,198 @@ export default function AddOrder() {
                   placeholder="Override price"
                 />
               </div>
+
+              {/* UOM field for non-weight based products */}
+              {selectedProduct && !isWeightBasedProduct(selectedProduct.stockManagementType || 'quantity') && (
+                <div>
+                  <label className="block text-gray-700 mb-2">Unit of Measurement (UOM)</label>
+                  <input
+                    type="text"
+                    value={productSelection.uom}
+                    onChange={(e) => setProductSelection({...productSelection, uom: e.target.value})}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    placeholder="e.g., pieces, boxes, units"
+                  />
+                </div>
+              )}
             </div>
+
+            {/* Editable Product and Tax Fields */}
+            {selectedProduct && (
+              <div className="mt-6 p-4 bg-gray-50 border rounded-lg">
+                <h4 className="text-md font-semibold mb-4 text-gray-700">📋 Product & Tax Details (Editable)</h4>
+                
+                {/* Product Details Section */}
+                <div className="mb-6">
+                  <h5 className="text-sm font-medium mb-3 text-gray-600">Product Information</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-gray-700 mb-2 text-sm">Product Name</label>
+                      <input
+                        type="text"
+                        value={productSelection.productName}
+                        onChange={(e) => setProductSelection({...productSelection, productName: e.target.value})}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                        placeholder="Product name"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-700 mb-2 text-sm">HS Code</label>
+                      <input
+                        type="text"
+                        value={productSelection.hsCode}
+                        onChange={(e) => setProductSelection({...productSelection, hsCode: e.target.value})}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                        placeholder="Harmonized System Code"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-700 mb-2 text-sm">Item Serial No.</label>
+                      <input
+                        type="text"
+                        value={productSelection.itemSerialNumber}
+                        onChange={(e) => setProductSelection({...productSelection, itemSerialNumber: e.target.value})}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                        placeholder="Serial number"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-700 mb-2 text-sm">SRO / Schedule No.</label>
+                      <input
+                        type="text"
+                        value={productSelection.sroScheduleNumber}
+                        onChange={(e) => setProductSelection({...productSelection, sroScheduleNumber: e.target.value})}
+                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                        placeholder="SRO or Schedule number"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tax and Price Section */}
+                <div>
+                  <h5 className="text-sm font-medium mb-3 text-gray-600">Tax & Pricing Information</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-gray-700 mb-2 text-sm">Tax Amount</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productSelection.taxAmount}
+                      onChange={(e) => setProductSelection({...productSelection, taxAmount: parseFloat(e.target.value) || 0})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2 text-sm">Tax Percentage (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={productSelection.taxPercentage}
+                      onChange={(e) => setProductSelection({...productSelection, taxPercentage: parseFloat(e.target.value) || 0})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2 text-sm">Price Including Tax</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productSelection.priceIncludingTax}
+                      onChange={(e) => setProductSelection({...productSelection, priceIncludingTax: parseFloat(e.target.value) || 0})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2 text-sm">Price Excluding Tax</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productSelection.priceExcludingTax}
+                      onChange={(e) => setProductSelection({...productSelection, priceExcludingTax: parseFloat(e.target.value) || 0})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2 text-sm">Extra Tax</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productSelection.extraTax}
+                      onChange={(e) => setProductSelection({...productSelection, extraTax: parseFloat(e.target.value) || 0})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2 text-sm">Further Tax</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productSelection.furtherTax}
+                      onChange={(e) => setProductSelection({...productSelection, furtherTax: parseFloat(e.target.value) || 0})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2 text-sm">FED Payable Tax</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productSelection.fedPayableTax}
+                      onChange={(e) => setProductSelection({...productSelection, fedPayableTax: parseFloat(e.target.value) || 0})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2 text-sm">Discount Amount</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={productSelection.discountAmount}
+                      onChange={(e) => setProductSelection({...productSelection, discountAmount: parseFloat(e.target.value) || 0})}
+                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  </div>
+                </div>
+                
+                <div className="mt-3 text-xs text-gray-600">
+                  💡 These values are pre-populated from the product but can be modified before adding to the order.
+                </div>
+              </div>
+            )}
 
             <button
               type="button"
               onClick={handleAddProduct}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 mt-4"
             >
               ➕ Add Product
             </button>
@@ -1491,6 +1759,21 @@ export default function AddOrder() {
                           {item.isWeightBased && item.weightQuantity && (
                             <div className="text-sm text-blue-600">
                               ⚖️ Weight: {formatWeightAuto(item.weightQuantity).formattedString}
+                            </div>
+                          )}
+                          {item.uom && !item.isWeightBased && (
+                            <div className="text-sm text-purple-600">
+                              📏 UOM: {item.uom}
+                            </div>
+                          )}
+                          {item.itemSerialNumber && (
+                            <div className="text-sm text-orange-600">
+                              🔢 Serial No: {item.itemSerialNumber}
+                            </div>
+                          )}
+                          {item.sroScheduleNumber && (
+                            <div className="text-sm text-teal-600">
+                              📄 SRO/Schedule: {item.sroScheduleNumber}
                             </div>
                           )}
                         </div>

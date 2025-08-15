@@ -244,7 +244,7 @@ export default function OrderInvoice() {
 
             {/* Invoice Details */}
             <div className="p-8 border-b border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {/* Supplier */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">🏢 Supplier:</h3>
@@ -300,6 +300,33 @@ export default function OrderInvoice() {
                       </>
                     ) : (
                       <p className="text-gray-400 italic">No supplier information</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Seller Information (from order) */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">🏪 Seller:</h3>
+                  <div className="text-gray-600">
+                    {(order.sellerBusinessName || order.sellerNTNCNIC || order.sellerProvince || order.sellerAddress) ? (
+                      <>
+                        {order.sellerBusinessName && <p className="font-medium">{order.sellerBusinessName}</p>}
+                        {order.sellerNTNCNIC && (
+                          <div className="mt-1">
+                            <span className="text-xs text-gray-500">NTN/CNIC: </span>
+                            <span className="font-mono text-sm">{order.sellerNTNCNIC}</span>
+                          </div>
+                        )}
+                        {order.sellerProvince && <p className="text-sm">{order.sellerProvince} Province</p>}
+                        {order.sellerAddress && (
+                          <div className="mt-2">
+                            <span className="text-xs text-gray-500">Address: </span>
+                            <p className="text-sm">{order.sellerAddress}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-gray-400 italic">No seller information</p>
                     )}
                   </div>
                 </div>
@@ -475,12 +502,15 @@ export default function OrderInvoice() {
             <div className="p-8">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Order Items:</h3>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b-2 border-gray-200">
-                      <th className="text-left py-3 px-2">Item</th>
-                      <th className="text-left py-3 px-2">SKU</th>
-                      <th className="text-center py-3 px-2">Qty/Weight</th>
+                      <th className="text-left py-3 px-2">Product Name</th>
+                      <th className="text-left py-3 px-2">HS Code</th>
+                      <th className="text-left py-3 px-2">Serial No.</th>
+                      <th className="text-left py-3 px-2">SRO/Schedule</th>
+                      <th className="text-center py-3 px-2">Quantity</th>
+                      <th className="text-center py-3 px-2">UOM</th>
                       <th className="text-right py-3 px-2">Unit Price</th>
                       <th className="text-right py-3 px-2">Total</th>
                     </tr>
@@ -490,17 +520,18 @@ export default function OrderInvoice() {
                       orderItems.map((item: any, index: number) => (
                         <React.Fragment key={index}>
                           <tr className="border-b border-gray-100">
+                            {/* Product Name */}
                             <td className="py-3 px-2">
                               <div>
                                 <div className="font-medium">{item.productName}</div>
                                 {item.variantTitle && (
-                                  <div className="text-sm text-gray-500">{item.variantTitle}</div>
+                                  <div className="text-xs text-gray-500">{item.variantTitle}</div>
                                 )}
-                                {item.hsCode && (
-                                  <div className="text-xs text-gray-500">HS Code: {item.hsCode}</div>
+                                {item.sku && (
+                                  <div className="text-xs text-gray-500 font-mono">SKU: {item.sku}</div>
                                 )}
                                 {item.isWeightBased && item.weightQuantity && (
-                                  <div className="text-sm text-blue-600">
+                                  <div className="text-xs text-blue-600">
                                     ⚖️ Weight: {formatWeightAuto(item.weightQuantity).formattedString}
                                   </div>
                                 )}
@@ -514,9 +545,23 @@ export default function OrderInvoice() {
                                 })()}
                               </div>
                             </td>
-                            <td className="py-3 px-2 text-gray-600 font-mono text-sm">
-                              {item.sku || 'N/A'}
+                            
+                            {/* HS Code */}
+                            <td className="py-3 px-2 text-gray-600 font-mono text-xs">
+                              {item.hsCode || '-'}
                             </td>
+                            
+                            {/* Serial Number */}
+                            <td className="py-3 px-2 text-gray-600 font-mono text-xs">
+                              {item.itemSerialNumber || '-'}
+                            </td>
+                            
+                            {/* SRO/Schedule Number */}
+                            <td className="py-3 px-2 text-gray-600 font-mono text-xs">
+                              {item.sroScheduleNumber || '-'}
+                            </td>
+                            
+                            {/* Quantity */}
                             <td className="py-3 px-2 text-center">
                               {item.isWeightBased && item.weightQuantity ? (
                                 <div className="text-sm">
@@ -524,9 +569,20 @@ export default function OrderInvoice() {
                                   <div className="text-xs text-gray-500">(Weight)</div>
                                 </div>
                               ) : (
-                                item.quantity
+                                <div className="font-medium">{item.quantity}</div>
                               )}
                             </td>
+                            
+                            {/* UOM */}
+                            <td className="py-3 px-2 text-center text-gray-600">
+                              {item.isWeightBased ? (
+                                <span className="text-xs text-gray-500">Weight-based</span>
+                              ) : (
+                                item.uom || '-'
+                              )}
+                            </td>
+                            
+                            {/* Unit Price */}
                             <td className="py-3 px-2 text-right">
                               {(() => {
                                 const parsedAddons = parseAddons(item.addons);
@@ -553,6 +609,8 @@ export default function OrderInvoice() {
                                 }
                               })()}
                             </td>
+                            
+                            {/* Total */}
                             <td className="py-3 px-2 text-right font-medium">
                               {formatAmount(item.totalPrice)}
                             </td>
@@ -562,7 +620,7 @@ export default function OrderInvoice() {
                             const parsedAddons = parseAddons(item.addons);
                             return parsedAddons.length > 0 && (
                               <tr className="border-b border-gray-50 bg-gray-25">
-                                <td colSpan={5} className="py-3 px-2 pl-8">
+                                <td colSpan={8} className="py-3 px-2 pl-8">
                                   <div className="text-xs text-gray-600">
                                     <div className="font-medium mb-2 text-gray-700">🧩 Addons:</div>
                                     <div className="space-y-2">
@@ -623,7 +681,7 @@ export default function OrderInvoice() {
                           {/* Tax and Discount details row */}
                           {(item.taxAmount || item.taxPercentage || item.discount || item.extraTax || item.furtherTax || item.fedPayableTax || item.priceIncludingTax || item.priceExcludingTax) && (
                             <tr className="border-b border-gray-50 bg-green-25">
-                              <td colSpan={5} className="py-3 px-2 pl-8">
+                              <td colSpan={8} className="py-3 px-2 pl-8">
                                 <div className="text-xs text-gray-600">
                                   <div className="font-medium mb-2 text-gray-700">💰 Tax & Discount Details:</div>
                                   <div className="grid grid-cols-2 gap-x-6 gap-y-1">
@@ -684,7 +742,7 @@ export default function OrderInvoice() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-500">
+                        <td colSpan={8} className="py-8 text-center text-gray-500">
                           No items found for this order
                         </td>
                       </tr>

@@ -392,6 +392,9 @@ export async function POST(req: NextRequest) {
         variantTitle: item.variantTitle || null,
         sku: item.sku || null,
         hsCode: item.hsCode || null,
+        uom: item.uom || null,
+        itemSerialNumber: item.itemSerialNumber || null,
+        sroScheduleNumber: item.sroScheduleNumber || null,
         quantity: item.quantity,
         price: item.price,
         costPrice: costPrice ? costPrice.toString() : null,
@@ -618,6 +621,11 @@ export async function POST(req: NextRequest) {
         buyerProvince: body.buyerProvince,
         buyerAddress: body.buyerAddress,
         buyerRegistrationType: body.buyerRegistrationType,
+        // Seller fields (from selected customer)
+        sellerNTNCNIC: sellerNTNCNIC,
+        sellerBusinessName: sellerBusinessName,
+        sellerProvince: sellerProvince,
+        sellerAddress: sellerAddress,
         createdAt: new Date().toISOString(),
         items: createdItems.map(item => ({
           productName: item.productName,

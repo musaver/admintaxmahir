@@ -141,6 +141,11 @@ interface Order {
   buyerProvince?: string;
   buyerAddress?: string;
   buyerRegistrationType?: string;
+  // Seller fields (from selected customer)
+  sellerNTNCNIC?: string;
+  sellerBusinessName?: string;
+  sellerProvince?: string;
+  sellerAddress?: string;
   createdAt: string;
   items: OrderItem[];
   // User and supplier info
@@ -218,7 +223,7 @@ export function generateInvoiceHtml(order: Order, isForSupplier: boolean = false
         .company-header { text-align: right; margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
         .company-header h2 { color: #2563eb; font-size: 24px; margin: 0 0 10px 0; }
         .company-header p { margin: 2px 0; color: #6b7280; font-size: 14px; }
-        .invoice-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; margin: 30px 0; }
+        .invoice-details { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 20px; margin: 30px 0; }
         .detail-section { background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; }
         .detail-section h3 { margin: 0 0 15px 0; color: #374151; font-size: 16px; font-weight: 600; }
         .detail-section p { margin: 4px 0; font-size: 14px; color: #6b7280; }
@@ -255,6 +260,9 @@ export function generateInvoiceHtml(order: Order, isForSupplier: boolean = false
             .items-table { font-size: 13px; }
             .items-table th, .items-table td { padding: 10px 8px; }
             .tax-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 1024px) and (min-width: 769px) {
+            .invoice-details { grid-template-columns: 1fr 1fr; gap: 20px; }
         }
     </style>
 </head>
@@ -299,6 +307,17 @@ export function generateInvoiceHtml(order: Order, isForSupplier: boolean = false
                             </div>
                         ` : ''}
                     ` : '<p style="color: #9ca3af; font-style: italic;">No supplier information</p>'}
+                </div>
+
+                <!-- Seller Section -->
+                <div class="detail-section">
+                    <h3>🏪 Seller</h3>
+                    ${order.sellerBusinessName || order.sellerNTNCNIC || order.sellerProvince || order.sellerAddress ? `
+                        ${order.sellerBusinessName ? `<p class="highlight">${order.sellerBusinessName}</p>` : ''}
+                        ${order.sellerNTNCNIC ? `<p>NTN/CNIC: ${order.sellerNTNCNIC}</p>` : ''}
+                        ${order.sellerProvince ? `<p>${order.sellerProvince} Province</p>` : ''}
+                        ${order.sellerAddress ? `<p style="margin-top: 8px;">Address: ${order.sellerAddress}</p>` : ''}
+                    ` : '<p style="color: #9ca3af; font-style: italic;">No seller information</p>'}
                 </div>
 
                 <!-- Buyer Section -->

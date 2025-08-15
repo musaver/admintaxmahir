@@ -412,6 +412,9 @@ export const orderItems = mysqlTable("order_items", {
   variantTitle: varchar("variant_title", { length: 255 }),
   sku: varchar("sku", { length: 100 }),
   hsCode: varchar("hs_code", { length: 20 }), // Harmonized System Code
+  uom: varchar("uom", { length: 50 }), // Unit of Measurement for non-weight based products
+  itemSerialNumber: varchar("item_serial_number", { length: 100 }), // Item serial number
+  sroScheduleNumber: varchar("sro_schedule_number", { length: 100 }), // SRO / Schedule Number
   
   // Quantity-based order fields
   quantity: int("quantity").notNull().default(0),
