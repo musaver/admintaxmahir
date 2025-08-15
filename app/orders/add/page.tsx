@@ -112,6 +112,11 @@ interface Customer {
   state?: string;
   postalCode?: string;
   country?: string;
+  // Seller fields
+  sellerNTNCNIC?: string;
+  sellerBusinessName?: string;
+  sellerProvince?: string;
+  sellerAddress?: string;
 }
 
 export default function AddOrder() {
@@ -169,7 +174,12 @@ export default function AddOrder() {
     invoiceRefNo: '',
     scenarioId: '',
     invoiceNumber: '',
-    validationResponse: ''
+    validationResponse: '',
+    // Seller fields (from selected user)
+    sellerNTNCNIC: '',
+    sellerBusinessName: '',
+    sellerProvince: '',
+    sellerAddress: ''
   });
 
   // Customer/shipping information
@@ -339,7 +349,16 @@ export default function AddOrder() {
     if (customerId) {
       const customer = customers.find(c => c.id === customerId);
       if (customer) {
-        setOrderData(prev => ({ ...prev, email: customer.email, phone: customer.phone || '' }));
+        setOrderData(prev => ({ 
+          ...prev, 
+          email: customer.email, 
+          phone: customer.phone || '',
+          // Populate seller fields from selected customer
+          sellerNTNCNIC: customer.sellerNTNCNIC || '',
+          sellerBusinessName: customer.sellerBusinessName || '',
+          sellerProvince: customer.sellerProvince || '',
+          sellerAddress: customer.sellerAddress || ''
+        }));
         setCustomerInfo(prev => ({
           ...prev,
           isGuest: false,
@@ -784,7 +803,13 @@ export default function AddOrder() {
         shippingCountry: customerInfo.sameAsBilling ? customerInfo.billingCountry : customerInfo.shippingCountry,
         
         // Order items
-        items: orderItems
+        items: orderItems,
+        
+        // Seller fields (from selected customer)
+        sellerNTNCNIC: orderData.sellerNTNCNIC || null,
+        sellerBusinessName: orderData.sellerBusinessName || null,
+        sellerProvince: orderData.sellerProvince || null,
+        sellerAddress: orderData.sellerAddress || null
       };
 
       const response = await fetch('/api/orders', {
@@ -957,6 +982,62 @@ export default function AddOrder() {
               </div>
             </div>
           </div>
+
+          {/* Seller Information - Show only when customer is selected */}
+          {orderData.customerId && (
+            <div className="bg-white border rounded-lg p-6">
+              <h3 className="text-lg font-semibold mb-4">🏢 Seller Information</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                These fields are populated from the selected customer's profile. You can modify them for this order.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 mb-2">NTN or CNIC of Seller</label>
+                  <input
+                    type="text"
+                    value={orderData.sellerNTNCNIC}
+                    onChange={(e) => setOrderData({...orderData, sellerNTNCNIC: e.target.value})}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    placeholder="Enter NTN or CNIC"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-2">Business Name of Seller</label>
+                  <input
+                    type="text"
+                    value={orderData.sellerBusinessName}
+                    onChange={(e) => setOrderData({...orderData, sellerBusinessName: e.target.value})}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    placeholder="Enter business name"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-gray-700 mb-2">Province Name</label>
+                  <input
+                    type="text"
+                    value={orderData.sellerProvince}
+                    onChange={(e) => setOrderData({...orderData, sellerProvince: e.target.value})}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    placeholder="Enter province name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-2">Address of Seller</label>
+                  <input
+                    type="text"
+                    value={orderData.sellerAddress}
+                    onChange={(e) => setOrderData({...orderData, sellerAddress: e.target.value})}
+                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    placeholder="Enter seller address"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Loyalty Points Redemption */}
           {loyaltySettings.enabled && orderData.customerId && customerPoints.availablePoints > 0 && (

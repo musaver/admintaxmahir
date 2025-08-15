@@ -155,7 +155,13 @@ export async function POST(req: NextRequest) {
       shippingCountry,
       
       // Order items
-      items
+      items,
+      
+      // Seller fields (from selected customer)
+      sellerNTNCNIC,
+      sellerBusinessName,
+      sellerProvince,
+      sellerAddress
     } = body;
 
     // Validate required fields
@@ -310,6 +316,12 @@ export async function POST(req: NextRequest) {
       shippingState: shippingState || null,
       shippingPostalCode: shippingPostalCode || null,
       shippingCountry: shippingCountry || null,
+      
+      // Seller fields (from selected customer)
+      sellerNTNCNIC: sellerNTNCNIC || null,
+      sellerBusinessName: sellerBusinessName || null,
+      sellerProvince: sellerProvince || null,
+      sellerAddress: sellerAddress || null,
       
       notes: notes || null,
       createdAt: new Date(),

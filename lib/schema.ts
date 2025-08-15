@@ -392,6 +392,12 @@ export const orders = mysqlTable("orders", {
   invoiceNumber: varchar("invoice_number", { length: 255 }),
   validationResponse: text("validation_response"),
   
+  // Seller Information (from selected user)
+  sellerNTNCNIC: varchar("seller_ntn_cnic", { length: 100 }),
+  sellerBusinessName: varchar("seller_business_name", { length: 255 }),
+  sellerProvince: varchar("seller_province", { length: 100 }),
+  sellerAddress: varchar("seller_address", { length: 500 }),
+  
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
