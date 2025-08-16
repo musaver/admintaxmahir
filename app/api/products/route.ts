@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { products, categories, subcategories, productVariants, productAddons, productTags, tags, suppliers } from '@/lib/schema';
+import { products, categories, subcategories, productVariants, productAddons, productTags, tags, suppliers, productInventory, stockMovements } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -71,6 +71,8 @@ export async function POST(req: NextRequest) {
       stockManagementType,
       pricePerUnit,
       baseWeightUnit,
+      // Initial stock quantity
+      initialStock,
       // Cannabis-specific fields
       thc,
       cbd,
@@ -255,7 +257,49 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    return NextResponse.json(newProduct, { status: 201 });
+    // Handle initial stock if provided
+    if (initialStock !== undefined && initialStock !== null && initialStock > 0) {
+      const inventoryId = uuidv4();
+      const stockMovementId = uuidv4();
+      
+      // Create inventory record
+      await db.insert(productInventory).values({
+        id: inventoryId,
+        productId: newProduct.id,
+        variantId: null, // For simple products, no variant
+        quantity: parseInt(initialStock.toString()),
+        reservedQuantity: 0,
+        availableQuantity: parseInt(initialStock.toString()),
+        reorderPoint: 0,
+        reorderQuantity: 0,
+        weightQuantity: '0.00',
+        reservedWeight: '0.00',
+        availableWeight: '0.00',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      
+      // Create stock movement record
+      await db.insert(stockMovements).values({
+        id: stockMovementId,
+        inventoryId: inventoryId,
+        productId: newProduct.id,
+        variantId: null,
+        movementType: 'in',
+        quantity: parseInt(initialStock.toString()),
+        previousQuantity: 0,
+        newQuantity: parseInt(initialStock.toString()),
+        weightQuantity: '0.00',
+        previousWeightQuantity: '0.00',
+        newWeightQuantity: '0.00',
+        reason: 'Initial stock',
+        notes: 'Initial stock added when creating product',
+        supplierId: supplierId || null,
+        processedBy: null, // Could be populated with current admin user if available
+      });
+    }
+    
+    return NextResponse.json({ product: newProduct }, { status: 201 });
   } catch (error) {
     console.error('Error creating product:', error);
     return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });

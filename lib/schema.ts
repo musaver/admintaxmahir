@@ -390,6 +390,7 @@ export const orders = mysqlTable("orders", {
   invoiceRefNo: varchar("invoice_ref_no", { length: 255 }),
   scenarioId: varchar("scenario_id", { length: 255 }),
   invoiceNumber: varchar("invoice_number", { length: 255 }),
+  invoiceDate: datetime("invoice_date"),
   validationResponse: text("validation_response"),
   
   // Seller Information (from selected user)
@@ -409,6 +410,7 @@ export const orderItems = mysqlTable("order_items", {
   productId: varchar("product_id", { length: 255 }).notNull(),
   variantId: varchar("variant_id", { length: 255 }),
   productName: varchar("product_name", { length: 255 }).notNull(),
+  productDescription: text("product_description"), // Product description
   variantTitle: varchar("variant_title", { length: 255 }),
   sku: varchar("sku", { length: 100 }),
   hsCode: varchar("hs_code", { length: 20 }), // Harmonized System Code

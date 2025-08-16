@@ -1,7 +1,22 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import CurrencySymbol from '../../components/CurrencySymbol';
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { CalendarIcon, Check, ChevronsUpDown, Plus, UserPlus, PackagePlus } from "lucide-react";
 import { 
   formatWeightAuto, 
   isWeightBasedProduct, 
@@ -78,6 +93,7 @@ interface OrderItem {
   productId: string;
   variantId?: string;
   productName: string;
+  productDescription?: string; // Product description
   variantTitle?: string;
   sku?: string;
   hsCode?: string; // Harmonized System Code
@@ -135,6 +151,11 @@ export default function AddOrder() {
   const [error, setError] = useState('');
   const [stockManagementEnabled, setStockManagementEnabled] = useState(true);
   
+  // Sticky sidebar state
+  const [isSticky, setIsSticky] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const sidebarContainerRef = useRef<HTMLDivElement>(null);
+  
   // Loyalty points state
   const [loyaltySettings, setLoyaltySettings] = useState({
     enabled: false,
@@ -179,6 +200,7 @@ export default function AddOrder() {
     invoiceRefNo: '',
     scenarioId: '',
     invoiceNumber: '',
+    invoiceDate: undefined as Date | undefined,
     validationResponse: '',
     // Seller fields (from selected user)
     sellerNTNCNIC: '',
@@ -225,6 +247,7 @@ export default function AddOrder() {
     itemSerialNumber: '',
     sroScheduleNumber: '',
     productName: '',
+    productDescription: '',
     // Editable tax and price fields
     taxAmount: 0,
     taxPercentage: 0,
@@ -241,6 +264,29 @@ export default function AddOrder() {
 
   // Driver selection
   const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
+
+  // Dialog states for adding new items
+  const [showAddUserDialog, setShowAddUserDialog] = useState(false);
+  const [showAddProductDialog, setShowAddProductDialog] = useState(false);
+  
+  // Combobox states
+  const [customerComboboxOpen, setCustomerComboboxOpen] = useState(false);
+  const [productComboboxOpen, setProductComboboxOpen] = useState(false);
+  
+  // New user/product form data
+  const [newUserData, setNewUserData] = useState({
+    name: '',
+    email: ''
+  });
+  const [newProductData, setNewProductData] = useState({
+    name: '',
+    price: '',
+    stockQuantity: ''
+  });
+  
+  // Loading states for adding new items
+  const [addingUser, setAddingUser] = useState(false);
+  const [addingProduct, setAddingProduct] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -282,6 +328,7 @@ export default function AddOrder() {
         itemSerialNumber: '',
         sroScheduleNumber: '',
         productName: '',
+        productDescription: '',
         taxAmount: 0,
         taxPercentage: 0,
         priceIncludingTax: 0,
@@ -293,6 +340,22 @@ export default function AddOrder() {
       }));
     }
   }, [productSelection.selectedProductId, products]);
+
+  // Scroll detection for sticky sidebar
+  useEffect(() => {
+    const handleScroll = () => {
+      if (sidebarContainerRef.current && sidebarRef.current) {
+        const containerRect = sidebarContainerRef.current.getBoundingClientRect();
+        const shouldStick = containerRect.top <= 24; // 24px offset for top spacing
+        setIsSticky(shouldStick);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Check initial state
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const fetchInitialData = async () => {
     try {
@@ -613,6 +676,7 @@ export default function AddOrder() {
       productId: selectedProductId,
       variantId: selectedVariantId || undefined,
       productName: productSelection.productName || productName,
+      productDescription: productSelection.productDescription || undefined,
       variantTitle: variantTitle || undefined,
       sku,
       hsCode: productSelection.hsCode || product.hsCode,
@@ -660,6 +724,7 @@ export default function AddOrder() {
       itemSerialNumber: '',
       sroScheduleNumber: '',
       productName: '',
+      productDescription: '',
       taxAmount: 0,
       taxPercentage: 0,
       priceIncludingTax: 0,
@@ -812,6 +877,114 @@ export default function AddOrder() {
     };
   };
 
+  // Add new user function
+  const handleAddNewUser = async () => {
+    if (!newUserData.name || !newUserData.email) {
+      alert('Please fill in both name and email');
+      return;
+    }
+
+    setAddingUser(true);
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newUserData.name,
+          email: newUserData.email,
+          firstName: newUserData.name.split(' ')[0] || '',
+          lastName: newUserData.name.split(' ').slice(1).join(' ') || '',
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create user');
+      }
+
+      const newUser = await response.json();
+      
+      // Add to customers list and select it
+      setCustomers(prev => [...prev, newUser]);
+      setOrderData(prev => ({ 
+        ...prev, 
+        customerId: newUser.id,
+        email: newUser.email,
+        phone: newUser.phone || ''
+      }));
+      
+      // Reset form and close dialog
+      setNewUserData({ name: '', email: '' });
+      setShowAddUserDialog(false);
+      setCustomerComboboxOpen(false);
+    } catch (error: any) {
+      alert('Error creating user: ' + error.message);
+    } finally {
+      setAddingUser(false);
+    }
+  };
+
+  // Add new product function
+  const handleAddNewProduct = async () => {
+    if (!newProductData.name || !newProductData.price) {
+      alert('Please fill in both name and price');
+      return;
+    }
+
+    const price = parseFloat(newProductData.price);
+    if (isNaN(price) || price < 0) {
+      alert('Please enter a valid price');
+      return;
+    }
+
+    const stockQuantity = parseFloat(newProductData.stockQuantity) || 0;
+    if (stockQuantity < 0) {
+      alert('Please enter a valid stock quantity (0 or greater)');
+      return;
+    }
+
+    setAddingProduct(true);
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newProductData.name,
+          price: price,
+          productType: 'simple',
+          isActive: true,
+          stockManagementType: 'quantity',
+          initialStock: stockQuantity
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create product');
+      }
+
+      const responseData = await response.json();
+      const newProduct = responseData.product || responseData;
+      
+      // Add to products list and select it
+      setProducts(prev => [...prev, newProduct]);
+      setProductSelection(prev => ({ 
+        ...prev, 
+        selectedProductId: newProduct.id,
+        productName: newProduct.name
+      }));
+      
+      // Reset form and close dialog
+      setNewProductData({ name: '', price: '', stockQuantity: '' });
+      setShowAddProductDialog(false);
+      setProductComboboxOpen(false);
+    } catch (error: any) {
+      alert('Error creating product: ' + error.message);
+    } finally {
+      setAddingProduct(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -854,6 +1027,7 @@ export default function AddOrder() {
         invoiceRefNo: orderData.invoiceRefNo || null,
         scenarioId: orderData.scenarioId || null,
         invoiceNumber: orderData.invoiceNumber || null,
+        invoiceDate: orderData.invoiceDate || null,
         validationResponse: orderData.validationResponse || null,
         
         // Driver assignment fields
@@ -955,181 +1129,311 @@ export default function AddOrder() {
   const selectedProduct = products.find(p => p.id === productSelection.selectedProductId);
   const totals = calculateTotals();
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  if (loading) return (
+    <div className="container mx-auto p-6 max-w-7xl">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-48 mt-2" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-32 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+          <div>
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-48 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="p-4">
+    <div className="container mx-auto p-6 max-w-7xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">🛒 Create New Order</h1>
-        <button
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">🛒 Create New Order</h1>
+          <p className="text-muted-foreground mt-1">Add products and configure order details</p>
+        </div>
+        <Button
+          variant="outline"
           onClick={() => router.push('/orders')}
-          className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+          className="gap-2"
         >
           ← Back to Orders
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-          {error}
+        <Card className="mb-6 border-destructive">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-destructive">
+              <span className="font-medium">Error:</span>
+              <span>{error}</span>
         </div>
+          </CardContent>
+        </Card>
       )}
 
       {!stockManagementEnabled && (
-        <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-          <div className="flex items-center">
-            <span className="inline-block w-3 h-3 bg-orange-500 rounded-full mr-3"></span>
+        <Card className="mb-6 border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
             <div>
               <h3 className="font-medium text-orange-800">Stock Management Disabled</h3>
-              <p className="text-sm text-orange-600 mt-1">
+                <p className="text-sm text-orange-700 mt-1">
                 Orders can be created without stock limitations. Products will not show inventory levels or availability warnings.
               </p>
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {stockManagementEnabled && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center">
-            <span className="inline-block w-3 h-3 bg-blue-500 rounded-full mr-3"></span>
+        <Card className="mb-6 border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
             <div>
               <h3 className="font-medium text-blue-800">Stock Management Enabled</h3>
-              <p className="text-sm text-blue-600 mt-1">
+                <p className="text-sm text-blue-700 mt-1">
                 Orders will check inventory levels where available. Products without inventory records can still be ordered.
               </p>
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
         {/* Main Order Form - Left Side */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6 min-h-0">
           {/* Customer Information */}
-          <div className="bg-white border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">👤 Customer Information</h3>
-            
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                👤 Customer Information
+              </CardTitle>
+              <CardDescription>
+                Select an existing customer or add a new one
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-gray-700 mb-2">Select Customer</label>
-                <select
-                  value={orderData.customerId}
-                  onChange={handleCustomerChange}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="">Guest Customer</option>
-                  {customers.map(customer => (
-                    <option key={customer.id} value={customer.id}>
+                <div className="space-y-2">
+                  <Label htmlFor="customer-select">Select Customer</Label>
+                <Popover open={customerComboboxOpen} onOpenChange={setCustomerComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={customerComboboxOpen}
+                      className="w-full justify-between"
+                    >
+                      {orderData.customerId
+                        ? customers.find((customer) => customer.id === orderData.customerId)?.name || 
+                          `${customers.find((customer) => customer.id === orderData.customerId)?.firstName} ${customers.find((customer) => customer.id === orderData.customerId)?.lastName}` ||
+                          customers.find((customer) => customer.id === orderData.customerId)?.email
+                        : "Select customer..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search customer..." />
+                      <CommandList>
+                        <CommandEmpty>No customer found.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value=""
+                            onSelect={() => {
+                              handleCustomerChange({ target: { value: '' } } as any);
+                              setCustomerComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={`mr-2 h-4 w-4 ${orderData.customerId === '' ? "opacity-100" : "opacity-0"}`}
+                            />
+                            Guest Customer
+                          </CommandItem>
+                          {customers.map((customer) => (
+                            <CommandItem
+                              key={customer.id}
+                              value={`${customer.name || `${customer.firstName} ${customer.lastName}`} ${customer.email}`}
+                              onSelect={() => {
+                                handleCustomerChange({ target: { value: customer.id } } as any);
+                                setCustomerComboboxOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${orderData.customerId === customer.id ? "opacity-100" : "opacity-0"}`}
+                              />
                       {customer.name || `${customer.firstName} ${customer.lastName}`} ({customer.email})
-                    </option>
-                  ))}
-                </select>
+                            </CommandItem>
+                          ))}
+                          <CommandItem
+                            onSelect={() => {
+                              setShowAddUserDialog(true);
+                              setCustomerComboboxOpen(false);
+                            }}
+                            className="text-blue-600 font-medium"
+                          >
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Add New Customer
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
-              <div>
-                <label className="block text-gray-700 mb-2">Email <span className="text-red-500">*</span></label>
-                <input
+                <div className="space-y-2">
+                  <Label htmlFor="customer-email">Email <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="customer-email"
                   type="email"
                   value={orderData.email}
                   onChange={(e) => setOrderData({...orderData, email: e.target.value})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                   required
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-gray-700 mb-2">Phone</label>
-                <input
+                <div className="space-y-2">
+                  <Label htmlFor="customer-phone">Phone</Label>
+                  <Input
+                    id="customer-phone"
                   type="tel"
                   value={orderData.phone}
                   onChange={(e) => setOrderData({...orderData, phone: e.target.value})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                 />
               </div>
-              <div>
-                <label className="block text-gray-700 mb-2">Order Status</label>
-                <select
-                  value={orderData.status}
-                  onChange={(e) => setOrderData({...orderData, status: e.target.value})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="processing">Processing</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+                <div className="space-y-2">
+                  <Label htmlFor="order-status">Order Status</Label>
+                  <Select value={orderData.status} onValueChange={(value) => setOrderData({...orderData, status: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
             </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Seller Information - Show only when customer is selected */}
           {orderData.customerId && (
-            <div className="bg-white border rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">🏢 Seller Information</h3>
-              <p className="text-sm text-gray-600 mb-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  🏢 Seller Information
+                </CardTitle>
+                <CardDescription>
                 These fields are populated from the selected customer's profile. You can modify them for this order.
-              </p>
-              
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-700 mb-2">NTN or CNIC of Seller</label>
-                  <input
+                  <div className="space-y-2">
+                    <Label htmlFor="seller-ntn">NTN or CNIC of Seller</Label>
+                    <Input
+                      id="seller-ntn"
                     type="text"
                     value={orderData.sellerNTNCNIC}
                     onChange={(e) => setOrderData({...orderData, sellerNTNCNIC: e.target.value})}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                     placeholder="Enter NTN or CNIC"
                   />
                 </div>
-                <div>
-                  <label className="block text-gray-700 mb-2">Business Name of Seller</label>
-                  <input
+                  <div className="space-y-2">
+                    <Label htmlFor="seller-business">Business Name of Seller</Label>
+                    <Input
+                      id="seller-business"
                     type="text"
                     value={orderData.sellerBusinessName}
                     onChange={(e) => setOrderData({...orderData, sellerBusinessName: e.target.value})}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                     placeholder="Enter business name"
                   />
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <label className="block text-gray-700 mb-2">Province Name</label>
-                  <input
-                    type="text"
-                    value={orderData.sellerProvince}
-                    onChange={(e) => setOrderData({...orderData, sellerProvince: e.target.value})}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="Enter province name"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="seller-province">Province Name</Label>
+                    <Select value={orderData.sellerProvince} onValueChange={(value) => setOrderData({...orderData, sellerProvince: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Province" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Punjab">Punjab</SelectItem>
+                        <SelectItem value="Sindh">Sindh</SelectItem>
+                        <SelectItem value="Khyber Pakhtunkhwa (KPK)">Khyber Pakhtunkhwa (KPK)</SelectItem>
+                        <SelectItem value="Balochistan">Balochistan</SelectItem>
+                        <SelectItem value="Islamabad Capital Territory (ICT)">Islamabad Capital Territory (ICT)</SelectItem>
+                        <SelectItem value="Azad Jammu & Kashmir (AJK)">Azad Jammu & Kashmir (AJK)</SelectItem>
+                        <SelectItem value="Gilgit-Baltistan (GB)">Gilgit-Baltistan (GB)</SelectItem>
+                      </SelectContent>
+                    </Select>
                 </div>
-                <div>
-                  <label className="block text-gray-700 mb-2">Address of Seller</label>
-                  <input
+                  <div className="space-y-2">
+                    <Label htmlFor="seller-address">Address of Seller</Label>
+                    <Input
+                      id="seller-address"
                     type="text"
                     value={orderData.sellerAddress}
                     onChange={(e) => setOrderData({...orderData, sellerAddress: e.target.value})}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                     placeholder="Enter seller address"
                   />
                 </div>
               </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Loyalty Points Redemption */}
           {loyaltySettings.enabled && orderData.customerId && customerPoints.availablePoints > 0 && (
-            <div className="bg-white border rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">🎁 Loyalty Points</h3>
-              
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  🎁 Loyalty Points
+                </CardTitle>
+                <CardDescription>
+                  Redeem customer loyalty points for discount
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-purple-800">Available Points:</span>
-                  <span className="text-lg font-bold text-purple-600">{customerPoints.availablePoints}</span>
+                    <Badge variant="secondary" className="text-lg font-bold text-purple-600 bg-purple-100">
+                      {customerPoints.availablePoints}
+                    </Badge>
                 </div>
                 <div className="text-xs text-purple-600">
                   Worth up to <CurrencySymbol />{(customerPoints.availablePoints * loyaltySettings.redemptionValue).toFixed(2)} discount
@@ -1162,25 +1466,26 @@ export default function AddOrder() {
 
                 {/* Manual Points Input */}
                 {!orderData.useAllPoints && (
-                  <div>
-                    <label className="block text-gray-700 mb-2">Points to Redeem</label>
+                  <div className="space-y-2">
+                    <Label htmlFor="points-redeem">Points to Redeem</Label>
                     <div className="flex space-x-2">
-                      <input
+                      <Input
+                        id="points-redeem"
                         type="number"
                         min="0"
                         max={customerPoints.availablePoints}
                         value={orderData.pointsToRedeem}
                         onChange={(e) => handlePointsRedemption(parseInt(e.target.value) || 0)}
-                        className="flex-1 p-2 border rounded focus:border-purple-500 focus:outline-none"
                         placeholder={`Min: ${loyaltySettings.redemptionMinimum}`}
+                        className="flex-1"
                       />
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
                         onClick={() => handlePointsRedemption(customerPoints.availablePoints)}
-                        className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
                       >
                         Max
-                      </button>
+                      </Button>
                     </div>
                     {orderData.pointsToRedeem > 0 && (
                       <div className="mt-2 text-sm text-green-600">
@@ -1215,11 +1520,100 @@ export default function AddOrder() {
                   </div>
                 )}
               </div>
-            </div>
+            </CardContent>
+            </Card>
           )}
 
+          {/* Invoice & Validation Fields */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                🧾 Invoice & Validation
+              </CardTitle>
+              <CardDescription>
+                Enter invoice details and validation information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="invoice-type">Invoice Type</Label>
+                  <Input
+                    id="invoice-type"
+                  type="text"
+                  value={orderData.invoiceType}
+                  onChange={(e) => setOrderData({...orderData, invoiceType: e.target.value})}
+                  placeholder="e.g., Sales Invoice, Pro Forma"
+                />
+              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invoice-ref">Invoice Ref No</Label>
+                  <Input
+                    id="invoice-ref"
+                  type="text"
+                  value={orderData.invoiceRefNo}
+                  onChange={(e) => setOrderData({...orderData, invoiceRefNo: e.target.value})}
+                  placeholder="Reference number"
+                />
+              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="scenario-id">Scenario ID</Label>
+                  <Input
+                    id="scenario-id"
+                  type="text"
+                  value={orderData.scenarioId}
+                  onChange={(e) => setOrderData({...orderData, scenarioId: e.target.value})}
+                  placeholder="Scenario identifier"
+                />
+              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invoice-number">Invoice Number</Label>
+                  <Input
+                    id="invoice-number"
+                  type="text"
+                  value={orderData.invoiceNumber}
+                  onChange={(e) => setOrderData({...orderData, invoiceNumber: e.target.value})}
+                  placeholder="Invoice number"
+                />
+              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invoice-date">Invoice Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {orderData.invoiceDate ? format(orderData.invoiceDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={orderData.invoiceDate}
+                        onSelect={(date) => setOrderData({...orderData, invoiceDate: date})}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+            </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="validation-response">Validation Response</Label>
+                <Input
+                  id="validation-response"
+                value={orderData.validationResponse}
+                onChange={(e) => setOrderData({...orderData, validationResponse: e.target.value})}
+                placeholder="Validation response data..."
+              />
+            </div>
+            </CardContent>
+          </Card>
+
           {/* Billing Address */}
-          <div className="bg-white border rounded-lg p-6">
+          <div className="bg-white border rounded-lg p-6 hidden">
             <h3 className="text-lg font-semibold mb-4">📍 Billing Address</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1305,33 +1699,89 @@ export default function AddOrder() {
           </div>
 
           {/* Add Products */}
-          <div className="bg-white border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">📦 Add Products</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-gray-700 mb-2">Product</label>
-                <select
-                  value={productSelection.selectedProductId}
-                  onChange={(e) => setProductSelection({...productSelection, selectedProductId: e.target.value, selectedVariantId: ''})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="">Select a product...</option>
-                  {products.map(product => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} - {
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                📦 Add Products
+              </CardTitle>
+              <CardDescription>
+                Select products and configure their details for this order
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="product-select">Product</Label>
+                <Popover open={productComboboxOpen} onOpenChange={setProductComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={productComboboxOpen}
+                      className="w-full justify-between"
+                    >
+                      {productSelection.selectedProductId
+                        ? (() => {
+                            const product = products.find((p) => p.id === productSelection.selectedProductId);
+                            if (!product) return "Select a product...";
+                            return `${product.name} - ${
                         isWeightBasedProduct(product.stockManagementType || 'quantity')
                           ? product.baseWeightUnit === 'kg'
                             ? `${Number(product.pricePerUnit).toFixed(2)}/kg`
                             : `${(Number(product.pricePerUnit) * 1000).toFixed(2)}/kg`
                           : `${Number(product.price).toFixed(2)}`
-                      }
-                      {product.productType === 'group' && Number(product.price) === 0 ? ' (Group Product - Price from addons)' : ''}
-                      {isWeightBasedProduct(product.stockManagementType || 'quantity') ? ' (Weight-based)' : ''}
-                      {!stockManagementEnabled ? ' (No stock limit)' : ''}
-                    </option>
-                  ))}
-                </select>
+                            }`;
+                          })()
+                        : "Select a product..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search product..." />
+                      <CommandList>
+                        <CommandEmpty>No product found.</CommandEmpty>
+                        <CommandGroup>
+                          {products.map((product) => {
+                            const displayText = `${product.name} - ${
+                              isWeightBasedProduct(product.stockManagementType || 'quantity')
+                                ? product.baseWeightUnit === 'kg'
+                                  ? `${Number(product.pricePerUnit).toFixed(2)}/kg`
+                                  : `${(Number(product.pricePerUnit) * 1000).toFixed(2)}/kg`
+                                : `${Number(product.price).toFixed(2)}`
+                            }${product.productType === 'group' && Number(product.price) === 0 ? ' (Group Product - Price from addons)' : ''}${isWeightBasedProduct(product.stockManagementType || 'quantity') ? ' (Weight-based)' : ''}${!stockManagementEnabled ? ' (No stock limit)' : ''}`;
+                            
+                            return (
+                              <CommandItem
+                                key={product.id}
+                                value={displayText}
+                                onSelect={() => {
+                                  setProductSelection({...productSelection, selectedProductId: product.id, selectedVariantId: ''});
+                                  setProductComboboxOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${productSelection.selectedProductId === product.id ? "opacity-100" : "opacity-0"}`}
+                                />
+                                {displayText}
+                              </CommandItem>
+                            );
+                          })}
+                          <CommandItem
+                            onSelect={() => {
+                              setShowAddProductDialog(true);
+                              setProductComboboxOpen(false);
+                            }}
+                            className="text-blue-600 font-medium"
+                          >
+                            <PackagePlus className="mr-2 h-4 w-4" />
+                            Add New Product
+                          </CommandItem>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {selectedProduct && selectedProduct.productType === 'variable' && selectedProduct.variants && (
@@ -1510,40 +1960,40 @@ export default function AddOrder() {
                   )}
                 </div>
               ) : (
-                <div>
-                  <label className="block text-gray-700 mb-2">Quantity</label>
-                  <input
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Quantity</Label>
+                  <Input
+                    id="quantity"
                     type="number"
                     min="1"
                     value={productSelection.quantity}
                     onChange={(e) => setProductSelection({...productSelection, quantity: parseInt(e.target.value) || 1})}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                   />
                 </div>
               )}
 
-              <div>
-                <label className="block text-gray-700 mb-2">Custom Price (optional)</label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="custom-price">Custom Price (optional)</Label>
+                <Input
+                  id="custom-price"
                   type="number"
                   step="0.01"
                   min="0"
                   value={productSelection.customPrice}
                   onChange={(e) => setProductSelection({...productSelection, customPrice: e.target.value})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                   placeholder="Override price"
                 />
               </div>
 
               {/* UOM field for non-weight based products */}
               {selectedProduct && !isWeightBasedProduct(selectedProduct.stockManagementType || 'quantity') && (
-                <div>
-                  <label className="block text-gray-700 mb-2">Unit of Measurement (UOM)</label>
-                  <input
+                <div className="space-y-2">
+                  <Label htmlFor="uom">Unit of Measurement (UOM)</Label>
+                  <Input
+                    id="uom"
                     type="text"
                     value={productSelection.uom}
                     onChange={(e) => setProductSelection({...productSelection, uom: e.target.value})}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                     placeholder="e.g., pieces, boxes, units"
                   />
                 </div>
@@ -1552,183 +2002,212 @@ export default function AddOrder() {
 
             {/* Editable Product and Tax Fields */}
             {selectedProduct && (
-              <div className="mt-6 p-4 bg-gray-50 border rounded-lg">
-                <h4 className="text-md font-semibold mb-4 text-gray-700">📋 Product & Tax Details (Editable)</h4>
-                
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="text-lg">📋 Product & Tax Details (Editable)</CardTitle>
+                  <CardDescription>
+                    These values are pre-populated from the product but can be modified before adding to the order.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
                 {/* Product Details Section */}
-                <div className="mb-6">
-                  <h5 className="text-sm font-medium mb-3 text-gray-600">Product Information</h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
-                      <label className="block text-gray-700 mb-2 text-sm">Product Name</label>
-                      <input
+                    <h5 className="text-sm font-medium mb-3 text-muted-foreground">Product Information</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="product-name-edit" className="text-sm">Product Name</Label>
+                        <Input
+                          id="product-name-edit"
                         type="text"
                         value={productSelection.productName}
                         onChange={(e) => setProductSelection({...productSelection, productName: e.target.value})}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                         placeholder="Product name"
+                          className="text-sm"
                       />
                     </div>
                     
-                    <div>
-                      <label className="block text-gray-700 mb-2 text-sm">HS Code</label>
-                      <input
+                      <div className="space-y-2">
+                        <Label htmlFor="product-description-edit" className="text-sm">Product Description</Label>
+                        <Input
+                          id="product-description-edit"
+                          type="text"
+                          value={productSelection.productDescription}
+                          onChange={(e) => setProductSelection({...productSelection, productDescription: e.target.value})}
+                          placeholder="Product description"
+                          className="text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="hs-code-edit" className="text-sm">HS Code</Label>
+                        <Input
+                          id="hs-code-edit"
                         type="text"
                         value={productSelection.hsCode}
                         onChange={(e) => setProductSelection({...productSelection, hsCode: e.target.value})}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                         placeholder="Harmonized System Code"
+                          className="text-sm"
                       />
                     </div>
                     
-                    <div>
-                      <label className="block text-gray-700 mb-2 text-sm">Item Serial No.</label>
-                      <input
+                      <div className="space-y-2">
+                        <Label htmlFor="serial-number-edit" className="text-sm">Item Serial No.</Label>
+                        <Input
+                          id="serial-number-edit"
                         type="text"
                         value={productSelection.itemSerialNumber}
                         onChange={(e) => setProductSelection({...productSelection, itemSerialNumber: e.target.value})}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                         placeholder="Serial number"
+                          className="text-sm"
                       />
                     </div>
                     
-                    <div>
-                      <label className="block text-gray-700 mb-2 text-sm">SRO / Schedule No.</label>
-                      <input
+                      <div className="space-y-2">
+                        <Label htmlFor="sro-schedule-edit" className="text-sm">SRO / Schedule No.</Label>
+                        <Input
+                          id="sro-schedule-edit"
                         type="text"
                         value={productSelection.sroScheduleNumber}
                         onChange={(e) => setProductSelection({...productSelection, sroScheduleNumber: e.target.value})}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                         placeholder="SRO or Schedule number"
+                          className="text-sm"
                       />
                     </div>
                   </div>
                 </div>
 
+                  <Separator />
+
                 {/* Tax and Price Section */}
                 <div>
-                  <h5 className="text-sm font-medium mb-3 text-gray-600">Tax & Pricing Information</h5>
+                    <h5 className="text-sm font-medium mb-3 text-muted-foreground">Tax & Pricing Information</h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-gray-700 mb-2 text-sm">Tax Amount</label>
-                    <input
+                      <div className="space-y-2">
+                        <Label htmlFor="tax-amount-edit" className="text-sm">Tax Amount</Label>
+                        <Input
+                          id="tax-amount-edit"
                       type="number"
                       step="0.01"
                       min="0"
                       value={productSelection.taxAmount}
                       onChange={(e) => setProductSelection({...productSelection, taxAmount: parseFloat(e.target.value) || 0})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                       placeholder="0.00"
+                          className="text-sm"
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-gray-700 mb-2 text-sm">Tax Percentage (%)</label>
-                    <input
+                      <div className="space-y-2">
+                        <Label htmlFor="tax-percentage-edit" className="text-sm">Tax Percentage (%)</Label>
+                        <Input
+                          id="tax-percentage-edit"
                       type="number"
                       step="0.01"
                       min="0"
                       max="100"
                       value={productSelection.taxPercentage}
                       onChange={(e) => setProductSelection({...productSelection, taxPercentage: parseFloat(e.target.value) || 0})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                       placeholder="0.00"
+                          className="text-sm"
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-gray-700 mb-2 text-sm">Price Including Tax</label>
-                    <input
+                      <div className="space-y-2">
+                        <Label htmlFor="price-including-tax-edit" className="text-sm">Price Including Tax</Label>
+                        <Input
+                          id="price-including-tax-edit"
                       type="number"
                       step="0.01"
                       min="0"
                       value={productSelection.priceIncludingTax}
                       onChange={(e) => setProductSelection({...productSelection, priceIncludingTax: parseFloat(e.target.value) || 0})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                       placeholder="0.00"
+                          className="text-sm"
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-gray-700 mb-2 text-sm">Price Excluding Tax</label>
-                    <input
+                      <div className="space-y-2">
+                        <Label htmlFor="price-excluding-tax-edit" className="text-sm">Price Excluding Tax</Label>
+                        <Input
+                          id="price-excluding-tax-edit"
                       type="number"
                       step="0.01"
                       min="0"
                       value={productSelection.priceExcludingTax}
                       onChange={(e) => setProductSelection({...productSelection, priceExcludingTax: parseFloat(e.target.value) || 0})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                       placeholder="0.00"
+                          className="text-sm"
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-gray-700 mb-2 text-sm">Extra Tax</label>
-                    <input
+                      <div className="space-y-2">
+                        <Label htmlFor="extra-tax-edit" className="text-sm">Extra Tax</Label>
+                        <Input
+                          id="extra-tax-edit"
                       type="number"
                       step="0.01"
                       min="0"
                       value={productSelection.extraTax}
                       onChange={(e) => setProductSelection({...productSelection, extraTax: parseFloat(e.target.value) || 0})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                       placeholder="0.00"
+                          className="text-sm"
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-gray-700 mb-2 text-sm">Further Tax</label>
-                    <input
+                      <div className="space-y-2">
+                        <Label htmlFor="further-tax-edit" className="text-sm">Further Tax</Label>
+                        <Input
+                          id="further-tax-edit"
                       type="number"
                       step="0.01"
                       min="0"
                       value={productSelection.furtherTax}
                       onChange={(e) => setProductSelection({...productSelection, furtherTax: parseFloat(e.target.value) || 0})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                       placeholder="0.00"
+                          className="text-sm"
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-gray-700 mb-2 text-sm">FED Payable Tax</label>
-                    <input
+                      <div className="space-y-2">
+                        <Label htmlFor="fed-payable-tax-edit" className="text-sm">FED Payable Tax</Label>
+                        <Input
+                          id="fed-payable-tax-edit"
                       type="number"
                       step="0.01"
                       min="0"
                       value={productSelection.fedPayableTax}
                       onChange={(e) => setProductSelection({...productSelection, fedPayableTax: parseFloat(e.target.value) || 0})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                       placeholder="0.00"
+                          className="text-sm"
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-gray-700 mb-2 text-sm">Discount Amount</label>
-                    <input
+                      <div className="space-y-2">
+                        <Label htmlFor="discount-amount-edit" className="text-sm">Discount Amount</Label>
+                        <Input
+                          id="discount-amount-edit"
                       type="number"
                       step="0.01"
                       min="0"
                       value={productSelection.discountAmount}
                       onChange={(e) => setProductSelection({...productSelection, discountAmount: parseFloat(e.target.value) || 0})}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none text-sm"
                       placeholder="0.00"
+                          className="text-sm"
                     />
                   </div>
                   </div>
                 </div>
-                
-                <div className="mt-3 text-xs text-gray-600">
-                  💡 These values are pre-populated from the product but can be modified before adding to the order.
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
-            <button
+            <Button
               type="button"
               onClick={handleAddProduct}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 mt-4"
+              className="mt-4"
+              size="lg"
             >
               ➕ Add Product
-            </button>
+            </Button>
 
             {/* Order Items List */}
             {orderItems.length > 0 && (
@@ -1747,6 +2226,9 @@ export default function AddOrder() {
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="font-medium">{item.productName}</div>
+                          {item.productDescription && (
+                            <div className="text-sm text-gray-600 italic">{item.productDescription}</div>
+                          )}
                           {item.variantTitle && (
                             <div className="text-sm text-gray-600">{item.variantTitle}</div>
                           )}
@@ -1902,10 +2384,11 @@ export default function AddOrder() {
                 </div>
               </div>
             )}
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Order Settings */}
-          <div className="bg-white border rounded-lg p-6">
+          <div className="bg-white border rounded-lg p-6 hidden">
             <h3 className="text-lg font-semibold mb-4">⚙️ Order Settings</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1980,67 +2463,10 @@ export default function AddOrder() {
             </div>
           </div>
 
-          {/* Invoice & Validation Fields */}
-          <div className="bg-white border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">🧾 Invoice & Validation</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-gray-700 mb-2">Invoice Type</label>
-                <input
-                  type="text"
-                  value={orderData.invoiceType}
-                  onChange={(e) => setOrderData({...orderData, invoiceType: e.target.value})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                  placeholder="e.g., Sales Invoice, Pro Forma"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-2">Invoice Ref No</label>
-                <input
-                  type="text"
-                  value={orderData.invoiceRefNo}
-                  onChange={(e) => setOrderData({...orderData, invoiceRefNo: e.target.value})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                  placeholder="Reference number"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-2">Scenario ID</label>
-                <input
-                  type="text"
-                  value={orderData.scenarioId}
-                  onChange={(e) => setOrderData({...orderData, scenarioId: e.target.value})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                  placeholder="Scenario identifier"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-2">Invoice Number</label>
-                <input
-                  type="text"
-                  value={orderData.invoiceNumber}
-                  onChange={(e) => setOrderData({...orderData, invoiceNumber: e.target.value})}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                  placeholder="Invoice number"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-gray-700 mb-2">Validation Response</label>
-              <textarea
-                value={orderData.validationResponse}
-                onChange={(e) => setOrderData({...orderData, validationResponse: e.target.value})}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                rows={4}
-                placeholder="Validation response data..."
-              />
-            </div>
-          </div>
+          
 
           {/* Driver Assignment */}
-          <div className="bg-white border rounded-lg p-6">
+          <div className="bg-white border rounded-lg p-6 hidden">
             <h3 className="text-lg font-semibold mb-4">🚚 Driver Assignment</h3>
             
             <div className="space-y-4">
@@ -2121,42 +2547,62 @@ export default function AddOrder() {
         </div>
 
         {/* Order Summary - Right Side */}
-        <div className="lg:col-span-1">
-          <div className="bg-white border rounded-lg p-6 sticky top-4">
-            <h3 className="text-lg font-semibold mb-4">📊 Order Summary</h3>
-            
+        <div ref={sidebarContainerRef} className="lg:col-span-1 relative">
+          <aside 
+            ref={sidebarRef}
+            className={`transition-all duration-300 will-change-transform z-30 ${
+              isSticky 
+                ? 'fixed top-6 right-6 w-80 max-w-[calc(100vw-3rem)]' 
+                : 'sticky top-6'
+            } h-fit max-h-[calc(100vh-3rem)] overflow-y-auto`}
+          >
+            <Card className={`border-2 transition-all duration-300 ${
+              isSticky 
+                ? 'shadow-2xl bg-white/95 backdrop-blur-sm border-blue-200/50 scale-105' 
+                : 'shadow-lg bg-white border-gray-200'
+            }`}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  📊 Order Summary
+                </CardTitle>
+                <CardDescription>
+                  Review your order details and total
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span className="flex items-center gap-1"><CurrencySymbol />{totals.subtotal.toFixed(2)}</span>
+                    <span className="flex items-center gap-1 font-medium"><CurrencySymbol />{totals.subtotal.toFixed(2)}</span>
               </div>
               
               {totals.discountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Discount:</span>
-                  <span className="flex items-center gap-1">-<CurrencySymbol />{totals.discountAmount.toFixed(2)}</span>
+                      <span className="flex items-center gap-1 font-medium">-<CurrencySymbol />{totals.discountAmount.toFixed(2)}</span>
                 </div>
               )}
               
               {totals.pointsDiscountAmount > 0 && (
                 <div className="flex justify-between text-purple-600">
                   <span>Points Discount ({orderData.pointsToRedeem} pts):</span>
-                  <span className="flex items-center gap-1">-<CurrencySymbol />{totals.pointsDiscountAmount.toFixed(2)}</span>
+                      <span className="flex items-center gap-1 font-medium">-<CurrencySymbol />{totals.pointsDiscountAmount.toFixed(2)}</span>
                 </div>
               )}
               
               <div className="flex justify-between">
                 <span>Tax ({orderData.taxRate}%):</span>
-                <span className="flex items-center gap-1"><CurrencySymbol />{totals.taxAmount.toFixed(2)}</span>
+                    <span className="flex items-center gap-1 font-medium"><CurrencySymbol />{totals.taxAmount.toFixed(2)}</span>
               </div>
               
               <div className="flex justify-between">
                 <span>Shipping:</span>
-                <span className="flex items-center gap-1"><CurrencySymbol />{orderData.shippingAmount.toFixed(2)}</span>
+                    <span className="flex items-center gap-1 font-medium"><CurrencySymbol />{orderData.shippingAmount.toFixed(2)}</span>
               </div>
               
-              <div className="border-t pt-3">
-                <div className="flex justify-between text-lg font-semibold">
+                  <Separator />
+                  
+                  <div className="flex justify-between text-lg font-bold">
                   <span>Total:</span>
                   <span className="flex items-center gap-1"><CurrencySymbol />{totals.totalAmount.toFixed(2)}</span>
                 </div>
@@ -2164,14 +2610,17 @@ export default function AddOrder() {
 
               {/* Points Preview */}
               {loyaltySettings.enabled && (
-                <div className="border-t pt-3">
-                  <div className="bg-purple-50 p-3 rounded-lg">
-                    <div className="text-sm font-medium text-purple-800 mb-1">🎁 Loyalty Points</div>
+                  <>
+                    <Separator />
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                      <div className="text-sm font-medium text-purple-800 mb-1 flex items-center gap-2">
+                        🎁 Loyalty Points
+                      </div>
                     <div className="text-sm text-purple-700">
                       {orderData.customerId ? (
-                        <>Customer will earn: <strong>{calculatePointsToEarn()} points</strong></>
+                          <>Customer will earn: <Badge variant="secondary" className="ml-1 bg-purple-100 text-purple-800">{calculatePointsToEarn()} points</Badge></>
                       ) : (
-                        <>This order will earn: <strong>{calculatePointsToEarn()} points</strong> (requires customer)</>
+                          <>This order will earn: <Badge variant="secondary" className="ml-1 bg-purple-100 text-purple-800">{calculatePointsToEarn()} points</Badge> (requires customer)</>
                       )}
                       {calculatePointsToEarn() === 0 && loyaltySettings.minimumOrder > 0 && (
                         <div className="text-xs text-purple-600 mt-1">
@@ -2192,34 +2641,166 @@ export default function AddOrder() {
                       </div>
                     )}
                   </div>
-                </div>
-              )}
+                  </>
+                )}
 
-              <div className="mt-6 space-y-3">
-                <div className="text-sm text-gray-600">
+                <Separator />
+
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground">
                   <strong>{orderItems.length}</strong> item(s) in order
                 </div>
                 
-                <button
+                  <Button
                   onClick={handleSubmit}
                   disabled={submitting || orderItems.length === 0}
-                  className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                    className="w-full"
+                    size="lg"
                 >
                   {submitting ? 'Creating Order...' : 'Create Order'}
-                </button>
+                  </Button>
                 
-                <button
+                  <Button
                   type="button"
+                    variant="outline"
                   onClick={() => router.push('/orders')}
-                  className="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    className="w-full"
+                    size="lg"
                 >
                   Cancel
-                </button>
+                  </Button>
               </div>
+              </CardContent>
+            </Card>
+          </aside>
             </div>
           </div>
+
+      {/* Add New User Dialog */}
+      <Dialog open={showAddUserDialog} onOpenChange={setShowAddUserDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New Customer</DialogTitle>
+            <DialogDescription>
+              Create a new customer to add to your order. Enter their basic information below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="name" className="text-right">
+                Name
+              </label>
+              <input
+                id="name"
+                value={newUserData.name}
+                onChange={(e) => setNewUserData({...newUserData, name: e.target.value})}
+                className="col-span-3 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Customer name"
+              />
         </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="email" className="text-right">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={newUserData.email}
+                onChange={(e) => setNewUserData({...newUserData, email: e.target.value})}
+                className="col-span-3 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="customer@example.com"
+              />
       </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowAddUserDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleAddNewUser}
+              disabled={addingUser}
+            >
+              {addingUser ? 'Adding...' : 'Add Customer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add New Product Dialog */}
+      <Dialog open={showAddProductDialog} onOpenChange={setShowAddProductDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New Product</DialogTitle>
+            <DialogDescription>
+              Create a new product to add to your order. Enter the basic product information below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="productName" className="text-right">
+                Name
+              </label>
+              <input
+                id="productName"
+                value={newProductData.name}
+                onChange={(e) => setNewProductData({...newProductData, name: e.target.value})}
+                className="col-span-3 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Product name"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="productPrice" className="text-right">
+                Price
+              </label>
+              <input
+                id="productPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                value={newProductData.price}
+                onChange={(e) => setNewProductData({...newProductData, price: e.target.value})}
+                className="col-span-3 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="stockQuantity" className="text-right">
+                Stock Qty
+              </label>
+              <input
+                id="stockQuantity"
+                type="number"
+                min="0"
+                value={newProductData.stockQuantity}
+                onChange={(e) => setNewProductData({...newProductData, stockQuantity: e.target.value})}
+                className="col-span-3 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowAddProductDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleAddNewProduct}
+              disabled={addingProduct}
+            >
+              {addingProduct ? 'Adding...' : 'Add Product'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

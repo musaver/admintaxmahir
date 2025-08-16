@@ -132,6 +132,7 @@ export async function POST(req: NextRequest) {
       invoiceRefNo,
       scenarioId,
       invoiceNumber,
+      invoiceDate,
       validationResponse,
       
       // Billing address
@@ -295,6 +296,7 @@ export async function POST(req: NextRequest) {
       invoiceRefNo: invoiceRefNo || null,
       scenarioId: scenarioId || null,
       invoiceNumber: invoiceNumber || null,
+      invoiceDate: invoiceDate ? new Date(invoiceDate) : null,
       validationResponse: validationResponse || null,
       
       // Billing address
@@ -389,6 +391,7 @@ export async function POST(req: NextRequest) {
         productId: item.productId,
         variantId: item.variantId || null,
         productName: item.productName,
+        productDescription: item.productDescription || null,
         variantTitle: item.variantTitle || null,
         sku: item.sku || null,
         hsCode: item.hsCode || null,

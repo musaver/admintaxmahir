@@ -53,6 +53,8 @@ export async function POST(request: Request) {
       name, 
       email, 
       password, 
+      firstName,
+      lastName,
       buyerNTNCNIC, 
       buyerBusinessName, 
       buyerProvince, 
@@ -60,12 +62,17 @@ export async function POST(request: Request) {
       buyerRegistrationType 
     } = await request.json();
     
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password only if provided
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
     
     const newUser = {
       id: uuidv4(),
       name,
+      firstName: firstName || null,
+      lastName: lastName || null,
       email,
       password: hashedPassword,
       userType: 'customer', // Set as customer by default
