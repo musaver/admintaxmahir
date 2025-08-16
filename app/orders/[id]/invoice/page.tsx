@@ -679,7 +679,7 @@ export default function OrderInvoice() {
                             })()}
                           
                           {/* Tax and Discount details row */}
-                          {(item.taxAmount || item.taxPercentage || item.discount || item.extraTax || item.furtherTax || item.fedPayableTax || item.priceIncludingTax || item.priceExcludingTax) && (
+                          {(item.taxAmount || item.taxPercentage || item.discount || item.extraTax || item.furtherTax || item.fedPayableTax || item.priceIncludingTax || item.priceExcludingTax || item.fixedNotifiedValueOrRetailPrice || item.saleType) && (
                             <tr className="border-b border-gray-50 bg-green-25">
                               <td colSpan={8} className="py-3 px-2 pl-8">
                                 <div className="text-xs text-gray-600">
@@ -731,6 +731,18 @@ export default function OrderInvoice() {
                                       <div className="flex justify-between">
                                         <span>Discount:</span>
                                         <span className="font-medium text-green-600">-{formatAmount(item.discount || 0)}</span>
+                                      </div>
+                                    )}
+                                    {(Number(item.fixedNotifiedValueOrRetailPrice) || 0) > 0 && (
+                                      <div className="flex justify-between">
+                                        <span>Fixed Notified Value/Retail Price:</span>
+                                        <span className="font-medium">{formatAmount(item.fixedNotifiedValueOrRetailPrice || 0)}</span>
+                                      </div>
+                                    )}
+                                    {item.saleType && item.saleType !== 'Goods at standard rate' && (
+                                      <div className="flex justify-between">
+                                        <span>Sale Type:</span>
+                                        <span className="font-medium">{item.saleType}</span>
                                       </div>
                                     )}
                                   </div>

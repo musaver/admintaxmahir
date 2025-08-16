@@ -158,11 +158,12 @@ export async function POST(req: NextRequest) {
       // Order items
       items,
       
-      // Seller fields (from selected customer)
-      sellerNTNCNIC,
-      sellerBusinessName,
-      sellerProvince,
-      sellerAddress
+      // Buyer fields (from selected customer)
+      buyerNTNCNIC,
+      buyerBusinessName,
+      buyerProvince,
+      buyerAddress,
+      buyerRegistrationType
     } = body;
 
     // Validate required fields
@@ -319,11 +320,12 @@ export async function POST(req: NextRequest) {
       shippingPostalCode: shippingPostalCode || null,
       shippingCountry: shippingCountry || null,
       
-      // Seller fields (from selected customer)
-      sellerNTNCNIC: sellerNTNCNIC || null,
-      sellerBusinessName: sellerBusinessName || null,
-      sellerProvince: sellerProvince || null,
-      sellerAddress: sellerAddress || null,
+      // Buyer fields (from selected customer)
+      buyerNTNCNIC: buyerNTNCNIC || null,
+      buyerBusinessName: buyerBusinessName || null,
+      buyerProvince: buyerProvince || null,
+      buyerAddress: buyerAddress || null,
+      buyerRegistrationType: buyerRegistrationType || null,
       
       notes: notes || null,
       createdAt: new Date(),
@@ -417,6 +419,9 @@ export async function POST(req: NextRequest) {
         furtherTax: item.furtherTax ? item.furtherTax.toString() : '0.00',
         fedPayableTax: item.fedPayableTax ? item.fedPayableTax.toString() : '0.00',
         discount: item.discount ? item.discount.toString() : '0.00',
+        // Additional tax fields
+        fixedNotifiedValueOrRetailPrice: item.fixedNotifiedValueOrRetailPrice ? item.fixedNotifiedValueOrRetailPrice.toString() : '0.00',
+        saleType: item.saleType || 'Goods at standard rate',
         createdAt: new Date(),
       });
 
@@ -618,17 +623,12 @@ export async function POST(req: NextRequest) {
         invoiceType,
         scenarioId,
         validationResponse,
-        // Buyer business fields
-        buyerBusinessName: body.buyerBusinessName,
-        buyerNTNCNIC: body.buyerNTNCNIC,
-        buyerProvince: body.buyerProvince,
-        buyerAddress: body.buyerAddress,
-        buyerRegistrationType: body.buyerRegistrationType,
-        // Seller fields (from selected customer)
-        sellerNTNCNIC: sellerNTNCNIC,
-        sellerBusinessName: sellerBusinessName,
-        sellerProvince: sellerProvince,
-        sellerAddress: sellerAddress,
+        // Buyer fields (from selected customer)
+        buyerNTNCNIC: buyerNTNCNIC,
+        buyerBusinessName: buyerBusinessName,
+        buyerProvince: buyerProvince,
+        buyerAddress: buyerAddress,
+        buyerRegistrationType: buyerRegistrationType,
         createdAt: new Date().toISOString(),
         items: createdItems.map(item => ({
           productName: item.productName,

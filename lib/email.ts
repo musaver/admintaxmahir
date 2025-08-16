@@ -94,6 +94,9 @@ interface OrderItem {
   furtherTax?: number;
   fedPayableTax?: number;
   discount?: number;
+  // Additional tax fields
+  fixedNotifiedValueOrRetailPrice?: number;
+  saleType?: string;
   addons?: any[];
 }
 
@@ -135,17 +138,12 @@ interface Order {
   scenarioId?: string;
   validationResponse?: string;
   trackingNumber?: string;
-  // Buyer business fields
+  // Buyer fields (from selected customer)
   buyerBusinessName?: string;
   buyerNTNCNIC?: string;
   buyerProvince?: string;
   buyerAddress?: string;
   buyerRegistrationType?: string;
-  // Seller fields (from selected customer)
-  sellerNTNCNIC?: string;
-  sellerBusinessName?: string;
-  sellerProvince?: string;
-  sellerAddress?: string;
   createdAt: string;
   items: OrderItem[];
   // User and supplier info
@@ -309,16 +307,7 @@ export function generateInvoiceHtml(order: Order, isForSupplier: boolean = false
                     ` : '<p style="color: #9ca3af; font-style: italic;">No supplier information</p>'}
                 </div>
 
-                <!-- Seller Section -->
-                <div class="detail-section">
-                    <h3>🏪 Seller</h3>
-                    ${order.sellerBusinessName || order.sellerNTNCNIC || order.sellerProvince || order.sellerAddress ? `
-                        ${order.sellerBusinessName ? `<p class="highlight">${order.sellerBusinessName}</p>` : ''}
-                        ${order.sellerNTNCNIC ? `<p>NTN/CNIC: ${order.sellerNTNCNIC}</p>` : ''}
-                        ${order.sellerProvince ? `<p>${order.sellerProvince} Province</p>` : ''}
-                        ${order.sellerAddress ? `<p style="margin-top: 8px;">Address: ${order.sellerAddress}</p>` : ''}
-                    ` : '<p style="color: #9ca3af; font-style: italic;">No seller information</p>'}
-                </div>
+
 
                 <!-- Buyer Section -->
                 <div class="detail-section">
@@ -409,6 +398,8 @@ export function generateInvoiceHtml(order: Order, isForSupplier: boolean = false
                                                 ${item.furtherTax && Number(item.furtherTax) > 0 ? `<div class="tax-item"><span>Further Tax:</span><span>${formatAmount(Number(item.furtherTax))}</span></div>` : ''}
                                                 ${item.fedPayableTax && Number(item.fedPayableTax) > 0 ? `<div class="tax-item"><span>FED Tax:</span><span>${formatAmount(Number(item.fedPayableTax))}</span></div>` : ''}
                                                 ${item.discount && Number(item.discount) > 0 ? `<div class="tax-item"><span>Discount:</span><span style="color: #dc2626;">-${formatAmount(Number(item.discount))}</span></div>` : ''}
+                                                ${item.fixedNotifiedValueOrRetailPrice && Number(item.fixedNotifiedValueOrRetailPrice) > 0 ? `<div class="tax-item"><span>Fixed Notified Value/Retail Price:</span><span>${formatAmount(Number(item.fixedNotifiedValueOrRetailPrice))}</span></div>` : ''}
+                                                ${item.saleType && item.saleType !== 'Goods at standard rate' ? `<div class="tax-item"><span>Sale Type:</span><span>${item.saleType}</span></div>` : ''}
                                             </div>
                                         </div>
                                     ` : ''}

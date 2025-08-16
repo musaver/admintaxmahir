@@ -393,11 +393,12 @@ export const orders = mysqlTable("orders", {
   invoiceDate: datetime("invoice_date"),
   validationResponse: text("validation_response"),
   
-  // Seller Information (from selected user)
-  sellerNTNCNIC: varchar("seller_ntn_cnic", { length: 100 }),
-  sellerBusinessName: varchar("seller_business_name", { length: 255 }),
-  sellerProvince: varchar("seller_province", { length: 100 }),
-  sellerAddress: varchar("seller_address", { length: 500 }),
+  // Buyer Information (from selected user/customer)
+  buyerNTNCNIC: varchar("buyer_ntn_cnic", { length: 100 }),
+  buyerBusinessName: varchar("buyer_business_name", { length: 255 }),
+  buyerProvince: varchar("buyer_province", { length: 100 }),
+  buyerAddress: varchar("buyer_address", { length: 500 }),
+  buyerRegistrationType: varchar("buyer_registration_type", { length: 50 }),
   
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
@@ -439,6 +440,9 @@ export const orderItems = mysqlTable("order_items", {
   furtherTax: decimal("further_tax", { precision: 10, scale: 2 }).default('0.00'),
   fedPayableTax: decimal("fed_payable_tax", { precision: 10, scale: 2 }).default('0.00'),
   discount: decimal("discount", { precision: 10, scale: 2 }).default('0.00'),
+  // Additional tax fields
+  fixedNotifiedValueOrRetailPrice: decimal("fixed_notified_value_or_retail_price", { precision: 10, scale: 2 }).default('0.00'),
+  saleType: varchar("sale_type", { length: 100 }).default('Goods at standard rate'),
   
   productImage: varchar("product_image", { length: 500 }),
   addons: json("addons"), // Store selected addons as JSON

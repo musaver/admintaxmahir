@@ -119,6 +119,9 @@ interface OrderItem {
   furtherTax?: number;
   fedPayableTax?: number;
   discount?: number;
+  // Additional tax fields
+  fixedNotifiedValueOrRetailPrice?: number;
+  saleType?: string;
 }
 
 interface Customer {
@@ -133,11 +136,12 @@ interface Customer {
   state?: string;
   postalCode?: string;
   country?: string;
-  // Seller fields
-  sellerNTNCNIC?: string;
-  sellerBusinessName?: string;
-  sellerProvince?: string;
-  sellerAddress?: string;
+  // Buyer fields
+  buyerNTNCNIC?: string;
+  buyerBusinessName?: string;
+  buyerProvince?: string;
+  buyerAddress?: string;
+  buyerRegistrationType?: string;
 }
 
 export default function AddOrder() {
@@ -202,11 +206,12 @@ export default function AddOrder() {
     invoiceNumber: '',
     invoiceDate: undefined as Date | undefined,
     validationResponse: '',
-    // Seller fields (from selected user)
-    sellerNTNCNIC: '',
-    sellerBusinessName: '',
-    sellerProvince: '',
-    sellerAddress: ''
+    // Buyer fields (from selected user)
+    buyerNTNCNIC: '',
+    buyerBusinessName: '',
+    buyerProvince: '',
+    buyerAddress: '',
+    buyerRegistrationType: ''
   });
 
   // Customer/shipping information
@@ -256,7 +261,10 @@ export default function AddOrder() {
     extraTax: 0,
     furtherTax: 0,
     fedPayableTax: 0,
-    discountAmount: 0
+    discountAmount: 0,
+    // Additional tax fields
+    fixedNotifiedValueOrRetailPrice: 0,
+    saleType: 'Goods at standard rate'
   });
 
   // Group product addon selection
@@ -316,7 +324,10 @@ export default function AddOrder() {
           extraTax: product.extraTax || 0,
           furtherTax: product.furtherTax || 0,
           fedPayableTax: product.fedPayableTax || 0,
-          discountAmount: product.discount || 0
+          discountAmount: product.discount || 0,
+          // Additional tax fields (reset to defaults)
+          fixedNotifiedValueOrRetailPrice: 0,
+          saleType: 'Goods at standard rate'
         }));
       }
     } else {
@@ -336,7 +347,10 @@ export default function AddOrder() {
         extraTax: 0,
         furtherTax: 0,
         fedPayableTax: 0,
-        discountAmount: 0
+        discountAmount: 0,
+        // Additional tax fields (reset to defaults)
+        fixedNotifiedValueOrRetailPrice: 0,
+        saleType: 'Goods at standard rate'
       }));
     }
   }, [productSelection.selectedProductId, products]);
@@ -475,17 +489,18 @@ export default function AddOrder() {
     
     if (customerId) {
       const customer = customers.find(c => c.id === customerId);
-      if (customer) {
-        setOrderData(prev => ({ 
-          ...prev, 
-          email: customer.email, 
-          phone: customer.phone || '',
-          // Populate seller fields from selected customer
-          sellerNTNCNIC: customer.sellerNTNCNIC || '',
-          sellerBusinessName: customer.sellerBusinessName || '',
-          sellerProvince: customer.sellerProvince || '',
-          sellerAddress: customer.sellerAddress || ''
-        }));
+              if (customer) {
+          setOrderData(prev => ({ 
+            ...prev, 
+            email: customer.email, 
+            phone: customer.phone || '',
+            // Populate buyer fields from selected customer's buyer information
+            buyerNTNCNIC: customer.buyerNTNCNIC || '',
+            buyerBusinessName: customer.buyerBusinessName || '',
+            buyerProvince: customer.buyerProvince || '',
+            buyerAddress: customer.buyerAddress || '',
+            buyerRegistrationType: customer.buyerRegistrationType || ''
+          }));
         setCustomerInfo(prev => ({
           ...prev,
           isGuest: false,
@@ -701,7 +716,10 @@ export default function AddOrder() {
       extraTax: productSelection.extraTax || 0,
       furtherTax: productSelection.furtherTax || 0,
       fedPayableTax: productSelection.fedPayableTax || 0,
-      discount: productSelection.discountAmount || 0
+      discount: productSelection.discountAmount || 0,
+      // Additional tax fields
+      fixedNotifiedValueOrRetailPrice: productSelection.fixedNotifiedValueOrRetailPrice || 0,
+      saleType: productSelection.saleType || 'Goods at standard rate'
     };
 
     setOrderItems([...orderItems, newItem]);
@@ -732,7 +750,10 @@ export default function AddOrder() {
       extraTax: 0,
       furtherTax: 0,
       fedPayableTax: 0,
-      discountAmount: 0
+      discountAmount: 0,
+      // Additional tax fields (reset to defaults)
+      fixedNotifiedValueOrRetailPrice: 0,
+      saleType: 'Goods at standard rate'
     });
     clearSelectedAddons();
   };
@@ -1061,11 +1082,12 @@ export default function AddOrder() {
         // Order items
         items: orderItems,
         
-        // Seller fields (from selected customer)
-        sellerNTNCNIC: orderData.sellerNTNCNIC || null,
-        sellerBusinessName: orderData.sellerBusinessName || null,
-        sellerProvince: orderData.sellerProvince || null,
-        sellerAddress: orderData.sellerAddress || null
+        // Buyer fields (from selected customer)
+        buyerNTNCNIC: orderData.buyerNTNCNIC || null,
+        buyerBusinessName: orderData.buyerBusinessName || null,
+        buyerProvince: orderData.buyerProvince || null,
+        buyerAddress: orderData.buyerAddress || null,
+        buyerRegistrationType: orderData.buyerRegistrationType || null
       };
 
       const response = await fetch('/api/orders', {
@@ -1348,36 +1370,36 @@ export default function AddOrder() {
             </CardContent>
           </Card>
 
-          {/* Seller Information - Show only when customer is selected */}
+          {/* Buyer Information - Show only when customer is selected */}
           {orderData.customerId && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  🏢 Seller Information
+                  🏢 Buyer Information
                 </CardTitle>
                 <CardDescription>
-                These fields are populated from the selected customer's profile. You can modify them for this order.
+                These fields are populated from the selected customer's buyer profile. You can modify them for this order.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="seller-ntn">NTN or CNIC of Seller</Label>
+                    <Label htmlFor="buyer-ntn">Buyer NTN/CNIC</Label>
                     <Input
-                      id="seller-ntn"
+                      id="buyer-ntn"
                     type="text"
-                    value={orderData.sellerNTNCNIC}
-                    onChange={(e) => setOrderData({...orderData, sellerNTNCNIC: e.target.value})}
+                    value={orderData.buyerNTNCNIC}
+                    onChange={(e) => setOrderData({...orderData, buyerNTNCNIC: e.target.value})}
                     placeholder="Enter NTN or CNIC"
                   />
                 </div>
                   <div className="space-y-2">
-                    <Label htmlFor="seller-business">Business Name of Seller</Label>
+                    <Label htmlFor="buyer-business">Buyer Business Name</Label>
                     <Input
-                      id="seller-business"
+                      id="buyer-business"
                     type="text"
-                    value={orderData.sellerBusinessName}
-                    onChange={(e) => setOrderData({...orderData, sellerBusinessName: e.target.value})}
+                    value={orderData.buyerBusinessName}
+                    onChange={(e) => setOrderData({...orderData, buyerBusinessName: e.target.value})}
                     placeholder="Enter business name"
                   />
                 </div>
@@ -1385,11 +1407,11 @@ export default function AddOrder() {
               
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="seller-province">Province Name</Label>
-                    <Select value={orderData.sellerProvince} onValueChange={(value) => setOrderData({...orderData, sellerProvince: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Province" />
-                      </SelectTrigger>
+                    <Label htmlFor="buyer-province">Buyer Province</Label>
+                                    <Select value={orderData.buyerProvince} onValueChange={(value) => setOrderData({...orderData, buyerProvince: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Province" />
+                  </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Punjab">Punjab</SelectItem>
                         <SelectItem value="Sindh">Sindh</SelectItem>
@@ -1402,15 +1424,30 @@ export default function AddOrder() {
                     </Select>
                 </div>
                   <div className="space-y-2">
-                    <Label htmlFor="seller-address">Address of Seller</Label>
+                    <Label htmlFor="buyer-address">Buyer Address</Label>
                     <Input
-                      id="seller-address"
+                      id="buyer-address"
                     type="text"
-                    value={orderData.sellerAddress}
-                    onChange={(e) => setOrderData({...orderData, sellerAddress: e.target.value})}
-                    placeholder="Enter seller address"
+                    value={orderData.buyerAddress}
+                    onChange={(e) => setOrderData({...orderData, buyerAddress: e.target.value})}
+                    placeholder="Enter buyer address"
                   />
                 </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="buyer-registration-type">Buyer Registration Type</Label>
+                <Select value={orderData.buyerRegistrationType} onValueChange={(value) => setOrderData({...orderData, buyerRegistrationType: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Registration Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="individual">Individual</SelectItem>
+                    <SelectItem value="company">Company</SelectItem>
+                    <SelectItem value="partnership">Partnership</SelectItem>
+                    <SelectItem value="sole_proprietorship">Sole Proprietorship</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               </CardContent>
             </Card>
@@ -1972,7 +2009,7 @@ export default function AddOrder() {
                 </div>
               )}
 
-              <div className="space-y-2">
+              <div className="space-y-2 hidden">
                 <Label htmlFor="custom-price">Custom Price (optional)</Label>
                 <Input
                   id="custom-price"
@@ -2194,6 +2231,32 @@ export default function AddOrder() {
                           className="text-sm"
                     />
                   </div>
+                  
+                      <div className="space-y-2">
+                        <Label htmlFor="fixed-notified-value-edit" className="text-sm">Fixed Notified Value/Retail Price</Label>
+                        <Input
+                          id="fixed-notified-value-edit"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={productSelection.fixedNotifiedValueOrRetailPrice}
+                          onChange={(e) => setProductSelection({...productSelection, fixedNotifiedValueOrRetailPrice: parseFloat(e.target.value) || 0})}
+                          placeholder="Withheld tax (if any)"
+                          className="text-sm"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="sale-type-edit" className="text-sm">Sale Type</Label>
+                        <Input
+                          id="sale-type-edit"
+                          type="text"
+                          value={productSelection.saleType}
+                          onChange={(e) => setProductSelection({...productSelection, saleType: e.target.value})}
+                          placeholder="Goods at standard rate (default)"
+                          className="text-sm"
+                        />
+                      </div>
                   </div>
                 </div>
                 </CardContent>
