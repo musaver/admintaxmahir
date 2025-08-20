@@ -6,6 +6,7 @@ import { CurrencyProvider } from '@/app/contexts/CurrencyContext';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { useState, useEffect } from 'react';
+import { isSubdomainRequest } from '@/lib/subdomain-utils';
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [isSubdomain, setIsSubdomain] = useState<boolean | null>(null);
@@ -13,9 +14,7 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   useEffect(() => {
     // Check if this is a subdomain request
     const hostname = window.location.hostname;
-    const parts = hostname.split('.');
-    const hasSubdomain = parts.length > 2 && !hostname.startsWith('www.');
-    setIsSubdomain(hasSubdomain);
+    setIsSubdomain(isSubdomainRequest(hostname));
   }, []);
 
   // If we haven't determined subdomain status yet, show loading

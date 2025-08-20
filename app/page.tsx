@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { isSubdomainRequest } from '@/lib/subdomain-utils';
 import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
@@ -20,10 +21,10 @@ export default function HomePage() {
   const [isSubdomain, setIsSubdomain] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if this is a subdomain request
+    // Check if this is a subdomain request (using shared utility)
     const hostname = window.location.hostname;
-    const parts = hostname.split('.');
-    const hasSubdomain = parts.length > 2 && !hostname.startsWith('www.');
+    const hasSubdomain = isSubdomainRequest(hostname);
+    
     setIsSubdomain(hasSubdomain);
     
     // Only handle tenant logic if this is a subdomain
