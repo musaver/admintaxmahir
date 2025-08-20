@@ -1,7 +1,12 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run build:no-types",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -11,6 +16,18 @@
           "value": "DENY"
         }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "(?<subdomain>[^.]+)\\..*"
+        }
+      ],
+      "destination": "/api/tenant-route?subdomain=:subdomain&path=:path*"
     }
   ]
 }

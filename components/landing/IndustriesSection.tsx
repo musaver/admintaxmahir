@@ -29,7 +29,7 @@ export function IndustriesSection() {
         <h2 className="text-3xl md:text-5xl font-bold text-foreground">
           Industries We Serve
         </h2>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto sdt">
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto sdty">
           Tailored solutions for businesses across various industries
         </p>
       </div>

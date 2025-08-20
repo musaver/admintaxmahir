@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     // Ignore ESLint errors during build
     ignoreDuringBuilds: true,
   },
+  serverExternalPackages: ["mysql2", "bcrypt"],
   images: {
     remotePatterns: [
       {
