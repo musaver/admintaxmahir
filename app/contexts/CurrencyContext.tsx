@@ -1,5 +1,6 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useSession } from 'next-auth/react';
 
 // Define available currencies (copied from API route to avoid server imports)
 export const AVAILABLE_CURRENCIES = {
@@ -53,11 +54,19 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
   const [currentCurrency, setCurrentCurrency] = useState<CurrencyCode>('PKR');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { data: session, status } = useSession();
 
-  // Fetch current currency settings on mount
+  // Fetch current currency settings only when user is authenticated
   useEffect(() => {
-    fetchCurrencySettings();
-  }, []);
+    if (status === 'authenticated' && session) {
+      fetchCurrencySettings();
+    } else if (status === 'unauthenticated') {
+      // User is not authenticated, use default currency and stop loading
+      setCurrentCurrency('PKR');
+      setLoading(false);
+    }
+    // Don't do anything if status is 'loading'
+  }, [status, session]);
 
   const fetchCurrencySettings = async () => {
     try {
