@@ -104,17 +104,16 @@ async function handleTenantAuthentication(request: NextRequest, response: NextRe
     const isHomePage = pathname === "/";
     const isProtectedPage = !isAuthPage && !isHomePage;
 
-    // Debug logging (only in development)
-    if (process.env.NODE_ENV === "development") {
-      console.log("Tenant Auth Debug:", {
-        tenant: tenant.slug,
-        path: pathname,
-        hasToken: !!token,
-        tokenTenantId: token?.tenantId,
-        isAuthPage,
-        isProtectedPage,
-      });
-    }
+    // Debug logging
+    console.log("Tenant Auth Debug:", {
+      tenant: tenant.slug,
+      path: pathname,
+      hasToken: !!token,
+      tokenTenantId: token?.tenantId,
+      isAuthPage,
+      isProtectedPage,
+      nodeEnv: process.env.NODE_ENV,
+    });
 
     // Check if token belongs to this tenant
     if (token && token.tenantId !== tenant.id) {

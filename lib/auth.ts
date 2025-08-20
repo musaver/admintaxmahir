@@ -24,7 +24,31 @@ export const authOptions: NextAuthOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
-        // Don't set domain for Vercel - let it auto-detect
+        // For multi-tenant subdomains, don't set domain to allow per-subdomain cookies
+        domain: undefined
+      }
+    },
+    callbackUrl: {
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.callback-url' 
+        : 'next-auth.callback-url',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        domain: undefined
+      }
+    },
+    csrfToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Host-next-auth.csrf-token' 
+        : 'next-auth.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
         domain: undefined
       }
     },
