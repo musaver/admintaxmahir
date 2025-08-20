@@ -6,7 +6,7 @@ import { adminUsers, tenants } from "@/lib/schema";
 import bcrypt from "bcrypt";
 import { eq, and } from "drizzle-orm";
 import { extractSubdomain } from "@/lib/tenant";
-import { getTenantBySlug } from "@/lib/tenant-edge";
+import { getTenantBySlug } from "@/lib/tenant-production";
 
 export const authOptions: NextAuthOptions = {
   // Don't use adapter with JWT strategy - causes conflicts

@@ -1,7 +1,7 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { extractSubdomain, getTenantBySlug } from "@/lib/tenant-edge";
+import { extractSubdomain, getTenantBySlug } from "@/lib/tenant-production";
 
 export async function middleware(request: NextRequest) {
   // Get the pathname and hostname
@@ -14,6 +14,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/test') ||
     pathname.startsWith('/api/debug') ||
     pathname.startsWith('/api/loyalty') ||
+    pathname.startsWith('/api/tenants/lookup') || // Skip tenant lookup API to avoid circular calls
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon.ico') ||
     pathname.endsWith('.svg') ||
