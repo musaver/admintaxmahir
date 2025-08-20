@@ -1,7 +1,7 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { extractSubdomain, getTenantBySlug } from "@/lib/tenant";
+import { extractSubdomain, getTenantBySlug } from "@/lib/tenant-edge";
 
 export async function middleware(request: NextRequest) {
   // Get the pathname and hostname
@@ -40,24 +40,38 @@ export async function middleware(request: NextRequest) {
   if (subdomain) {
     console.log('Processing tenant request for subdomain:', subdomain);
     
-    // Get tenant information
-    const tenant = await getTenantBySlug(subdomain);
-    
-    if (!tenant) {
-      console.log('Tenant not found for subdomain:', subdomain);
-      // Redirect to main site with error
-      return NextResponse.redirect(new URL(`https://${hostname.replace(subdomain + '.', '')}/tenant-not-found`));
+    let tenant = null;
+    try {
+      // Get tenant information
+      tenant = await getTenantBySlug(subdomain);
+      console.log('Tenant lookup result:', tenant ? `Found: ${tenant.name} (${tenant.status})` : 'Not found');
+      
+      if (!tenant) {
+        console.log('Tenant not found for subdomain:', subdomain);
+        // For localhost, redirect to localhost, for production use main domain
+        const redirectHost = hostname.includes('localhost') ? 'localhost:3000' : hostname.replace(subdomain + '.', '');
+        const protocol = hostname.includes('localhost') ? 'http' : 'https';
+        return NextResponse.redirect(new URL(`${protocol}://${redirectHost}/tenant-not-found`));
+      }
+      
+      if (tenant.status !== 'active') {
+        console.log('Tenant not active:', tenant.status);
+        // For localhost, redirect to localhost, for production use main domain  
+        const redirectHost = hostname.includes('localhost') ? 'localhost:3000' : hostname.replace(subdomain + '.', '');
+        const protocol = hostname.includes('localhost') ? 'http' : 'https';
+        return NextResponse.redirect(new URL(`${protocol}://${redirectHost}/tenant-suspended`));
+      }
+      
+      console.log('Tenant found and active:', tenant.name);
+    } catch (error) {
+      console.error('Error in tenant lookup:', error);
+      // Fallback redirect on error
+      const redirectHost = hostname.includes('localhost') ? 'localhost:3000' : hostname.replace(subdomain + '.', '');
+      const protocol = hostname.includes('localhost') ? 'http' : 'https';
+      return NextResponse.redirect(new URL(`${protocol}://${redirectHost}/tenant-not-found`));
     }
     
-    if (tenant.status !== 'active') {
-      console.log('Tenant not active:', tenant.status);
-      // Redirect to suspended page
-      return NextResponse.redirect(new URL(`https://${hostname.replace(subdomain + '.', '')}/tenant-suspended`));
-    }
-    
-    console.log('Tenant found and active:', tenant.name);
-    
-    // Add tenant information to request headers
+    // Add tenant information to request headers (tenant should be defined here)
     const response = NextResponse.next();
     response.headers.set('x-tenant-id', tenant.id);
     response.headers.set('x-tenant-slug', tenant.slug);

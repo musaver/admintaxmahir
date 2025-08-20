@@ -32,15 +32,23 @@ export function extractSubdomain(hostname: string): string | null {
   // Remove port if present
   const host = hostname.split(':')[0];
   
-  // Handle localhost and development
-  if (host.includes('localhost') || host.includes('127.0.0.1') || host.includes('192.168.')) {
-    return null;
-  }
-  
   // Split by dots
   const parts = host.split('.');
   
-  // Need at least 3 parts for subdomain (subdomain.domain.tld)
+  // Handle localhost development - check for subdomain.localhost format
+  if (host.includes('localhost')) {
+    if (parts.length >= 2 && parts[0] !== 'localhost') {
+      return parts[0]; // Return subdomain part (e.g., "acme-electronics" from "acme-electronics.localhost")
+    }
+    return null; // Plain localhost
+  }
+  
+  // Handle other development IPs
+  if (host.includes('127.0.0.1') || host.includes('192.168.')) {
+    return null;
+  }
+  
+  // Need at least 3 parts for production subdomain (subdomain.domain.tld)
   if (parts.length < 3) {
     return null;
   }

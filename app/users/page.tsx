@@ -49,9 +49,17 @@ export default function UsersList() {
     try {
       const res = await fetch('/api/users');
       const data = await res.json();
-      setUsers(data);
+      
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setUsers(data);
+      } else {
+        console.error('API returned non-array data:', data);
+        setUsers([]); // Fallback to empty array
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching users:', err);
+      setUsers([]); // Fallback to empty array on error
     } finally {
       setLoading(false);
     }
@@ -121,16 +129,19 @@ export default function UsersList() {
   };
 
   const getStats = () => {
-    const totalUsers = users.length;
-    const usersWithPhone = users.filter(user => user.phone).length;
-    const usersWithAddress = users.filter(user => user.address).length;
+    // Ensure users is an array
+    const userArray = Array.isArray(users) ? users : [];
+    
+    const totalUsers = userArray.length;
+    const usersWithPhone = userArray.filter(user => user.phone).length;
+    const usersWithAddress = userArray.filter(user => user.address).length;
     
     // Loyalty points stats
-    const usersWithPoints = users.filter(user => user.loyaltyPoints && user.loyaltyPoints.availablePoints > 0).length;
-    const totalAvailablePoints = users.reduce((sum, user) => sum + (user.loyaltyPoints?.availablePoints || 0), 0);
-    const totalPointsEarned = users.reduce((sum, user) => sum + (user.loyaltyPoints?.totalPointsEarned || 0), 0);
-    const totalPointsRedeemed = users.reduce((sum, user) => sum + (user.loyaltyPoints?.totalPointsRedeemed || 0), 0);
-    const usersWithExpiring = users.filter(user => user.loyaltyPoints && user.loyaltyPoints.pointsExpiringSoon > 0).length;
+    const usersWithPoints = userArray.filter(user => user.loyaltyPoints && user.loyaltyPoints.availablePoints > 0).length;
+    const totalAvailablePoints = userArray.reduce((sum, user) => sum + (user.loyaltyPoints?.availablePoints || 0), 0);
+    const totalPointsEarned = userArray.reduce((sum, user) => sum + (user.loyaltyPoints?.totalPointsEarned || 0), 0);
+    const totalPointsRedeemed = userArray.reduce((sum, user) => sum + (user.loyaltyPoints?.totalPointsRedeemed || 0), 0);
+    const usersWithExpiring = userArray.filter(user => user.loyaltyPoints && user.loyaltyPoints.pointsExpiringSoon > 0).length;
     
     return { 
       totalUsers, 

@@ -15,10 +15,7 @@ export const GET = withTenant(async (request: NextRequest, context) => {
         loyaltyPoints: userLoyaltyPoints
       })
       .from(user)
-      .leftJoin(userLoyaltyPoints, and(
-        eq(user.id, userLoyaltyPoints.userId),
-        eq(userLoyaltyPoints.tenantId, context.tenantId)
-      ))
+      .leftJoin(userLoyaltyPoints, eq(user.id, userLoyaltyPoints.userId))
       .where(
         and(
           eq(user.tenantId, context.tenantId), // Filter by tenant
