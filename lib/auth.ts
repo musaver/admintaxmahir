@@ -6,10 +6,13 @@ import { adminUsers, tenants } from "@/lib/schema";
 import bcrypt from "bcrypt";
 import { eq, and } from "drizzle-orm";
 import { extractSubdomain } from "@/lib/tenant";
+import { getTenantBySlug } from "@/lib/tenant-edge";
 
 export const authOptions: NextAuthOptions = {
-  adapter: DrizzleAdapter(db),
+  // Don't use adapter with JWT strategy - causes conflicts
+  // adapter: DrizzleAdapter(db),
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
   session: {
     strategy: "jwt",
     maxAge: 24 * 60 * 60, // 24 hours
@@ -55,6 +58,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
+    error: "/login", // Redirect errors to login page
   },
   providers: [
     CredentialsProvider({
@@ -74,29 +78,38 @@ export const authOptions: NextAuthOptions = {
           const hostname = req?.headers?.host || '';
           const subdomain = extractSubdomain(hostname);
           
+          console.log("Auth Debug - Login attempt:", {
+            hostname,
+            subdomain,
+            email: credentials.email,
+          });
+          
           let tenantId = null;
           let tenantSlug = null;
           
           if (subdomain) {
-            // This is a tenant login - get tenant info
-            const tenant = await db
-              .select()
-              .from(tenants)
-              .where(eq(tenants.slug, subdomain))
-              .limit(1);
+            // This is a tenant login - get tenant info using the same method as middleware
+            const tenant = await getTenantBySlug(subdomain);
             
-            if (!tenant[0]) {
+            console.log("Auth Debug - Tenant lookup result:", {
+              subdomain,
+              tenantFound: !!tenant,
+              tenantName: tenant?.name,
+              tenantStatus: tenant?.status,
+            });
+            
+            if (!tenant) {
               console.log("Tenant not found for subdomain:", subdomain);
               return null;
             }
             
-            if (tenant[0].status !== 'active') {
-              console.log("Tenant not active:", tenant[0].status);
+            if (tenant.status !== 'active') {
+              console.log("Tenant not active:", tenant.status);
               return null;
             }
             
-            tenantId = tenant[0].id;
-            tenantSlug = tenant[0].slug;
+            tenantId = tenant.id;
+            tenantSlug = tenant.slug;
             
             // Find admin user for this specific tenant
             const [user_cred] = await db
@@ -115,6 +128,12 @@ export const authOptions: NextAuthOptions = {
                 eq(adminUsers.tenantId, tenantId)
               ))
               .limit(1);
+
+            console.log("Auth Debug - User lookup result:", {
+              email: credentials.email,
+              tenantId,
+              userFound: !!user_cred,
+            });
 
             if (!user_cred) {
               console.log("Tenant admin not found:", credentials.email, "for tenant:", subdomain);
@@ -152,22 +171,28 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.tenantId = (user as any).tenantId;
-        token.tenantSlug = (user as any).tenantSlug;
-        token.role = (user as any).role;
-        token.roleId = (user as any).roleId;
-        console.log("JWT callback - setting token data:", {
-          id: user.id,
-          tenantId: (user as any).tenantId,
-          tenantSlug: (user as any).tenantSlug
-        });
+      try {
+        if (user) {
+          token.id = user.id;
+          token.tenantId = (user as any).tenantId;
+          token.tenantSlug = (user as any).tenantSlug;
+          token.role = (user as any).role;
+          token.roleId = (user as any).roleId;
+          console.log("JWT callback - setting token data:", {
+            id: user.id,
+            tenantId: (user as any).tenantId,
+            tenantSlug: (user as any).tenantSlug
+          });
+        }
+        return token;
+      } catch (error) {
+        console.error("JWT callback error:", error);
+        return token;
       }
-      return token;
     },
     async session({ session, token }) {
-      if (session.user && token.id) {
+      try {
+        if (session.user && token.id) {
         (session.user as any).id = token.id;
         (session.user as any).tenantId = token.tenantId;
         (session.user as any).tenantSlug = token.tenantSlug;
@@ -178,8 +203,12 @@ export const authOptions: NextAuthOptions = {
           tenantId: token.tenantId,
           tenantSlug: token.tenantSlug
         });
+        }
+        return session;
+      } catch (error) {
+        console.error("Session callback error:", error);
+        return session;
       }
-      return session;
     },
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback:", { url, baseUrl });
