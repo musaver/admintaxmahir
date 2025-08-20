@@ -1,24 +1,31 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { user, userLoyaltyPoints } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
-import { ne, or, isNull, eq } from 'drizzle-orm';
+import { ne, or, isNull, eq, and } from 'drizzle-orm';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
 
-export async function GET() {
+export const GET = withTenant(async (request: NextRequest, context) => {
   try {
-    // Only fetch users that are not drivers (customer type or null for existing users)
+    // Only fetch users that are not drivers (customer type or null for existing users) and belong to current tenant
     const allUsers = await db
       .select({
         user: user,
         loyaltyPoints: userLoyaltyPoints
       })
       .from(user)
-      .leftJoin(userLoyaltyPoints, eq(user.id, userLoyaltyPoints.userId))
+      .leftJoin(userLoyaltyPoints, and(
+        eq(user.id, userLoyaltyPoints.userId),
+        eq(userLoyaltyPoints.tenantId, context.tenantId)
+      ))
       .where(
-        or(
-          ne(user.userType, 'driver'),
-          isNull(user.userType)
+        and(
+          eq(user.tenantId, context.tenantId), // Filter by tenant
+          or(
+            ne(user.userType, 'driver'),
+            isNull(user.userType)
+          )
         )
       );
 
@@ -43,11 +50,11 @@ export async function GET() {
     return NextResponse.json(usersWithPoints);
   } catch (error) {
     console.error('Error fetching users:', error);
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch users');
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withTenant(async (request: NextRequest, context) => {
   try {
     const { 
       name, 
@@ -70,6 +77,7 @@ export async function POST(request: Request) {
     
     const newUser = {
       id: uuidv4(),
+      tenantId: context.tenantId, // Add tenant ID
       name,
       firstName: firstName || null,
       lastName: lastName || null,
@@ -95,4 +103,4 @@ export async function POST(request: Request) {
     console.error('Error creating user:', error);
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
   }
-} 
+}); 

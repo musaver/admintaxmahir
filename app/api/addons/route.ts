@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { addons, addonGroups } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, and } from 'drizzle-orm';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
 
-export async function GET() {
+export const GET = withTenant(async (request: NextRequest, context) => {
   try {
     // Fetch addons with their group information
     const allAddons = await db
@@ -23,7 +24,11 @@ export async function GET() {
         groupSortOrder: addonGroups.sortOrder,
       })
       .from(addons)
-      .leftJoin(addonGroups, eq(addons.groupId, addonGroups.id))
+      .leftJoin(addonGroups, and(
+        eq(addons.groupId, addonGroups.id),
+        eq(addonGroups.tenantId, context.tenantId)
+      ))
+      .where(eq(addons.tenantId, context.tenantId))
       .orderBy(
         asc(addonGroups.sortOrder), 
         asc(addons.sortOrder), 
@@ -33,11 +38,11 @@ export async function GET() {
     return NextResponse.json(allAddons);
   } catch (error) {
     console.error('Error fetching addons:', error);
-    return NextResponse.json({ error: 'Failed to fetch addons' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch addons');
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withTenant(async (req: NextRequest, context) => {
   try {
     const { 
       title, 
@@ -51,11 +56,12 @@ export async function POST(req: NextRequest) {
     
     // Validate required fields
     if (!title || price === undefined || price === null) {
-      return NextResponse.json({ error: 'Title and price are required' }, { status: 400 });
+      return ErrorResponses.invalidInput('Title and price are required');
     }
     
     const newAddon = {
       id: uuidv4(),
+      tenantId: context.tenantId, // Add tenant ID
       title,
       price: price.toString(),
       description: description || null,
@@ -70,6 +76,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(newAddon, { status: 201 });
   } catch (error) {
     console.error('Error creating addon:', error);
-    return NextResponse.json({ error: 'Failed to create addon' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to create addon');
   }
-} 
+}); 

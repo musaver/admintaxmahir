@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
     
     const newAdmin = {
       id: uuidv4(),
+      tenantId: 'default-tenant-id', // TODO: Get from tenant context
       email,
       password: hashedPassword,
       name,

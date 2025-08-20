@@ -11,13 +11,49 @@ import {
   json,
 } from 'drizzle-orm/mysql-core';
 
+// ✅ Tenants table - Core table for multi-tenancy
+export const tenants = mysqlTable('tenants', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).notNull().unique(), // for subdomain
+  email: varchar('email', { length: 255 }).notNull(),
+  phone: varchar('phone', { length: 20 }),
+  
+  // Subscription & billing
+  plan: varchar('plan', { length: 50 }).default('basic'), // basic, premium, enterprise
+  status: varchar('status', { length: 20 }).default('active'), // active, suspended, canceled, trial
+  trialEndsAt: datetime('trial_ends_at'),
+  subscriptionId: varchar('subscription_id', { length: 255 }), // Stripe/payment processor ID
+  
+  // Customization
+  logo: varchar('logo', { length: 500 }),
+  primaryColor: varchar('primary_color', { length: 7 }).default('#3b82f6'),
+  settings: json('settings'), // JSON object for tenant-specific settings
+  
+  // Limits (based on plan)
+  maxUsers: int('max_users').default(5),
+  maxProducts: int('max_products').default(1000),
+  maxOrders: int('max_orders').default(10000),
+  
+  // Address information
+  address: varchar('address', { length: 500 }),
+  city: varchar('city', { length: 100 }),
+  state: varchar('state', { length: 100 }),
+  country: varchar('country', { length: 100 }),
+  postalCode: varchar('postal_code', { length: 20 }),
+  
+  createdAt: datetime('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime('updated_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
 // ✅ User table (customers)
 export const user = mysqlTable('user', {
   id: varchar('id', { length: 255 }).primaryKey(),
+  tenantId: varchar('tenant_id', { length: 255 }).notNull(), // Multi-tenant support
   name: varchar('name', { length: 255 }),
   firstName: varchar('first_name', { length: 100 }),
   lastName: varchar('last_name', { length: 100 }),
-  email: varchar('email', { length: 255 }).notNull().unique(),
+  email: varchar('email', { length: 255 }).notNull(),
   emailVerified: datetime('emailVerified'),
   image: text('image'),
   profilePicture: varchar("profile_picture", { length: 255 }),
@@ -91,6 +127,7 @@ export const verification_tokens = mysqlTable(
 // Product Categories
 export const categories = mysqlTable("categories", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   description: text("description"),
@@ -108,6 +145,7 @@ export const categories = mysqlTable("categories", {
 // Product Subcategories
 export const subcategories = mysqlTable("subcategories", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   description: text("description"),
@@ -122,6 +160,7 @@ export const subcategories = mysqlTable("subcategories", {
 // Products
 export const products = mysqlTable("products", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   description: text("description"),
@@ -183,6 +222,7 @@ export const products = mysqlTable("products", {
 // Product Variants (Size, Color, etc.)
 export const productVariants = mysqlTable("product_variants", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   productId: varchar("product_id", { length: 255 }).notNull(),
   sku: varchar("sku", { length: 100 }).unique(),
   title: varchar("title", { length: 255 }).notNull(), // e.g., "Red / Large"
@@ -204,7 +244,8 @@ export const productVariants = mysqlTable("product_variants", {
 // Variation Attributes (Color, Size, Material, etc.)
 export const variationAttributes = mysqlTable("variation_attributes", {
   id: varchar("id", { length: 255 }).primaryKey(),
-  name: varchar("name", { length: 255 }).notNull().unique(), // Color, Size, Material
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
+  name: varchar("name", { length: 255 }).notNull(), // Color, Size, Material (removed unique constraint for multi-tenant)
   slug: varchar("slug", { length: 255 }).notNull().unique(), // color, size, material
   description: text("description"),
   type: varchar("type", { length: 50 }).default("select"), // select, color, image, button
@@ -217,6 +258,7 @@ export const variationAttributes = mysqlTable("variation_attributes", {
 // Variation Attribute Values (Red, Blue, Green for Color; S, M, L for Size)
 export const variationAttributeValues = mysqlTable("variation_attribute_values", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   attributeId: varchar("attribute_id", { length: 255 }).notNull(),
   value: varchar("value", { length: 255 }).notNull(), // Red, Blue, Small, Large
   slug: varchar("slug", { length: 255 }).notNull(), // red, blue, small, large
@@ -232,6 +274,7 @@ export const variationAttributeValues = mysqlTable("variation_attribute_values",
 // Addon Groups (for organizing addons)
 export const addonGroups = mysqlTable("addon_groups", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   sortOrder: int("sort_order").default(0),
@@ -243,6 +286,7 @@ export const addonGroups = mysqlTable("addon_groups", {
 // Addons (for group products)
 export const addons = mysqlTable("addons", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   title: varchar("title", { length: 255 }).notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   description: text("description"),
@@ -270,6 +314,7 @@ export const productAddons = mysqlTable("product_addons", {
 // Product Inventory
 export const productInventory = mysqlTable("product_inventory", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   productId: varchar("product_id", { length: 255 }),
   variantId: varchar("variant_id", { length: 255 }),
   
@@ -298,6 +343,7 @@ export const productInventory = mysqlTable("product_inventory", {
 // Stock Movements (Audit trail for all inventory changes)
 export const stockMovements = mysqlTable("stock_movements", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   inventoryId: varchar("inventory_id", { length: 255 }).notNull(),
   productId: varchar("product_id", { length: 255 }).notNull(),
   variantId: varchar("variant_id", { length: 255 }),
@@ -327,6 +373,7 @@ export const stockMovements = mysqlTable("stock_movements", {
 // Orders
 export const orders = mysqlTable("orders", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   orderNumber: varchar("order_number", { length: 100 }).notNull().unique(),
   userId: varchar("user_id", { length: 255 }),
   email: varchar("email", { length: 255 }).notNull(),
@@ -453,6 +500,7 @@ export const orderItems = mysqlTable("order_items", {
 // Returns
 export const returns = mysqlTable("returns", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   returnNumber: varchar("return_number", { length: 100 }).notNull().unique(),
   orderId: varchar("order_id", { length: 255 }).notNull(),
   userId: varchar("user_id", { length: 255 }),
@@ -481,6 +529,7 @@ export const returnItems = mysqlTable("return_items", {
 // Refunds
 export const refunds = mysqlTable("refunds", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   orderId: varchar("order_id", { length: 255 }).notNull(),
   returnId: varchar("return_id", { length: 255 }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
@@ -513,7 +562,8 @@ export const shippingLabels = mysqlTable("shipping_labels", {
 // Admin users
 export const adminUsers = mysqlTable("admin_users", {
   id: varchar("id", { length: 255 }).primaryKey(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
+  email: varchar("email", { length: 255 }).notNull(),
   password: varchar("password", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }),
   roleId: varchar("roleId", { length: 255 }).notNull(),
@@ -542,6 +592,7 @@ export const adminLogs = mysqlTable("admin_logs", {
 // Drivers (extends users with driver-specific fields)
 export const drivers = mysqlTable("drivers", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   userId: varchar("user_id", { length: 255 }).notNull().unique(), // Reference to user table
   licenseNumber: varchar("license_number", { length: 100 }).unique(),
   vehicleType: varchar("vehicle_type", { length: 100 }), // car, motorcycle, truck, van
@@ -625,6 +676,7 @@ export const driverAssignmentHistory = mysqlTable("driver_assignment_history", {
 // Suppliers
 export const suppliers = mysqlTable("suppliers", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   name: varchar("name", { length: 255 }).notNull(),
   companyName: varchar("company_name", { length: 255 }),
   email: varchar("email", { length: 255 }).notNull(),
@@ -746,6 +798,10 @@ export const loyaltyPointsHistoryRelations = relations(loyaltyPointsHistory, ({ 
 }));
 
 export const categoriesRelations = relations(categories, ({ many, one }) => ({
+  tenant: one(tenants, {
+    fields: [categories.tenantId],
+    references: [tenants.id],
+  }),
   subcategories: many(subcategories),
   products: many(products),
   parent: one(categories, {
@@ -756,6 +812,10 @@ export const categoriesRelations = relations(categories, ({ many, one }) => ({
 }));
 
 export const subcategoriesRelations = relations(subcategories, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [subcategories.tenantId],
+    references: [tenants.id],
+  }),
   category: one(categories, {
     fields: [subcategories.categoryId],
     references: [categories.id],
@@ -764,6 +824,10 @@ export const subcategoriesRelations = relations(subcategories, ({ one, many }) =
 }));
 
 export const productsRelations = relations(products, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [products.tenantId],
+    references: [tenants.id],
+  }),
   category: one(categories, {
     fields: [products.categoryId],
     references: [categories.id],
@@ -823,6 +887,10 @@ export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [orders.tenantId],
+    references: [tenants.id],
+  }),
   user: one(user, {
     fields: [orders.userId],
     references: [user.id],
@@ -1013,6 +1081,7 @@ export const driverAssignmentHistoryRelations = relations(driverAssignmentHistor
 // Tag Groups - for organizing tags into categories
 export const tagGroups = mysqlTable("tag_groups", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   description: text("description"),
@@ -1030,6 +1099,7 @@ export const tagGroups = mysqlTable("tag_groups", {
 // Tags - individual tags that belong to groups
 export const tags = mysqlTable("tags", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull(),
   description: text("description"),
@@ -1088,8 +1158,46 @@ export const suppliersRelations = relations(suppliers, ({ many }) => ({
   orders: many(orders),
 }));
 
-// Update Products Relations to include tags and supplier
+// Tenant Relations
+export const tenantsRelations = relations(tenants, ({ many }) => ({
+  adminUsers: many(adminUsers),
+  users: many(user),
+  products: many(products),
+  categories: many(categories),
+  orders: many(orders),
+}));
+
+// Update existing user relations to include tenant
+export const updatedUsersRelations = relations(user, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [user.tenantId],
+    references: [tenants.id],
+  }),
+  orders: many(orders),
+  returns: many(returns),
+  loyaltyPoints: one(userLoyaltyPoints),
+  loyaltyHistory: many(loyaltyPointsHistory),
+}));
+
+// Update admin users relations to include tenant
+export const updatedAdminUsersRelations = relations(adminUsers, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [adminUsers.tenantId],
+    references: [tenants.id],
+  }),
+  role: one(adminRoles, {
+    fields: [adminUsers.roleId],
+    references: [adminRoles.id],
+  }),
+  logs: many(adminLogs),
+}));
+
+// Update Products Relations to include tenant and other relations
 export const updatedProductsRelations = relations(products, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [products.tenantId],
+    references: [tenants.id],
+  }),
   category: one(categories, {
     fields: [products.categoryId],
     references: [categories.id],

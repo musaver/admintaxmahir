@@ -244,7 +244,7 @@ export default function OrderInvoice() {
 
             {/* Invoice Details */}
             <div className="p-8 border-b border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-8">
                 {/* Supplier */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-3">🏢 Supplier:</h3>
@@ -304,32 +304,6 @@ export default function OrderInvoice() {
                   </div>
                 </div>
 
-                {/* Seller Information (from order) */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">🏪 Seller:</h3>
-                  <div className="text-gray-600">
-                    {(order.sellerBusinessName || order.sellerNTNCNIC || order.sellerProvince || order.sellerAddress) ? (
-                      <>
-                        {order.sellerBusinessName && <p className="font-medium">{order.sellerBusinessName}</p>}
-                        {order.sellerNTNCNIC && (
-                          <div className="mt-1">
-                            <span className="text-xs text-gray-500">NTN/CNIC: </span>
-                            <span className="font-mono text-sm">{order.sellerNTNCNIC}</span>
-                          </div>
-                        )}
-                        {order.sellerProvince && <p className="text-sm">{order.sellerProvince} Province</p>}
-                        {order.sellerAddress && (
-                          <div className="mt-2">
-                            <span className="text-xs text-gray-500">Address: </span>
-                            <p className="text-sm">{order.sellerAddress}</p>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-gray-400 italic">No seller information</p>
-                    )}
-                  </div>
-                </div>
 
                 {/* Buyer */}
                 <div>

@@ -2,9 +2,10 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
-import { adminUsers } from "@/lib/schema";
+import { adminUsers, tenants } from "@/lib/schema";
 import bcrypt from "bcrypt";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { extractSubdomain } from "@/lib/tenant";
 
 export const authOptions: NextAuthOptions = {
   adapter: DrizzleAdapter(db),
@@ -38,36 +39,86 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           console.log("Missing credentials");
           return null;
         }
 
         try {
-          const [user_cred] = await db
-            .select()
-            .from(adminUsers)
-            .where(eq(adminUsers.email, credentials.email))
-            .limit(1);
+          // Get tenant info from request
+          const hostname = req?.headers?.host || '';
+          const subdomain = extractSubdomain(hostname);
+          
+          let tenantId = null;
+          let tenantSlug = null;
+          
+          if (subdomain) {
+            // This is a tenant login - get tenant info
+            const tenant = await db
+              .select()
+              .from(tenants)
+              .where(eq(tenants.slug, subdomain))
+              .limit(1);
+            
+            if (!tenant[0]) {
+              console.log("Tenant not found for subdomain:", subdomain);
+              return null;
+            }
+            
+            if (tenant[0].status !== 'active') {
+              console.log("Tenant not active:", tenant[0].status);
+              return null;
+            }
+            
+            tenantId = tenant[0].id;
+            tenantSlug = tenant[0].slug;
+            
+            // Find admin user for this specific tenant
+            const [user_cred] = await db
+              .select({
+                id: adminUsers.id,
+                email: adminUsers.email,
+                password: adminUsers.password,
+                name: adminUsers.name,
+                tenantId: adminUsers.tenantId,
+                role: adminUsers.role,
+                roleId: adminUsers.roleId,
+              })
+              .from(adminUsers)
+              .where(and(
+                eq(adminUsers.email, credentials.email),
+                eq(adminUsers.tenantId, tenantId)
+              ))
+              .limit(1);
 
-          if (!user_cred) {
-            console.log("User not found:", credentials.email);
+            if (!user_cred) {
+              console.log("Tenant admin not found:", credentials.email, "for tenant:", subdomain);
+              return null;
+            }
+
+            const isValid = await bcrypt.compare(credentials.password, user_cred.password ?? "");
+            if (!isValid) {
+              console.log("Invalid password for tenant admin:", credentials.email);
+              return null;
+            }
+
+            console.log("Tenant admin authenticated successfully:", credentials.email, "for tenant:", subdomain);
+            return {
+              id: user_cred.id,
+              name: user_cred.name,
+              email: user_cred.email,
+              tenantId: tenantId,
+              tenantSlug: tenantSlug,
+              role: user_cred.role,
+              roleId: user_cred.roleId,
+            };
+          } else {
+            // This is main domain login - could be super admin or tenant selection
+            // For now, we'll handle tenant-specific logins only
+            console.log("Main domain login not implemented yet");
             return null;
           }
-
-          const isValid = await bcrypt.compare(credentials.password, user_cred.password ?? "");
-          if (!isValid) {
-            console.log("Invalid password for user:", credentials.email);
-            return null;
-          }
-
-          console.log("User authenticated successfully:", credentials.email);
-          return {
-            id: user_cred.id,
-            name: user_cred.name,
-            email: user_cred.email,
-          };
         } catch (error) {
           console.error("Auth error:", error);
           return null;
@@ -79,14 +130,30 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        console.log("JWT callback - setting token.id:", user.id);
+        token.tenantId = (user as any).tenantId;
+        token.tenantSlug = (user as any).tenantSlug;
+        token.role = (user as any).role;
+        token.roleId = (user as any).roleId;
+        console.log("JWT callback - setting token data:", {
+          id: user.id,
+          tenantId: (user as any).tenantId,
+          tenantSlug: (user as any).tenantSlug
+        });
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
         (session.user as any).id = token.id;
-        console.log("Session callback - setting session.user.id:", token.id);
+        (session.user as any).tenantId = token.tenantId;
+        (session.user as any).tenantSlug = token.tenantSlug;
+        (session.user as any).role = token.role;
+        (session.user as any).roleId = token.roleId;
+        console.log("Session callback - setting session data:", {
+          id: token.id,
+          tenantId: token.tenantId,
+          tenantSlug: token.tenantSlug
+        });
       }
       return session;
     },

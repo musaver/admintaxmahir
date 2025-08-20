@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { products, categories, subcategories, productVariants, productAddons, productTags, tags, suppliers, productInventory, stockMovements } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
 
-export async function GET() {
+export const GET = withTenant(async (request: NextRequest, context) => {
   try {
     const allProducts = await db
       .select({
@@ -25,18 +26,28 @@ export async function GET() {
         }
       })
       .from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .leftJoin(subcategories, eq(products.subcategoryId, subcategories.id))
-      .leftJoin(suppliers, eq(products.supplierId, suppliers.id));
+      .leftJoin(categories, and(
+        eq(products.categoryId, categories.id),
+        eq(categories.tenantId, context.tenantId)
+      ))
+      .leftJoin(subcategories, and(
+        eq(products.subcategoryId, subcategories.id),
+        eq(subcategories.tenantId, context.tenantId)
+      ))
+      .leftJoin(suppliers, and(
+        eq(products.supplierId, suppliers.id),
+        eq(suppliers.tenantId, context.tenantId)
+      ))
+      .where(eq(products.tenantId, context.tenantId));
       
     return NextResponse.json(allProducts);
   } catch (error) {
     console.error('Error fetching products:', error);
-    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch products');
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withTenant(async (req: NextRequest, context) => {
   try {
     const { 
       name, 
@@ -115,6 +126,7 @@ export async function POST(req: NextRequest) {
     
     const newProduct = {
       id: uuidv4(),
+      tenantId: context.tenantId, // Add tenant ID
       name,
       slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
       description: description || null,
@@ -302,6 +314,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ product: newProduct }, { status: 201 });
   } catch (error) {
     console.error('Error creating product:', error);
-    return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to create product');
   }
-} 
+}); 
