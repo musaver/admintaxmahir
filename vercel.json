@@ -18,16 +18,4 @@
       ]
     }
   ],
-  "rewrites": [
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "(?<subdomain>[^.]+)\\..*"
-        }
-      ],
-      "destination": "/api/tenant-route?subdomain=:subdomain&path=:path*"
-    }
-  ]
 }
