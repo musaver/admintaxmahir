@@ -145,9 +145,14 @@ async function handleTenantAuthentication(request: NextRequest, response: NextRe
 function handleMainDomainRequest(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   
+  // Redirect root to landing page
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL('/landing', request.url));
+  }
+  
   // Allow marketing pages, tenant registration, etc.
   const publicPaths = [
-    '/',
+    '/landing',
     '/signup',
     '/pricing', 
     '/contact',
@@ -179,8 +184,8 @@ function handleMainDomainRequest(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Redirect unknown paths to home
-  return NextResponse.redirect(new URL('/', request.url));
+  // Redirect unknown paths to landing page
+  return NextResponse.redirect(new URL('/landing', request.url));
 }
 
 export const config = {
