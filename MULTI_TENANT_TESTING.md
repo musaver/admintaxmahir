@@ -12,7 +12,7 @@ We need to verify that:
 
 ## 🏢 Test Tenants Created
 
-✅ **Tenant 1: Acme Electronics**
+✅ **Tenant 1 new: Acme Electronics**
 - Subdomain: `acme-electronics`
 - Admin Email: `admin@acme-electronics.com`
 - Password: `admin123`
