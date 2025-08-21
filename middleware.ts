@@ -161,7 +161,7 @@ async function handleMainDomainRequest(request: NextRequest) {
   
   // Allow marketing pages, tenant registration, etc.
   const publicPaths = [
-    '/landing',
+    '/',
     '/signup',
     '/pricing', 
     '/contact',
@@ -190,8 +190,8 @@ async function handleMainDomainRequest(request: NextRequest) {
     });
 
     const isAuthPage = pathname === "/login";
-    const isLandingPage = pathname === "/landing";
-    const isSuperAdminProtectedPage = !isAuthPage && !isLandingPage && 
+    const isRootPage = pathname === "/";
+    const isSuperAdminProtectedPage = !isAuthPage && !isRootPage && 
       !pathname.startsWith('/api/') && 
       !pathname.startsWith('/_next/') &&
       !pathname.includes('.') &&
@@ -230,9 +230,9 @@ async function handleMainDomainRequest(request: NextRequest) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    // Redirect unauthenticated root access to landing page
+    // Allow unauthenticated root access to show landing page
     if (!isSuperAdmin && pathname === '/') {
-      return NextResponse.redirect(new URL('/landing', request.url));
+      return NextResponse.next();
     }
 
     // If we reach here and user is super admin, allow access to all routes
@@ -258,8 +258,13 @@ async function handleMainDomainRequest(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Redirect non-super-admin access to landing page
-  return NextResponse.redirect(new URL('/landing', request.url));
+  // Allow access to root for landing page
+  if (pathname === '/') {
+    return NextResponse.next();
+  }
+  
+  // Redirect other non-super-admin access to root page (landing page)
+  return NextResponse.redirect(new URL('/', request.url));
 }
 
 export const config = {

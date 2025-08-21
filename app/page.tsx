@@ -19,6 +19,7 @@ export default function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isSubdomain, setIsSubdomain] = useState<boolean | null>(null);
+  const [showLanding, setShowLanding] = useState(false);
 
   useEffect(() => {
     // Check if this is a subdomain request (using shared utility)
@@ -27,8 +28,9 @@ export default function HomePage() {
     
     setIsSubdomain(hasSubdomain);
     
-    // Only handle tenant logic if this is a subdomain
+    // Handle routing logic
     if (hasSubdomain) {
+      // This is a subdomain (tenant) - handle login/dashboard redirect
       if (status === 'loading') return; // Still loading session
 
       if (session) {
@@ -38,6 +40,9 @@ export default function HomePage() {
         // User is not logged in, redirect to login
         router.replace('/login');
       }
+    } else {
+      // This is the main domain - always show landing page
+      setShowLanding(true);
     }
   }, [session, status, router]);
 
@@ -59,26 +64,38 @@ export default function HomePage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600">Redirecting...</p>
         </div>
       </div>
     );
   }
 
-  // This is the main domain, show landing page
+  // This is the main domain - show landing page
+  if (showLanding) {
+    return (
+      <div className="landing-page min-h-screen bg-background">
+        <Header />
+        <HeroSection />
+        <FeaturesSection />
+        <BenefitsSection />
+        <IndustriesSection />
+        <ServicesSection />
+        <HowItWorksSection />
+        <FaqSection />
+        <ContactSection />
+        <CtaSection />
+        <Footer />
+      </div>
+    );
+  }
+
+  // Still determining what to show
   return (
-    <div className="landing-page min-h-screen bg-background">
-      <Header />
-      <HeroSection />
-      <FeaturesSection />
-      <BenefitsSection />
-      <IndustriesSection />
-      <ServicesSection />
-      <HowItWorksSection />
-      <FaqSection />
-      <ContactSection />
-      <CtaSection />
-      <Footer />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading...</p>
+      </div>
     </div>
   );
 }
