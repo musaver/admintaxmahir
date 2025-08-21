@@ -84,7 +84,7 @@ export async function middleware(request: NextRequest) {
   
   // Handle main domain requests (marketing site, tenant registration, etc.)
   console.log('Processing main domain request');
-  return handleMainDomainRequest(request);
+  return await handleMainDomainRequest(request);
 }
 
 async function handleTenantAuthentication(request: NextRequest, response: NextResponse, tenant: any) {
@@ -156,13 +156,8 @@ async function handleTenantAuthentication(request: NextRequest, response: NextRe
   }
 }
 
-function handleMainDomainRequest(request: NextRequest) {
+async function handleMainDomainRequest(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  
-  // Redirect root to landing page
-  if (pathname === '/') {
-    return NextResponse.redirect(new URL('/landing', request.url));
-  }
   
   // Allow marketing pages, tenant registration, etc.
   const publicPaths = [
@@ -183,6 +178,67 @@ function handleMainDomainRequest(request: NextRequest) {
     '/api/tenants/check-subdomain'
   ];
   
+  try {
+    // Get token for super admin authentication
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+      cookieName: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token' 
+        : 'next-auth.session-token',
+      secureCookie: process.env.NODE_ENV === 'production',
+    });
+
+    const isAuthPage = pathname === "/login";
+    const isLandingPage = pathname === "/landing";
+    const isSuperAdminProtectedPage = !isAuthPage && !isLandingPage && 
+      !pathname.startsWith('/api/') && 
+      !pathname.startsWith('/_next/') &&
+      !pathname.includes('.') &&
+      !publicPaths.includes(pathname);
+
+    // Check if this is a super admin token
+    const isSuperAdmin = token && token.type === 'super-admin';
+
+    console.log("Main Domain Auth Debug:", {
+      path: pathname,
+      hasToken: !!token,
+      tokenTenantId: token?.tenantId,
+      isSuperAdmin,
+      isAuthPage,
+      isSuperAdminProtectedPage,
+    });
+
+    // If super admin is authenticated and trying to access login page
+    if (isSuperAdmin && isAuthPage) {
+      console.log("Redirecting authenticated super admin to dashboard");
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+
+    // If not authenticated and trying to access super admin protected page
+    if (!isSuperAdmin && isSuperAdminProtectedPage) {
+      console.log("Redirecting unauthenticated user to login");
+      const loginUrl = new URL("/login", request.url);
+      if (pathname !== "/") {
+        loginUrl.searchParams.set('callbackUrl', pathname);
+      }
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // If authenticated super admin accessing root, redirect to dashboard
+    if (isSuperAdmin && pathname === '/') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    // Redirect unauthenticated root access to landing page
+    if (!isSuperAdmin && pathname === '/') {
+      return NextResponse.redirect(new URL('/landing', request.url));
+    }
+
+  } catch (error) {
+    console.error("Main domain auth middleware error:", error);
+  }
+  
   // Allow all API routes and static files
   if (publicPaths.includes(pathname) || 
       pathname.startsWith('/api/') || 
@@ -192,9 +248,8 @@ function handleMainDomainRequest(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // For admin login on main domain, redirect to a default tenant or show tenant selector
+  // Allow login page
   if (pathname === '/login') {
-    // You could redirect to a tenant selector page or handle differently
     return NextResponse.next();
   }
   

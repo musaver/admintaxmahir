@@ -566,6 +566,7 @@ export const adminUsers = mysqlTable("admin_users", {
   email: varchar("email", { length: 255 }).notNull(),
   password: varchar("password", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }),
+  type: varchar("type", { length: 50 }).notNull().default("admin"), // 'super-admin' or 'admin'
   roleId: varchar("roleId", { length: 255 }).notNull(),
   role: varchar('role', { length: 255 }).notNull(),
   createdAt: datetime("createdAt").default(sql`CURRENT_TIMESTAMP`),

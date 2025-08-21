@@ -1,10 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 export default function AdminsList() {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { data: session } = useSession();
 
   const fetchAdmins = async () => {
     setLoading(true);
@@ -36,10 +38,25 @@ export default function AdminsList() {
 
   if (loading) return <div>Loading...</div>;
 
+  const currentUser = session?.user as any;
+  const isSuperAdmin = currentUser?.type === 'super-admin';
+
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Admin Users</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Admin Users</h1>
+          {isSuperAdmin && (
+            <p className="text-sm text-gray-600 mt-1">
+              Super Admin View - Showing all admins across all tenants
+            </p>
+          )}
+          {!isSuperAdmin && currentUser?.tenantSlug && (
+            <p className="text-sm text-gray-600 mt-1">
+              Tenant: {currentUser.tenantSlug} - Showing admins for your tenant only
+            </p>
+          )}
+        </div>
         <div className="flex gap-2">
           <button
             onClick={fetchAdmins}
@@ -63,7 +80,9 @@ export default function AdminsList() {
             <tr className="bg-gray-100">
               <th className="border p-2 text-left">Name</th>
               <th className="border p-2 text-left">Email</th>
+              <th className="border p-2 text-left">Type</th>
               <th className="border p-2 text-left">Role</th>
+              {isSuperAdmin && <th className="border p-2 text-left">Tenant</th>}
               <th className="border p-2 text-left">Created At</th>
               <th className="border p-2 text-left">Actions</th>
             </tr>
@@ -74,7 +93,27 @@ export default function AdminsList() {
                 <tr key={admin.admin.id}>
                   <td className="border p-2">{admin.admin.name}</td>
                   <td className="border p-2">{admin.admin.email}</td>
+                  <td className="border p-2">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      admin.admin.type === 'super-admin' 
+                        ? 'bg-purple-100 text-purple-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {admin.admin.type === 'super-admin' ? 'Super Admin' : 'Admin'}
+                    </span>
+                  </td>
                   <td className="border p-2">{admin.role?.name || 'Unknown'}</td>
+                  {isSuperAdmin && (
+                    <td className="border p-2">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        admin.admin.tenantId === 'super-admin' 
+                          ? 'bg-purple-100 text-purple-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {admin.admin.tenantId === 'super-admin' ? 'System' : admin.admin.tenantId}
+                      </span>
+                    </td>
+                  )}
                   <td className="border p-2">{new Date(admin.admin.createdAt).toLocaleString()}</td>
                   <td className="border p-2">
                     <div className="flex gap-2">
@@ -96,7 +135,7 @@ export default function AdminsList() {
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="border p-2 text-center">No admin users found</td>
+                <td colSpan={isSuperAdmin ? 7 : 6} className="border p-2 text-center">No admin users found</td>
               </tr>
             )}
           </tbody>

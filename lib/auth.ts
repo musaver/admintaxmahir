@@ -119,6 +119,7 @@ export const authOptions: NextAuthOptions = {
                 password: adminUsers.password,
                 name: adminUsers.name,
                 tenantId: adminUsers.tenantId,
+                type: adminUsers.type,
                 role: adminUsers.role,
                 roleId: adminUsers.roleId,
               })
@@ -153,14 +154,60 @@ export const authOptions: NextAuthOptions = {
               email: user_cred.email,
               tenantId: tenantId,
               tenantSlug: tenantSlug,
+              type: user_cred.type,
               role: user_cred.role,
               roleId: user_cred.roleId,
             };
           } else {
-            // This is main domain login - could be super admin or tenant selection
-            // For now, we'll handle tenant-specific logins only
-            console.log("Main domain login not implemented yet");
-            return null;
+            // This is main domain login - check for super admin
+            console.log("Main domain login - checking for super admin");
+            
+            // Find super admin user (type should be 'super-admin')
+            const [superAdmin] = await db
+              .select({
+                id: adminUsers.id,
+                email: adminUsers.email,
+                password: adminUsers.password,
+                name: adminUsers.name,
+                tenantId: adminUsers.tenantId,
+                type: adminUsers.type,
+                role: adminUsers.role,
+                roleId: adminUsers.roleId,
+              })
+              .from(adminUsers)
+              .where(and(
+                eq(adminUsers.email, credentials.email),
+                eq(adminUsers.type, 'super-admin') // Check for super-admin type
+              ))
+              .limit(1);
+
+            console.log("Super admin lookup result:", {
+              email: credentials.email,
+              userFound: !!superAdmin,
+            });
+
+            if (!superAdmin) {
+              console.log("Super admin not found:", credentials.email);
+              return null;
+            }
+
+            const isValid = await bcrypt.compare(credentials.password, superAdmin.password ?? "");
+            if (!isValid) {
+              console.log("Invalid password for super admin:", credentials.email);
+              return null;
+            }
+
+            console.log("Super admin authenticated successfully:", credentials.email);
+            return {
+              id: superAdmin.id,
+              name: superAdmin.name,
+              email: superAdmin.email,
+              tenantId: superAdmin.tenantId,
+              tenantSlug: null,
+              type: superAdmin.type,
+              role: superAdmin.role,
+              roleId: superAdmin.roleId,
+            };
           }
         } catch (error) {
           console.error("Auth error:", error);
@@ -176,12 +223,14 @@ export const authOptions: NextAuthOptions = {
           token.id = user.id;
           token.tenantId = (user as any).tenantId;
           token.tenantSlug = (user as any).tenantSlug;
+          token.type = (user as any).type;
           token.role = (user as any).role;
           token.roleId = (user as any).roleId;
           console.log("JWT callback - setting token data:", {
             id: user.id,
             tenantId: (user as any).tenantId,
-            tenantSlug: (user as any).tenantSlug
+            tenantSlug: (user as any).tenantSlug,
+            type: (user as any).type
           });
         }
         return token;
@@ -196,12 +245,14 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id;
         (session.user as any).tenantId = token.tenantId;
         (session.user as any).tenantSlug = token.tenantSlug;
+        (session.user as any).type = token.type;
         (session.user as any).role = token.role;
         (session.user as any).roleId = token.roleId;
         console.log("Session callback - setting session data:", {
           id: token.id,
           tenantId: token.tenantId,
-          tenantSlug: token.tenantSlug
+          tenantSlug: token.tenantSlug,
+          type: token.type
         });
         }
         return session;
