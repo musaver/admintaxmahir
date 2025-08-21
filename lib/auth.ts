@@ -129,7 +129,7 @@ export const authOptions: NextAuthOptions = {
                 eq(adminUsers.tenantId, tenantId)
               ))
               .limit(1);
-
+/*
             if (user_cred) {
               // Check if the user's role is still active (if they have a role)
               if (user_cred.roleId) {
@@ -151,7 +151,7 @@ export const authOptions: NextAuthOptions = {
                 }
               }
             }
-
+*/
             console.log("Auth Debug - User lookup result:", {
               email: credentials.email,
               tenantId,
