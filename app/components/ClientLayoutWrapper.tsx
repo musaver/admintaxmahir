@@ -1,6 +1,6 @@
 'use client';
 
-import { SessionProvider } from 'next-auth/react';
+import { SessionProvider, useSession } from 'next-auth/react';
 import ClientLayout from './ClientLayout';
 import { CurrencyProvider } from '@/app/contexts/CurrencyContext';
 import { Toaster } from "@/components/ui/toaster";
@@ -32,16 +32,32 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
   return (
     <SessionProvider>
       <CurrencyProvider>
-        {isSubdomain ? (
-          // Subdomain - show admin layout with sidebar
-          <ClientLayout>{children}</ClientLayout>
-        ) : (
-          // Main domain - show content without admin layout
-          <>{children}</>
-        )}
+        <ClientLayoutDecider isSubdomain={isSubdomain}>
+          {children}
+        </ClientLayoutDecider>
         <Toaster />
         <Sonner />
       </CurrencyProvider>
     </SessionProvider>
   );
+}
+
+function ClientLayoutDecider({ isSubdomain, children }: { isSubdomain: boolean, children: React.ReactNode }) {
+  const { data: session } = useSession();
+  
+  if (isSubdomain) {
+    // Subdomain - always show admin layout with sidebar
+    return <ClientLayout>{children}</ClientLayout>;
+  } else {
+    // Main domain - show admin layout only for super admins
+    const currentUser = session?.user as any;
+    const isSuperAdmin = currentUser?.type === 'super-admin';
+    
+    if (isSuperAdmin) {
+      return <ClientLayout>{children}</ClientLayout>;
+    } else {
+      // Non-super-admin on main domain - show content without admin layout
+      return <>{children}</>;
+    }
+  }
 }

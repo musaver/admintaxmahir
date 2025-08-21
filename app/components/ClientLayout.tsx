@@ -75,8 +75,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   
   if (!session) return <div>{children}</div>;
 
+  const currentUser = session.user as any;
+  const isSuperAdmin = currentUser?.type === 'super-admin';
+
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboardIcon, category: 'main' },
+    ...(isSuperAdmin ? [{ name: 'Tenants', href: '/tenants', icon: BuildingIcon, category: 'main' }] : []),
     { name: 'Customers', href: '/users', icon: UsersIcon, category: 'main' },
     { name: 'Products', href: '/products', icon: PackageIcon, category: 'main' },
     { name: 'Tags', href: '/tags', icon: TagIcon, category: 'main' },

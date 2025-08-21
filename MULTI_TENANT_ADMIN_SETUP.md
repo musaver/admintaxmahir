@@ -23,20 +23,25 @@ This system implements a comprehensive multi-tenant admin authentication system 
 
 ### 1. Create Super Admin User
 
-**Step 1**: Run the database migration:
+**Option A: Using Web Interface (Recommended)**
+1. Navigate to: `http://localhost:3000/setup`
+2. Fill in super admin details (or use defaults)
+3. Click "Create Super Admin"
+4. This will automatically create:
+   - 1 Super Admin user (type: 'super-admin')
+   - 2 Sample tenants with tenant admins (type: 'admin')
+
+**Option B: Using SQL Script**
 ```bash
-# Execute the SQL migration file
-mysql -u your_user -p your_database < migrations/add-admin-type-column.sql
+# Execute the SQL script manually in your database
+mysql -u your_user -p your_database < scripts/manual-super-admin.sql
 ```
 
-**Step 2**: Run the setup script to create users:
+**Option C: Using Node.js Script**
 ```bash
+# Requires database connection
 node scripts/create-super-admin.js
 ```
-
-This will create:
-- 1 Super Admin user (type: 'super-admin')
-- 2 Sample tenants with tenant admins (type: 'admin')
 
 **Environment Variables** (optional):
 ```bash
@@ -116,6 +121,13 @@ Demo Tenant 2:
 - Displays tenant information in a separate column
 - Can create admins for any tenant with any type
 - Color-coded badges for different admin types
+
+#### Super Admin Tenant Management (`/tenants`)
+- View all tenants in the system
+- Monitor tenant status (active, suspended, trial)
+- Quick access to tenant subdomains
+- Suspend/activate tenants
+- View tenant statistics and summaries
 
 #### Tenant Admin View (`/admins`) 
 - Shows ONLY admin users for their specific tenant
