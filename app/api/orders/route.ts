@@ -6,16 +6,17 @@ import { eq, and, isNull, desc, or } from 'drizzle-orm';
 import { getStockManagementSettingDirect } from '@/lib/stockManagement';
 import { isWeightBasedProduct, convertToGrams } from '@/utils/weightUtils';
 import { sendInvoiceEmails } from '@/lib/email';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
 
-export async function GET(req: NextRequest) {
+export const GET = withTenant(async (req: NextRequest, context) => {
   try {
     // Get query parameters
     const { searchParams } = new URL(req.url);
     const assignedDriverId = searchParams.get('assignedDriverId');
     const orderType = searchParams.get('orderType');
 
-    // Build where conditions
-    const whereConditions = [];
+    // Build where conditions including tenant filter
+    const whereConditions = [eq(orders.tenantId, context.tenantId)];
     if (assignedDriverId) {
       whereConditions.push(eq(orders.assignedDriverId, assignedDriverId));
     }
@@ -31,9 +32,15 @@ export async function GET(req: NextRequest) {
         supplier: suppliers,
       })
       .from(orders)
-      .leftJoin(user, eq(orders.userId, user.id))
-      .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .leftJoin(user, and(
+        eq(orders.userId, user.id),
+        eq(user.tenantId, context.tenantId)
+      ))
+      .leftJoin(suppliers, and(
+        eq(orders.supplierId, suppliers.id),
+        eq(suppliers.tenantId, context.tenantId)
+      ))
+      .where(and(...whereConditions))
       .orderBy(desc(orders.createdAt));
 
     // Fetch order items and driver information for each order
@@ -92,11 +99,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(ordersWithItems);
   } catch (error) {
     console.error('Error fetching orders:', error);
-    return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch orders');
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withTenant(async (req: NextRequest, context) => {
   try {
     const body = await req.json();
     const {
@@ -185,21 +192,25 @@ export async function POST(req: NextRequest) {
     // Validate inventory for all items before creating order (only if stock management is enabled)
     if (stockManagementEnabled) {
       for (const item of items) {
-        // Get product to determine stock management type
+        // Get product to determine stock management type (within tenant)
         const product = await db.query.products.findFirst({
-          where: eq(products.id, item.productId),
+          where: and(
+            eq(products.id, item.productId),
+            eq(products.tenantId, context.tenantId)
+          ),
           columns: { stockManagementType: true }
         });
 
         if (!product) {
-          return NextResponse.json({ 
-            error: `Product not found for ${item.productName}` 
-          }, { status: 400 });
+          return ErrorResponses.invalidInput(`Product not found for ${item.productName}`);
         }
 
         const isWeightBased = isWeightBasedProduct(product.stockManagementType || 'quantity');
 
-        const inventoryConditions = [eq(productInventory.productId, item.productId)];
+        const inventoryConditions = [
+          eq(productInventory.productId, item.productId),
+          eq(productInventory.tenantId, context.tenantId)
+        ];
         
         if (item.variantId) {
           inventoryConditions.push(eq(productInventory.variantId, item.variantId));
@@ -215,9 +226,7 @@ export async function POST(req: NextRequest) {
 
         // When stock management is enabled, require inventory records for all products
         if (currentInventory.length === 0) {
-          return NextResponse.json({ 
-            error: `No inventory record found for ${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''}. Please create an inventory record first or disable stock management.` 
-          }, { status: 400 });
+          return ErrorResponses.invalidInput(`No inventory record found for ${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''}. Please create an inventory record first or disable stock management.`);
         }
 
         const inventory = currentInventory[0];
@@ -228,17 +237,13 @@ export async function POST(req: NextRequest) {
           const requestedWeight = item.weightQuantity || 0;
 
           if (availableWeight < requestedWeight) {
-            return NextResponse.json({ 
-              error: `Insufficient stock for ${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''}. Available: ${availableWeight}g, Requested: ${requestedWeight}g` 
-            }, { status: 400 });
+            return ErrorResponses.invalidInput(`Insufficient stock for ${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''}. Available: ${availableWeight}g, Requested: ${requestedWeight}g`);
           }
 
           // Check if product has any stock
           const totalWeight = parseFloat(inventory.weightQuantity || '0');
           if (totalWeight <= 0) {
-            return NextResponse.json({ 
-              error: `${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''} is out of stock. Total weight: ${totalWeight}g` 
-            }, { status: 400 });
+            return ErrorResponses.invalidInput(`${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''} is out of stock. Total weight: ${totalWeight}g`);
           }
         } else {
           // Quantity-based stock validation
@@ -246,16 +251,12 @@ export async function POST(req: NextRequest) {
             (inventory.quantity - (inventory.reservedQuantity || 0));
 
           if (availableStock < item.quantity) {
-            return NextResponse.json({ 
-              error: `Insufficient stock for ${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''}. Available: ${availableStock}, Requested: ${item.quantity}` 
-            }, { status: 400 });
+            return ErrorResponses.invalidInput(`Insufficient stock for ${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''}. Available: ${availableStock}, Requested: ${item.quantity}`);
           }
 
           // Additional validation: Check if the product is active and available
           if (inventory.quantity <= 0) {
-            return NextResponse.json({ 
-              error: `${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''} is out of stock. Total quantity: ${inventory.quantity}` 
-            }, { status: 400 });
+            return ErrorResponses.invalidInput(`${item.productName}${item.variantTitle ? ` (${item.variantTitle})` : ''} is out of stock. Total quantity: ${inventory.quantity}`);
           }
         }
       }
@@ -264,6 +265,7 @@ export async function POST(req: NextRequest) {
     // Create the order
     await db.insert(orders).values({
       id: orderId,
+      tenantId: context.tenantId, // Add tenant ID
       orderNumber,
       userId: userId || null,
       email,
@@ -354,18 +356,24 @@ export async function POST(req: NextRequest) {
       
       try {
         if (item.variantId) {
-          // Get cost price from variant
+          // Get cost price from variant (within tenant)
           const variant = await db.query.productVariants.findFirst({
-            where: eq(productVariants.id, item.variantId),
+            where: and(
+              eq(productVariants.id, item.variantId),
+              eq(productVariants.tenantId, context.tenantId)
+            ),
             columns: { costPrice: true }
           });
           if (variant?.costPrice) {
             costPrice = parseFloat(variant.costPrice);
           }
         } else {
-          // Get cost price from product
+          // Get cost price from product (within tenant)
           const product = await db.query.products.findFirst({
-            where: eq(products.id, item.productId),
+            where: and(
+              eq(products.id, item.productId),
+              eq(products.tenantId, context.tenantId)
+            ),
             columns: { costPrice: true, stockManagementType: true }
           });
           if (product?.costPrice) {
@@ -389,6 +397,7 @@ export async function POST(req: NextRequest) {
       // Create order item
       await db.insert(orderItems).values({
         id: orderItemId,
+        tenantId: context.tenantId, // Add tenant ID
         orderId,
         productId: item.productId,
         variantId: item.variantId || null,
@@ -428,9 +437,12 @@ export async function POST(req: NextRequest) {
       // Deduct inventory immediately when order is created (only if stock management is enabled)
       // This treats orders as immediate sales rather than reservations
       if (stockManagementEnabled) {
-        // Get product to determine stock management type
+        // Get product to determine stock management type (within tenant)
         const product = await db.query.products.findFirst({
-          where: eq(products.id, item.productId),
+          where: and(
+            eq(products.id, item.productId),
+            eq(products.tenantId, context.tenantId)
+          ),
           columns: { stockManagementType: true }
         });
 
@@ -441,7 +453,10 @@ export async function POST(req: NextRequest) {
 
         const isWeightBased = isWeightBasedProduct(product.stockManagementType || 'quantity');
 
-        const inventoryConditions = [eq(productInventory.productId, item.productId)];
+        const inventoryConditions = [
+          eq(productInventory.productId, item.productId),
+          eq(productInventory.tenantId, context.tenantId)
+        ];
         
         if (item.variantId) {
           inventoryConditions.push(eq(productInventory.variantId, item.variantId));
@@ -480,6 +495,7 @@ export async function POST(req: NextRequest) {
             // Create stock movement record
             await db.insert(stockMovements).values({
               id: uuidv4(),
+              tenantId: context.tenantId, // Add tenant ID
               inventoryId: inventory.id,
               productId: item.productId,
               variantId: item.variantId || null,
@@ -493,7 +509,7 @@ export async function POST(req: NextRequest) {
               reason: 'Order Created - Stock Sold',
               reference: orderNumber,
               notes: `Sold ${requestedWeight}g for new order ${orderNumber}`,
-              processedBy: null, // TODO: Add current admin user
+              processedBy: context.userId || null, // Add current admin user
               createdAt: new Date(),
             });
           } else {
@@ -515,6 +531,7 @@ export async function POST(req: NextRequest) {
             // Create stock movement record
             await db.insert(stockMovements).values({
               id: uuidv4(),
+              tenantId: context.tenantId, // Add tenant ID
               inventoryId: inventory.id,
               productId: item.productId,
               variantId: item.variantId || null,
@@ -528,7 +545,7 @@ export async function POST(req: NextRequest) {
               reason: 'Order Created - Stock Sold',
               reference: orderNumber,
               notes: `Sold ${item.quantity} units for new order ${orderNumber}`,
-              processedBy: null, // TODO: Add current admin user
+              processedBy: context.userId || null, // Add current admin user
               createdAt: new Date(),
             });
           }
@@ -697,9 +714,9 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating order:', error);
-    return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to create order');
   }
-}
+});
 
 // Helper function to award loyalty points
 async function awardLoyaltyPoints(userId: string, orderId: string, orderAmount: number, subtotal: number, orderStatus: string) {
