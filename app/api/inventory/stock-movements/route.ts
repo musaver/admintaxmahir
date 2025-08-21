@@ -4,13 +4,14 @@ import { productInventory, products, productVariants, stockMovements } from '@/l
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and, isNull, desc, inArray } from 'drizzle-orm';
 import { convertToGrams, isWeightBasedProduct } from '@/utils/weightUtils';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
 
 // This would ideally be a separate table for stock movements
 // For now, we'll create a mock implementation that updates inventory directly
 
-export async function GET() {
+export const GET = withTenant(async (request: NextRequest, context) => {
   try {
-    // Fetch stock movements with product and variant information
+    // Fetch stock movements with product and variant information, filtered by tenant
     const movements = await db
       .select({
         movement: stockMovements,
@@ -23,8 +24,15 @@ export async function GET() {
         variant: productVariants,
       })
       .from(stockMovements)
-      .leftJoin(products, eq(stockMovements.productId, products.id))
-      .leftJoin(productVariants, eq(stockMovements.variantId, productVariants.id))
+      .leftJoin(products, and(
+        eq(stockMovements.productId, products.id),
+        eq(products.tenantId, context.tenantId)
+      ))
+      .leftJoin(productVariants, and(
+        eq(stockMovements.variantId, productVariants.id),
+        eq(productVariants.tenantId, context.tenantId)
+      ))
+      .where(eq(stockMovements.tenantId, context.tenantId))
       .orderBy(desc(stockMovements.createdAt))
       .limit(1000); // Limit to prevent too much data
 
@@ -56,11 +64,11 @@ export async function GET() {
     return NextResponse.json(formattedMovements);
   } catch (error) {
     console.error('Error fetching stock movements:', error);
-    return NextResponse.json({ error: 'Failed to fetch stock movements' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch stock movements');
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withTenant(async (req: NextRequest, context) => {
   try {
     const { 
       productId, 
@@ -79,35 +87,41 @@ export async function POST(req: NextRequest) {
       supplierId 
     } = await req.json();
     
-    // Get product to determine stock management type
+    // Get product to determine stock management type (within tenant)
     const product = await db.query.products.findFirst({
-      where: eq(products.id, productId),
+      where: and(
+        eq(products.id, productId),
+        eq(products.tenantId, context.tenantId)
+      ),
       columns: { stockManagementType: true, baseWeightUnit: true }
     });
 
     if (!product) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      return ErrorResponses.tenantNotFound();
     }
 
     const isWeightBased = isWeightBasedProduct(product.stockManagementType || 'quantity');
 
     // Validate required fields based on stock management type
     if (!productId || !movementType || !reason) {
-      return NextResponse.json({ error: 'ProductId, movementType, and reason are required' }, { status: 400 });
+      return ErrorResponses.invalidInput('ProductId, movementType, and reason are required');
     }
 
     if (isWeightBased) {
       if (!weightQuantity || !weightUnit) {
-        return NextResponse.json({ error: 'Weight quantity and unit are required for weight-based products' }, { status: 400 });
+        return ErrorResponses.invalidInput('Weight quantity and unit are required for weight-based products');
       }
     } else {
       if (!quantity) {
-        return NextResponse.json({ error: 'Quantity is required for quantity-based products' }, { status: 400 });
+        return ErrorResponses.invalidInput('Quantity is required for quantity-based products');
       }
     }
 
-    // Find existing inventory record
-    let whereConditions = [eq(productInventory.productId, productId)];
+    // Find existing inventory record within tenant
+    let whereConditions = [
+      eq(productInventory.productId, productId),
+      eq(productInventory.tenantId, context.tenantId)
+    ];
     
     if (variantId) {
       whereConditions.push(eq(productInventory.variantId, variantId));
@@ -143,14 +157,14 @@ export async function POST(req: NextRequest) {
           case 'out':
             newWeightQuantity = currentWeight - weightInGrams;
             if (newWeightQuantity < 0) {
-              return NextResponse.json({ error: 'Insufficient stock for this movement' }, { status: 400 });
+              return ErrorResponses.invalidInput('Insufficient stock for this movement');
             }
             break;
           case 'adjustment':
             newWeightQuantity = weightInGrams; // For adjustments, weight is the new total
             break;
           default:
-            return NextResponse.json({ error: 'Invalid movement type' }, { status: 400 });
+            return ErrorResponses.invalidInput('Invalid movement type');
         }
 
         // Update existing weight-based inventory
@@ -173,14 +187,14 @@ export async function POST(req: NextRequest) {
           case 'out':
             newQuantity = current.quantity - quantity;
             if (newQuantity < 0) {
-              return NextResponse.json({ error: 'Insufficient stock for this movement' }, { status: 400 });
+              return ErrorResponses.invalidInput('Insufficient stock for this movement');
             }
             break;
           case 'adjustment':
             newQuantity = quantity; // For adjustments, quantity is the new total
             break;
           default:
-            return NextResponse.json({ error: 'Invalid movement type' }, { status: 400 });
+            return ErrorResponses.invalidInput('Invalid movement type');
         }
 
         // Update existing quantity-based inventory
@@ -198,7 +212,7 @@ export async function POST(req: NextRequest) {
     } else {
       // Create new inventory record if it doesn't exist
       if (movementType === 'out') {
-        return NextResponse.json({ error: 'Cannot remove stock from non-existent inventory' }, { status: 400 });
+        return ErrorResponses.invalidInput('Cannot remove stock from non-existent inventory');
       }
 
       inventoryId = uuidv4();
@@ -208,6 +222,7 @@ export async function POST(req: NextRequest) {
         
         await db.insert(productInventory).values({
           id: inventoryId,
+          tenantId: context.tenantId, // Add tenant ID
           productId,
           variantId: variantId || null,
           // Set quantity fields to 0 for weight-based products
@@ -232,6 +247,7 @@ export async function POST(req: NextRequest) {
         
         await db.insert(productInventory).values({
           id: inventoryId,
+          tenantId: context.tenantId, // Add tenant ID
           productId,
           variantId: variantId || null,
           quantity: newQuantity,
@@ -260,6 +276,7 @@ export async function POST(req: NextRequest) {
     
     await db.insert(stockMovements).values({
       id: movementId,
+      tenantId: context.tenantId, // Add tenant ID
       inventoryId,
       productId,
       variantId: variantId || null,
@@ -279,7 +296,7 @@ export async function POST(req: NextRequest) {
       costPrice: costPrice || null,
       supplier: supplier || null,
       supplierId: supplierId || null,
-      processedBy: null, // TODO: Add current admin user ID when authentication is implemented
+      processedBy: context.userId || null, // Add current user ID
       createdAt: new Date(),
     });
     
@@ -311,26 +328,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(movementRecord, { status: 201 });
   } catch (error) {
     console.error('Error creating stock movement:', error);
-    return NextResponse.json({ error: 'Failed to create stock movement' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to create stock movement');
   }
-}
+});
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withTenant(async (req: NextRequest, context) => {
   try {
     const { ids } = await req.json();
     
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json({ error: 'Array of stock movement IDs is required' }, { status: 400 });
+      return ErrorResponses.invalidInput('Array of stock movement IDs is required');
     }
     
     // Note: Deleting stock movements is generally not recommended in production
     // as it breaks the audit trail. Consider adding a "deleted" flag instead.
     // However, for admin purposes, we'll allow it with a warning.
     
-    // Delete all stock movements with the provided IDs
+    // Delete all stock movements with the provided IDs within tenant
     await db
       .delete(stockMovements)
-      .where(inArray(stockMovements.id, ids));
+      .where(and(
+        inArray(stockMovements.id, ids),
+        eq(stockMovements.tenantId, context.tenantId)
+      ));
     
     return NextResponse.json({ 
       message: `Successfully deleted ${ids.length} stock movement(s)`,
@@ -339,6 +359,6 @@ export async function DELETE(req: NextRequest) {
     });
   } catch (error) {
     console.error('Error deleting stock movements:', error);
-    return NextResponse.json({ error: 'Failed to delete stock movements' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to delete stock movements');
   }
-} 
+}); 

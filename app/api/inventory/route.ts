@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { productInventory, products, productVariants, suppliers } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, and } from 'drizzle-orm';
 import { convertToGrams, isWeightBasedProduct } from '@/utils/weightUtils';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
 
-export async function GET() {
+export const GET = withTenant(async (request: NextRequest, context) => {
   try {
     const allInventory = await db
       .select({
@@ -29,18 +30,28 @@ export async function GET() {
         }
       })
       .from(productInventory)
-      .leftJoin(products, eq(productInventory.productId, products.id))
-      .leftJoin(productVariants, eq(productInventory.variantId, productVariants.id))
-      .leftJoin(suppliers, eq(productInventory.supplierId, suppliers.id));
+      .leftJoin(products, and(
+        eq(productInventory.productId, products.id),
+        eq(products.tenantId, context.tenantId)
+      ))
+      .leftJoin(productVariants, and(
+        eq(productInventory.variantId, productVariants.id),
+        eq(productVariants.tenantId, context.tenantId)
+      ))
+      .leftJoin(suppliers, and(
+        eq(productInventory.supplierId, suppliers.id),
+        eq(suppliers.tenantId, context.tenantId)
+      ))
+      .where(eq(productInventory.tenantId, context.tenantId));
       
     return NextResponse.json(allInventory);
   } catch (error) {
     console.error('Error fetching inventory:', error);
-    return NextResponse.json({ error: 'Failed to fetch inventory' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch inventory');
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withTenant(async (req: NextRequest, context) => {
   try {
     const { 
       productId, 
@@ -63,18 +74,22 @@ export async function POST(req: NextRequest) {
       lastRestockDate 
     } = await req.json();
     
-    // Get product to determine stock management type
+    // Get product to determine stock management type (within tenant)
     const product = await db.query.products.findFirst({
-      where: eq(products.id, productId),
+      where: and(
+        eq(products.id, productId),
+        eq(products.tenantId, context.tenantId)
+      ),
       columns: { stockManagementType: true }
     });
     
     if (!product) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      return ErrorResponses.tenantNotFound();
     }
     
     let newInventory: any = {
       id: uuidv4(),
+      tenantId: context.tenantId, // Add tenant ID
       productId: productId || null,
       variantId: variantId || null,
       location: location || null,
@@ -129,22 +144,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(newInventory, { status: 201 });
   } catch (error) {
     console.error('Error creating inventory record:', error);
-    return NextResponse.json({ error: 'Failed to create inventory record' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to create inventory record');
   }
-}
+});
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withTenant(async (req: NextRequest, context) => {
   try {
     const { ids } = await req.json();
     
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json({ error: 'Array of inventory IDs is required' }, { status: 400 });
+      return ErrorResponses.invalidInput('Array of inventory IDs is required');
     }
     
-    // Delete all inventory records with the provided IDs
+    // Delete all inventory records with the provided IDs within tenant
     await db
       .delete(productInventory)
-      .where(inArray(productInventory.id, ids));
+      .where(and(
+        inArray(productInventory.id, ids),
+        eq(productInventory.tenantId, context.tenantId)
+      ));
     
     return NextResponse.json({ 
       message: `Successfully deleted ${ids.length} inventory record(s)`,
@@ -152,6 +170,6 @@ export async function DELETE(req: NextRequest) {
     });
   } catch (error) {
     console.error('Error deleting inventory records:', error);
-    return NextResponse.json({ error: 'Failed to delete inventory records' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to delete inventory records');
   }
-} 
+}); 

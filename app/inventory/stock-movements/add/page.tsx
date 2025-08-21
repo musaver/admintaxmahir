@@ -575,7 +575,7 @@ export default function AddStockMovement() {
 
                     <div>
                       <label className="block text-gray-700 mb-2" htmlFor="supplierId">
-                        Supplier <span className="text-red-500">*</span>
+                        Supplier
                       </label>
                       <select
                         id="supplierId"
@@ -590,9 +590,8 @@ export default function AddStockMovement() {
                           });
                         }}
                         className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        required
                       >
-                        <option value="">Select a supplier...</option>
+                        <option value="">No supplier selected</option>
                         {suppliers.map((supplier: any) => (
                           <option key={supplier.id} value={supplier.id}>
                             {supplier.name} {supplier.companyName && `(${supplier.companyName})`}
@@ -600,7 +599,7 @@ export default function AddStockMovement() {
                         ))}
                       </select>
                       <p className="text-xs text-gray-500 mt-1">
-                        Required for stock in movements. <Link href="/suppliers/add" className="text-blue-500 hover:underline">Add new supplier</Link>
+                        Optional field. <Link href="/suppliers/add" className="text-blue-500 hover:underline">Add new supplier</Link> if needed.
                       </p>
                     </div>
                   </>
@@ -700,6 +699,15 @@ export default function AddStockMovement() {
                   <div className="text-sm text-gray-600">Total Value Added</div>
                   <div className="text-2xl font-bold text-purple-800">
                     <span className="flex items-center gap-1"><CurrencySymbol />{(formData.quantity * formData.costPrice).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
+              {formData.supplierId && formData.movementType === 'in' && (
+                <div className="p-3 bg-indigo-50 rounded">
+                  <div className="text-sm text-gray-600">Supplier</div>
+                  <div className="text-sm font-medium text-indigo-800">
+                    {suppliers.find((s: any) => s.id === formData.supplierId)?.name || 'Unknown Supplier'}
                   </div>
                 </div>
               )}

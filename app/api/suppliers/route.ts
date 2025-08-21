@@ -2,23 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { suppliers } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
 
-export async function GET() {
+export const GET = withTenant(async (request: NextRequest, context) => {
   try {
     const allSuppliers = await db
       .select()
       .from(suppliers)
+      .where(eq(suppliers.tenantId, context.tenantId))
       .orderBy(suppliers.name);
       
     return NextResponse.json(allSuppliers);
   } catch (error) {
     console.error('Error fetching suppliers:', error);
-    return NextResponse.json({ error: 'Failed to fetch suppliers' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch suppliers');
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withTenant(async (req: NextRequest, context) => {
   try {
     const { 
       name,
@@ -53,22 +55,26 @@ export async function POST(req: NextRequest) {
     
     // Validate required fields
     if (!name || !email) {
-      return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+      return ErrorResponses.invalidInput('Name and email are required');
     }
     
-    // Check if supplier with this email already exists
+    // Check if supplier with this email already exists within the tenant
     const existingSupplier = await db
       .select()
       .from(suppliers)
-      .where(eq(suppliers.email, email))
+      .where(and(
+        eq(suppliers.email, email),
+        eq(suppliers.tenantId, context.tenantId)
+      ))
       .limit(1);
     
     if (existingSupplier.length > 0) {
-      return NextResponse.json({ error: 'Supplier with this email already exists' }, { status: 400 });
+      return ErrorResponses.invalidInput('Supplier with this email already exists');
     }
     
     const newSupplier = {
       id: uuidv4(),
+      tenantId: context.tenantId, // Add tenant ID
       name,
       companyName: companyName || null,
       email,
@@ -90,7 +96,7 @@ export async function POST(req: NextRequest) {
       postalCode: postalCode || null,
       country: country || null,
       paymentTerms: paymentTerms || null,
-      currency: currency || 'USD',
+      currency: currency || 'PKR',
       notes: notes || null,
       sellerNTNCNIC: sellerNTNCNIC || null,
       sellerBusinessName: sellerBusinessName || null,
@@ -106,6 +112,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(newSupplier, { status: 201 });
   } catch (error) {
     console.error('Error creating supplier:', error);
-    return NextResponse.json({ error: 'Failed to create supplier' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to create supplier');
   }
-}
+});
