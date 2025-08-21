@@ -86,7 +86,7 @@ For local development with subdomains:
 127.0.0.1 tenant2.localhost
 ```
 
-2. **Start your development server**:
+2. **Start your development server x**:
 ```bash
 npm run dev
 ```
