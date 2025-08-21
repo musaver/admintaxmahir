@@ -8,11 +8,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const slug = searchParams.get('slug');
     
-    // Verify this is an internal request (for security)
+    // Verify this is an internal request (for security) OR a client-side status check
     const isInternalRequest = request.headers.get('X-Internal-Request') === 'true';
     const userAgent = request.headers.get('User-Agent');
+    const referer = request.headers.get('Referer');
+    const isClientSideCheck = referer && (referer.includes(slug || '') || request.headers.get('Cookie'));
     
-    if (!isInternalRequest || !userAgent?.includes('middleware-tenant-lookup')) {
+    if (!isInternalRequest && !userAgent?.includes('middleware-tenant-lookup') && !isClientSideCheck) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     

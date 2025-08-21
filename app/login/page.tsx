@@ -2,7 +2,7 @@
 "use client";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -10,6 +10,8 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const message = searchParams.get('message');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +59,12 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md bg-white p-6 rounded-lg shadow">
         <h1 className="text-2xl font-bold mb-4 text-center">Login</h1>
+
+        {message === 'tenant_suspended' && (
+          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 border border-red-200 rounded">
+            Your tenant account has been suspended. Please contact support for assistance.
+          </div>
+        )}
 
         {errorMsg && (
           <div className="mb-4 text-sm text-red-600 text-center">

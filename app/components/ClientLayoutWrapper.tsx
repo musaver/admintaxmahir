@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { useState, useEffect } from 'react';
 import { isSubdomainRequest } from '@/lib/subdomain-utils';
+import { useTenantStatus } from '@/hooks/useTenantStatus';
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
   const [isSubdomain, setIsSubdomain] = useState<boolean | null>(null);
@@ -44,6 +45,9 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
 
 function ClientLayoutDecider({ isSubdomain, children }: { isSubdomain: boolean, children: React.ReactNode }) {
   const { data: session } = useSession();
+  
+  // Use tenant status hook to monitor for suspended tenants
+  useTenantStatus();
   
   if (isSubdomain) {
     // Subdomain - always show admin layout with sidebar

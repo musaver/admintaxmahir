@@ -66,6 +66,17 @@ export async function PATCH(
     const { status, name, email, plan } = await req.json();
     const tenantId = params.id;
 
+    // Get current tenant data to check for status changes
+    const [currentTenant] = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    if (!currentTenant) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+    }
+
     // Build update object with only provided fields
     const updateData: any = {};
     if (status !== undefined) updateData.status = status;
@@ -84,6 +95,27 @@ export async function PATCH(
       .where(eq(tenants.id, tenantId));
 
     console.log(`Super admin updated tenant ${tenantId}:`, updateData);
+    
+    // If tenant status changed to suspended, trigger tenant user logout
+    if (status !== undefined && status === 'suspended' && currentTenant.status !== 'suspended') {
+      console.log(`Tenant ${tenantId} suspended - triggering user logout`);
+      
+      // Trigger logout for all tenant users via broadcast API
+      try {
+        await fetch(`${req.nextUrl.origin}/api/tenants/${tenantId}/logout-users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.headers.get('Authorization') || '',
+            'Cookie': req.headers.get('Cookie') || ''
+          },
+          body: JSON.stringify({ reason: 'tenant_suspended' })
+        });
+      } catch (logoutError) {
+        console.error('Error triggering tenant user logout:', logoutError);
+        // Don't fail the main operation if logout trigger fails
+      }
+    }
     
     // Return the updated tenant
     const [updatedTenant] = await db
