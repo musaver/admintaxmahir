@@ -235,6 +235,11 @@ async function handleMainDomainRequest(request: NextRequest) {
       return NextResponse.redirect(new URL('/landing', request.url));
     }
 
+    // If we reach here and user is super admin, allow access to all routes
+    if (isSuperAdmin) {
+      return NextResponse.next();
+    }
+
   } catch (error) {
     console.error("Main domain auth middleware error:", error);
   }
@@ -253,7 +258,7 @@ async function handleMainDomainRequest(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Redirect unknown paths to landing page
+  // Redirect non-super-admin access to landing page
   return NextResponse.redirect(new URL('/landing', request.url));
 }
 
