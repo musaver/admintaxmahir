@@ -356,8 +356,8 @@ export default function Dashboard() {
         </Card>
       )}
       
-      {/* Main Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      {/* Main Stats Cards classnameL grid*/}
+      <div className="gap-4 md:grid-cols-2 lg:grid-cols-5 hidden">
         <StatCard
           title="Customers"
           value={loading ? 0 : stats.customers}
