@@ -5,6 +5,45 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Get the current session to ensure only super admins can fetch tenant details
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = session.user as any;
+    
+    // Only super admins can view tenant details
+    if (currentUser.type !== 'super-admin') {
+      return NextResponse.json({ error: 'Access denied. Super admin required.' }, { status: 403 });
+    }
+
+    const tenantId = params.id;
+
+    // Fetch the tenant
+    const [tenant] = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(tenant);
+  } catch (error) {
+    console.error('Error fetching tenant:', error);
+    return NextResponse.json({ error: 'Failed to fetch tenant' }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
