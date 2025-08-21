@@ -66,6 +66,12 @@ export default function LoginPage() {
           </div>
         )}
 
+        {message === 'role_deactivated' && (
+          <div className="mb-4 p-3 text-sm text-orange-700 bg-orange-100 border border-orange-200 rounded">
+            Your admin role has been deactivated. Please contact your tenant administrator.
+          </div>
+        )}
+
         {errorMsg && (
           <div className="mb-4 text-sm text-red-600 text-center">
             {errorMsg}

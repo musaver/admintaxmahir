@@ -29,7 +29,7 @@ export default function AdminsList() {
     if (confirm('Are you sure you want to delete this admin user?')) {
       try {
         await fetch(`/api/admins/${id}`, { method: 'DELETE' });
-        setAdmins(admins.filter((admin: any) => admin.admin.id !== id));
+        setAdmins(admins.filter((admin: any) => admin.id !== id));
       } catch (error) {
         console.error('Error deleting admin user:', error);
       }
@@ -82,6 +82,7 @@ export default function AdminsList() {
               <th className="border p-2 text-left">Email</th>
               <th className="border p-2 text-left">Type</th>
               <th className="border p-2 text-left">Role</th>
+              <th className="border p-2 text-left">Permissions</th>
               {isSuperAdmin && <th className="border p-2 text-left">Tenant</th>}
               <th className="border p-2 text-left">Created At</th>
               <th className="border p-2 text-left">Actions</th>
@@ -90,41 +91,65 @@ export default function AdminsList() {
           <tbody>
             {admins.length > 0 ? (
               admins.map((admin: any) => (
-                <tr key={admin.admin.id}>
-                  <td className="border p-2">{admin.admin.name}</td>
-                  <td className="border p-2">{admin.admin.email}</td>
+                <tr key={admin.id}>
+                  <td className="border p-2">
+                    <div className="font-medium">{admin.name}</div>
+                  </td>
+                  <td className="border p-2">{admin.email}</td>
                   <td className="border p-2">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      admin.admin.type === 'super-admin' 
+                      admin.type === 'super-admin' 
                         ? 'bg-purple-100 text-purple-800' 
                         : 'bg-green-100 text-green-800'
                     }`}>
-                      {admin.admin.type === 'super-admin' ? 'Super Admin' : 'Admin'}
+                      {admin.type === 'super-admin' ? 'Super Admin' : 'Admin'}
                     </span>
                   </td>
-                  <td className="border p-2">{admin.role?.name || 'Unknown'}</td>
+                  <td className="border p-2">
+                    <div>
+                      <div className="font-medium">{admin.roleDetails?.name || admin.role || 'Unknown'}</div>
+                      {admin.roleDetails?.description && (
+                        <div className="text-xs text-gray-500">{admin.roleDetails.description}</div>
+                      )}
+                      {admin.roleDetails?.isActive === false && (
+                        <span className="text-xs bg-red-100 text-red-800 px-1 rounded">Inactive</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="border p-2">
+                    <div className="text-sm">
+                      {admin.roleDetails?.permissions 
+                        ? JSON.parse(admin.roleDetails.permissions).length + ' permissions'
+                        : 'No permissions'
+                      }
+                    </div>
+                  </td>
                   {isSuperAdmin && (
                     <td className="border p-2">
                       <span className={`px-2 py-1 rounded text-xs ${
-                        admin.admin.tenantId === 'super-admin' 
+                        admin.tenantId === 'super-admin' 
                           ? 'bg-purple-100 text-purple-800' 
                           : 'bg-blue-100 text-blue-800'
                       }`}>
-                        {admin.admin.tenantId === 'super-admin' ? 'System' : admin.admin.tenantId}
+                        {admin.tenantId === 'super-admin' ? 'System' : admin.tenantId}
                       </span>
                     </td>
                   )}
-                  <td className="border p-2">{new Date(admin.admin.createdAt).toLocaleString()}</td>
+                  <td className="border p-2">
+                    <div className="text-sm">
+                      {new Date(admin.createdAt).toLocaleDateString()}
+                    </div>
+                  </td>
                   <td className="border p-2">
                     <div className="flex gap-2">
                       <Link 
-                        href={`/admins/edit/${admin.admin.id}`}
+                        href={`/admins/edit/${admin.id}`}
                         className="px-2 py-1 bg-green-500 text-white rounded text-sm"
                       >
                         Edit
                       </Link>
                       <button 
-                        onClick={() => handleDelete(admin.admin.id)}
+                        onClick={() => handleDelete(admin.id)}
                         className="px-2 py-1 bg-red-500 text-white rounded text-sm"
                       >
                         Delete
@@ -135,7 +160,7 @@ export default function AdminsList() {
               ))
             ) : (
               <tr>
-                <td colSpan={isSuperAdmin ? 7 : 6} className="border p-2 text-center">No admin users found</td>
+                <td colSpan={isSuperAdmin ? 8 : 7} className="border p-2 text-center">No admin users found</td>
               </tr>
             )}
           </tbody>

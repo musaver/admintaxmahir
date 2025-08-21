@@ -4,112 +4,85 @@ import { adminUsers, adminRoles } from '@/lib/schema';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and } from 'drizzle-orm';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
 
-export async function GET() {
+export const GET = withTenant(async (req: NextRequest, context) => {
   try {
-    // Get the current session to determine the user context
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const currentUser = session.user as any;
-    let admins;
-
-    if (currentUser.type === 'super-admin') {
-      // Super admin can see all admins
-      console.log('Super admin fetching all admins');
-      admins = await db
-        .select({
-          admin: adminUsers,
-          role: {
-            id: adminRoles.id,
-            name: adminRoles.name,
-            permissions: adminRoles.permissions
-          }
-        })
-        .from(adminUsers)
-        .leftJoin(adminRoles, eq(adminUsers.roleId, adminRoles.id));
-    } else {
-      // Tenant admin can only see admins from their tenant
-      console.log('Tenant admin fetching admins for tenant:', currentUser.tenantId);
-      admins = await db
-        .select({
-          admin: adminUsers,
-          role: {
-            id: adminRoles.id,
-            name: adminRoles.name,
-            permissions: adminRoles.permissions
-          }
-        })
-        .from(adminUsers)
-        .leftJoin(adminRoles, eq(adminUsers.roleId, adminRoles.id))
-        .where(eq(adminUsers.tenantId, currentUser.tenantId));
-    }
+    // Fetch admins for this tenant only, with their roles
+    const admins = await db
+      .select({
+        admin: adminUsers,
+        role: {
+          id: adminRoles.id,
+          name: adminRoles.name,
+          permissions: adminRoles.permissions,
+          description: adminRoles.description,
+          isActive: adminRoles.isActive
+        }
+      })
+      .from(adminUsers)
+      .leftJoin(adminRoles, and(
+        eq(adminUsers.roleId, adminRoles.id),
+        eq(adminRoles.tenantId, context.tenantId)
+      ))
+      .where(eq(adminUsers.tenantId, context.tenantId));
 
     // Remove passwords from response and format data
     const adminsWithoutPasswords = admins.map(({ admin, role }) => ({
-      admin: {
-        id: admin.id,
-        email: admin.email,
-        name: admin.name,
-        tenantId: admin.tenantId,
-        type: admin.type,
-        roleId: admin.roleId,
-        role: admin.role,
-        createdAt: admin.createdAt,
-        updatedAt: admin.updatedAt
-      },
-      role
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      tenantId: admin.tenantId,
+      type: admin.type,
+      roleId: admin.roleId,
+      role: admin.role,
+      createdAt: admin.createdAt,
+      updatedAt: admin.updatedAt,
+      roleDetails: role
     }));
 
     return NextResponse.json(adminsWithoutPasswords);
   } catch (error) {
     console.error('Error fetching admins:', error);
-    return NextResponse.json({ error: 'Failed to fetch admins' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch admins');
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withTenant(async (req: NextRequest, context) => {
   try {
-    // Get the current session to determine the user context
-    const session = await getServerSession(authOptions);
+    const { email, password, name, roleId } = await req.json();
     
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const currentUser = session.user as any;
-    const { email, password, name, roleId, tenantId, type } = await req.json();
-    
-    // Determine the tenant ID and type for the new admin
-    let newAdminTenantId;
-    let newAdminType;
-    
-    if (currentUser.type === 'super-admin') {
-      // Super admin can specify the tenant ID and type
-      newAdminTenantId = tenantId || 'super-admin';
-      newAdminType = type || 'admin'; // Default to 'admin' unless specified
-      console.log('Super admin creating admin for tenant:', newAdminTenantId, 'with type:', newAdminType);
-    } else {
-      // Tenant admin can only create regular admins for their own tenant
-      newAdminTenantId = currentUser.tenantId;
-      newAdminType = 'admin'; // Tenant admins can only create regular admins
-      console.log('Tenant admin creating admin for their tenant:', newAdminTenantId);
+    if (!email || !password || !name || !roleId) {
+      return ErrorResponses.invalidInput('All fields are required');
     }
     
-    // Get the role information
-    const [roleData] = await db
+    // Verify the role exists and belongs to this tenant
+    const roleData = await db
       .select()
       .from(adminRoles)
-      .where(eq(adminRoles.id, roleId))
+      .where(and(
+        eq(adminRoles.id, roleId),
+        eq(adminRoles.tenantId, context.tenantId),
+        eq(adminRoles.isActive, true)
+      ))
       .limit(1);
 
-    if (!roleData) {
-      return NextResponse.json({ error: 'Invalid role ID' }, { status: 400 });
+    if (roleData.length === 0) {
+      return ErrorResponses.invalidInput('Invalid or inactive role selected');
+    }
+
+    // Check if email already exists for this tenant
+    const existingAdmin = await db
+      .select()
+      .from(adminUsers)
+      .where(and(
+        eq(adminUsers.email, email),
+        eq(adminUsers.tenantId, context.tenantId)
+      ))
+      .limit(1);
+
+    if (existingAdmin.length > 0) {
+      return ErrorResponses.invalidInput('Admin with this email already exists');
     }
     
     // Hash the password
@@ -117,13 +90,15 @@ export async function POST(req: NextRequest) {
     
     const newAdmin = {
       id: uuidv4(),
-      tenantId: newAdminTenantId,
+      tenantId: context.tenantId,
       email,
       password: hashedPassword,
       name,
-      type: newAdminType,
+      type: 'admin',
       roleId,
-      role: roleData.name, // Set the role name
+      role: roleData[0].name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     await db.insert(adminUsers).values(newAdmin);
@@ -134,6 +109,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(adminWithoutPassword, { status: 201 });
   } catch (error) {
     console.error('Error creating admin:', error);
-    return NextResponse.json({ error: 'Failed to create admin' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to create admin');
   }
-} 
+}); 

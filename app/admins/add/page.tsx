@@ -134,12 +134,27 @@ export default function AddAdmin() {
             required
           >
             <option value="">Select a role</option>
-            {roles.map((role: any) => (
-              <option key={role.id} value={role.id}>
-                {role.name}
-              </option>
-            ))}
+            {roles
+              .filter((role: any) => role.isActive !== false)
+              .map((role: any) => (
+                <option key={role.id} value={role.id}>
+                  {role.name} {role.description && `- ${role.description}`}
+                </option>
+              ))
+            }
           </select>
+          {formData.roleId && (
+            <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+              <strong>Selected Role:</strong> {roles.find((r: any) => r.id === formData.roleId)?.name}
+              {roles.find((r: any) => r.id === formData.roleId)?.description && (
+                <><br /><span className="text-gray-600">{roles.find((r: any) => r.id === formData.roleId)?.description}</span></>
+              )}
+              <br />
+              <strong>Permissions:</strong> {roles.find((r: any) => r.id === formData.roleId)?.permissions ? 
+                JSON.parse(roles.find((r: any) => r.id === formData.roleId)?.permissions || '[]').length : 0
+              } permissions assigned
+            </div>
+          )}
         </div>
         
         <div className="flex gap-4">

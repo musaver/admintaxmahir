@@ -1,66 +1,134 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { adminRoles } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
+import { eq, and } from 'drizzle-orm';
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withTenant(async (req: NextRequest, context, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
-    const role = await db.select().from(adminRoles).where(eq(adminRoles.id, id));
     
+    const role = await db
+      .select()
+      .from(adminRoles)
+      .where(and(
+        eq(adminRoles.id, id),
+        eq(adminRoles.tenantId, context.tenantId)
+      ))
+      .limit(1);
+
     if (role.length === 0) {
-      return NextResponse.json({ error: 'Role not found' }, { status: 404 });
+      return ErrorResponses.invalidInput('Role not found');
     }
-    
+
     return NextResponse.json(role[0]);
   } catch (error) {
     console.error('Error fetching role:', error);
-    return NextResponse.json({ error: 'Failed to fetch role' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch role');
   }
-}
+});
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const PUT = withTenant(async (req: NextRequest, context, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
-    const { name, permissions } = await req.json();
-    
-    await db.update(adminRoles)
+    const { name, description, permissions, isActive } = await req.json();
+
+    if (!name || !permissions) {
+      return ErrorResponses.invalidInput('Role name and permissions are required');
+    }
+
+    // Check if role exists and belongs to tenant
+    const existingRole = await db
+      .select()
+      .from(adminRoles)
+      .where(and(
+        eq(adminRoles.id, id),
+        eq(adminRoles.tenantId, context.tenantId)
+      ))
+      .limit(1);
+
+    if (existingRole.length === 0) {
+      return ErrorResponses.invalidInput('Role not found');
+    }
+
+    // Check if name is already taken by another role in this tenant
+    const duplicateRole = await db
+      .select()
+      .from(adminRoles)
+      .where(and(
+        eq(adminRoles.name, name),
+        eq(adminRoles.tenantId, context.tenantId)
+      ))
+      .limit(1);
+
+    if (duplicateRole.length > 0 && duplicateRole[0].id !== id) {
+      return ErrorResponses.invalidInput('Role name already exists');
+    }
+
+    // Update the role
+    await db
+      .update(adminRoles)
       .set({
         name,
+        description: description || null,
         permissions: typeof permissions === 'string' ? permissions : JSON.stringify(permissions),
+        isActive: isActive !== undefined ? isActive : true,
+        updatedAt: new Date(),
       })
-      .where(eq(adminRoles.id, id));
-    
-    const updatedRole = await db.select().from(adminRoles).where(eq(adminRoles.id, id));
-    
-    if (updatedRole.length === 0) {
-      return NextResponse.json({ error: 'Role not found' }, { status: 404 });
-    }
-    
+      .where(and(
+        eq(adminRoles.id, id),
+        eq(adminRoles.tenantId, context.tenantId)
+      ));
+
+    // Fetch updated role
+    const updatedRole = await db
+      .select()
+      .from(adminRoles)
+      .where(and(
+        eq(adminRoles.id, id),
+        eq(adminRoles.tenantId, context.tenantId)
+      ))
+      .limit(1);
+
     return NextResponse.json(updatedRole[0]);
   } catch (error) {
     console.error('Error updating role:', error);
-    return NextResponse.json({ error: 'Failed to update role' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to update role');
   }
-}
+});
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withTenant(async (req: NextRequest, context, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
-    
-    await db.delete(adminRoles).where(eq(adminRoles.id, id));
+
+    // Check if role exists and belongs to tenant
+    const existingRole = await db
+      .select()
+      .from(adminRoles)
+      .where(and(
+        eq(adminRoles.id, id),
+        eq(adminRoles.tenantId, context.tenantId)
+      ))
+      .limit(1);
+
+    if (existingRole.length === 0) {
+      return ErrorResponses.invalidInput('Role not found');
+    }
+
+    // TODO: Check if role is assigned to any admin users before deleting
+    // This would prevent deleting roles that are in use
+
+    // Delete the role
+    await db
+      .delete(adminRoles)
+      .where(and(
+        eq(adminRoles.id, id),
+        eq(adminRoles.tenantId, context.tenantId)
+      ));
+
     return NextResponse.json({ message: 'Role deleted successfully' });
   } catch (error) {
     console.error('Error deleting role:', error);
-    return NextResponse.json({ error: 'Failed to delete role' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to delete role');
   }
-} 
+}); 

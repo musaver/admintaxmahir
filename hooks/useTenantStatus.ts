@@ -45,6 +45,32 @@ export function useTenantStatus() {
           
           // Redirect to login with suspended message
           router.push('/login?message=tenant_suspended');
+          return;
+        }
+
+        // Also check if user's role is still active (if they have a role)
+        if (user.roleId) {
+          const roleResponse = await fetch('/api/permissions/me', {
+            method: 'GET',
+            credentials: 'include'
+          });
+
+          if (roleResponse.status === 401 || roleResponse.status === 403) {
+            console.log('User role deactivated or permissions revoked, logging out user');
+            
+            // Sign out the user
+            await signOut({ 
+              redirect: false,
+              callbackUrl: '/login?message=role_deactivated'
+            });
+            
+            // Clear any client-side storage
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Redirect to login with role deactivated message
+            router.push('/login?message=role_deactivated');
+          }
         }
       } catch (error) {
         console.error('Error checking tenant status:', error);

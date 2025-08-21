@@ -62,7 +62,9 @@ export default function RolesList() {
           <thead>
             <tr className="bg-gray-100">
               <th className="border p-2 text-left">Name</th>
+              <th className="border p-2 text-left">Description</th>
               <th className="border p-2 text-left">Permissions</th>
+              <th className="border p-2 text-left">Status</th>
               <th className="border p-2 text-left">Created At</th>
               <th className="border p-2 text-left">Actions</th>
             </tr>
@@ -71,15 +73,35 @@ export default function RolesList() {
             {roles.length > 0 ? (
               roles.map((role: any) => (
                 <tr key={role.id}>
-                  <td className="border p-2">{role.name}</td>
                   <td className="border p-2">
-                    {role.permissions && typeof role.permissions === 'string' 
-                      ? JSON.parse(role.permissions).join(', ') 
-                      : Array.isArray(role.permissions) 
-                        ? role.permissions.join(', ') 
-                        : 'None'}
+                    <div className="font-medium">{role.name}</div>
                   </td>
-                  <td className="border p-2">{new Date(role.createdAt).toLocaleString()}</td>
+                  <td className="border p-2">
+                    <div className="text-sm text-gray-600">
+                      {role.description || 'No description'}
+                    </div>
+                  </td>
+                  <td className="border p-2">
+                    <div className="text-sm">
+                      {role.permissions && typeof role.permissions === 'string' 
+                        ? JSON.parse(role.permissions).length + ' permissions'
+                        : Array.isArray(role.permissions) 
+                          ? role.permissions.length + ' permissions'
+                          : 'None'}
+                    </div>
+                  </td>
+                  <td className="border p-2">
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      role.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {role.isActive !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="border p-2">
+                    <div className="text-sm">
+                      {new Date(role.createdAt).toLocaleDateString()}
+                    </div>
+                  </td>
                   <td className="border p-2">
                     <div className="flex gap-2">
                       <Link 
@@ -100,7 +122,7 @@ export default function RolesList() {
               ))
             ) : (
               <tr>
-                <td colSpan={4} className="border p-2 text-center">No roles found</td>
+                <td colSpan={6} className="border p-2 text-center">No roles found</td>
               </tr>
             )}
           </tbody>

@@ -2,28 +2,45 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
-const permissions = [
-  { id: 'users_view', label: 'View Users' },
-  { id: 'users_create', label: 'Create Users' },
-  { id: 'users_edit', label: 'Edit Users' },
-  { id: 'users_delete', label: 'Delete Users' },
-  { id: 'courses_view', label: 'View Courses' },
-  { id: 'courses_create', label: 'Create Courses' },
-  { id: 'courses_edit', label: 'Edit Courses' },
-  { id: 'courses_delete', label: 'Delete Courses' },
-  { id: 'orders_view', label: 'View Orders' },
-  { id: 'orders_create', label: 'Create Orders' },
-  { id: 'orders_edit', label: 'Edit Orders' },
-  { id: 'orders_delete', label: 'Delete Orders' },
-  { id: 'admins_view', label: 'View Admins' },
-  { id: 'admins_create', label: 'Create Admins' },
-  { id: 'admins_edit', label: 'Edit Admins' },
-  { id: 'admins_delete', label: 'Delete Admins' },
-  { id: 'roles_view', label: 'View Roles' },
-  { id: 'roles_create', label: 'Create Roles' },
-  { id: 'roles_edit', label: 'Edit Roles' },
-  { id: 'roles_delete', label: 'Delete Roles' },
-  { id: 'logs_view', label: 'View Logs' },
+const permissionModules = [
+  {
+    name: 'Users Management',
+    permissions: [
+      { id: 'users_view', label: 'View Users' },
+      { id: 'users_create', label: 'Create Users' },
+      { id: 'users_edit', label: 'Edit Users' },
+      { id: 'users_delete', label: 'Delete Users' },
+    ]
+  },
+  {
+    name: 'Products Management',
+    permissions: [
+      { id: 'products_view', label: 'View Products' },
+      { id: 'products_create', label: 'Create Products' },
+      { id: 'products_edit', label: 'Edit Products' },
+      { id: 'products_delete', label: 'Delete Products' },
+    ]
+  },
+  {
+    name: 'Inventory / Stock Management',
+    permissions: [
+      { id: 'inventory_view', label: 'View Inventory' },
+      { id: 'inventory_create', label: 'Add Stock' },
+      { id: 'inventory_edit', label: 'Edit Stock' },
+      { id: 'inventory_delete', label: 'Remove Stock' },
+      { id: 'stock_movements_view', label: 'View Stock Movements' },
+    ]
+  },
+  {
+    name: 'Orders Management',
+    permissions: [
+      { id: 'orders_view', label: 'View Orders' },
+      { id: 'orders_create', label: 'Create Orders' },
+      { id: 'orders_edit', label: 'Edit Orders' },
+      { id: 'orders_delete', label: 'Delete Orders' },
+      { id: 'orders_fulfill', label: 'Fulfill Orders' },
+    ]
+  },
 ];
 
 export default function EditRole() {
@@ -33,7 +50,9 @@ export default function EditRole() {
   
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
     permissions: [] as string[],
+    isActive: true,
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -45,7 +64,9 @@ export default function EditRole() {
       .then(data => {
         setFormData({
           name: data.name || '',
+          description: data.description || '',
           permissions: JSON.parse(data.permissions || '[]'),
+          isActive: data.isActive !== false,
         });
         setLoading(false);
       })
@@ -93,7 +114,9 @@ export default function EditRole() {
         },
         body: JSON.stringify({
           name: formData.name,
+          description: formData.description,
           permissions: JSON.stringify(formData.permissions),
+          isActive: formData.isActive,
         }),
       });
 
@@ -139,19 +162,59 @@ export default function EditRole() {
         </div>
         
         <div className="mb-6">
+          <label className="block text-gray-700 mb-2" htmlFor="description">
+            Description (Optional)
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            className="w-full p-2 border rounded"
+            rows={3}
+            placeholder="Describe the purpose of this role..."
+          />
+        </div>
+        
+        <div className="mb-6">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              name="isActive"
+              checked={formData.isActive}
+              onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+              className="mr-2"
+            />
+            <span className="text-gray-700">Active Role</span>
+          </label>
+          <p className="text-sm text-gray-500 mt-1">
+            Inactive roles cannot be assigned to admin users
+          </p>
+        </div>
+        
+        <div className="mb-6">
           <h3 className="text-lg font-medium mb-3">Permissions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {permissions.map((permission) => (
-              <div key={permission.id} className="flex items-center">
-                <input
-                  type="checkbox"
-                  id={permission.id}
-                  name={permission.id}
-                  onChange={handleChange}
-                  checked={formData.permissions.includes(permission.id)}
-                  className="mr-2"
-                />
-                <label htmlFor={permission.id}>{permission.label}</label>
+          <div className="space-y-6">
+            {permissionModules.map((module) => (
+              <div key={module.name} className="border border-gray-200 rounded-lg p-4">
+                <h4 className="text-md font-medium mb-3 text-blue-600">{module.name}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {module.permissions.map((permission) => (
+                    <div key={permission.id} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id={permission.id}
+                        name={permission.id}
+                        onChange={handleChange}
+                        checked={formData.permissions.includes(permission.id)}
+                        className="mr-2"
+                      />
+                      <label htmlFor={permission.id} className="text-sm">
+                        {permission.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

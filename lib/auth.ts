@@ -2,7 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
-import { adminUsers, tenants } from "@/lib/schema";
+import { adminUsers, tenants, adminRoles } from "@/lib/schema";
 import bcrypt from "bcrypt";
 import { eq, and } from "drizzle-orm";
 import { extractSubdomain } from "@/lib/tenant";
@@ -111,7 +111,7 @@ export const authOptions: NextAuthOptions = {
             tenantId = tenant.id;
             tenantSlug = tenant.slug;
             
-            // Find admin user for this specific tenant
+            // Find admin user for this specific tenant with role validation
             const [user_cred] = await db
               .select({
                 id: adminUsers.id,
@@ -129,6 +129,28 @@ export const authOptions: NextAuthOptions = {
                 eq(adminUsers.tenantId, tenantId)
               ))
               .limit(1);
+
+            if (user_cred) {
+              // Check if the user's role is still active (if they have a role)
+              if (user_cred.roleId) {
+                const [roleCheck] = await db
+                  .select({
+                    isActive: adminRoles.isActive,
+                    name: adminRoles.name
+                  })
+                  .from(adminRoles)
+                  .where(and(
+                    eq(adminRoles.id, user_cred.roleId),
+                    eq(adminRoles.tenantId, tenantId)
+                  ))
+                  .limit(1);
+
+                if (!roleCheck || roleCheck.isActive === false) {
+                  console.log("User role is inactive or not found:", user_cred.roleId, "for tenant:", subdomain);
+                  return null;
+                }
+              }
+            }
 
             console.log("Auth Debug - User lookup result:", {
               email: credentials.email,
@@ -242,18 +264,47 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       try {
         if (session.user && token.id) {
-        (session.user as any).id = token.id;
-        (session.user as any).tenantId = token.tenantId;
-        (session.user as any).tenantSlug = token.tenantSlug;
-        (session.user as any).type = token.type;
-        (session.user as any).role = token.role;
-        (session.user as any).roleId = token.roleId;
-        console.log("Session callback - setting session data:", {
-          id: token.id,
-          tenantId: token.tenantId,
-          tenantSlug: token.tenantSlug,
-          type: token.type
-        });
+          // For tenant admin users, verify tenant is still active
+          if (token.tenantId && token.tenantId !== 'super-admin' && token.tenantSlug) {
+            const tenant = await getTenantBySlug(token.tenantSlug as string);
+            
+            if (!tenant || tenant.status !== 'active') {
+              console.log("Tenant suspended or not found during session:", token.tenantSlug);
+              // Return null session to force logout
+              return { ...session, user: null } as any;
+            }
+            
+            // Also check if user's role is still active
+            if (token.roleId) {
+              const [roleCheck] = await db
+                .select({ isActive: adminRoles.isActive })
+                .from(adminRoles)
+                .where(and(
+                  eq(adminRoles.id, token.roleId as string),
+                  eq(adminRoles.tenantId, token.tenantId as string)
+                ))
+                .limit(1);
+
+              if (!roleCheck || roleCheck.isActive === false) {
+                console.log("User role deactivated during session:", token.roleId);
+                // Return null session to force logout
+                return { ...session, user: null } as any;
+              }
+            }
+          }
+
+          (session.user as any).id = token.id;
+          (session.user as any).tenantId = token.tenantId;
+          (session.user as any).tenantSlug = token.tenantSlug;
+          (session.user as any).type = token.type;
+          (session.user as any).role = token.role;
+          (session.user as any).roleId = token.roleId;
+          console.log("Session callback - setting session data:", {
+            id: token.id,
+            tenantId: token.tenantId,
+            tenantSlug: token.tenantSlug,
+            type: token.type
+          });
         }
         return session;
       } catch (error) {

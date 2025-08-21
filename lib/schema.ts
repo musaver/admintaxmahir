@@ -575,8 +575,11 @@ export const adminUsers = mysqlTable("admin_users", {
 // Admin roles
 export const adminRoles = mysqlTable("admin_roles", {
   id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
   name: varchar("name", { length: 255 }).notNull(),
   permissions: text("permissions").notNull(),
+  description: text("description"), // Role description
+  isActive: boolean("is_active").default(true), // Active/inactive roles
   createdAt: datetime("createdAt").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updatedAt").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -1020,7 +1023,11 @@ export const adminUsersRelations = relations(adminUsers, ({ one, many }) => ({
   logs: many(adminLogs),
 }));
 
-export const adminRolesRelations = relations(adminRoles, ({ many }) => ({
+export const adminRolesRelations = relations(adminRoles, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [adminRoles.tenantId],
+    references: [tenants.id],
+  }),
   users: many(adminUsers),
 }));
 
