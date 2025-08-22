@@ -14,6 +14,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/test') ||
     pathname.startsWith('/api/debug') ||
     pathname.startsWith('/api/loyalty') ||
+    pathname.startsWith('/api/inngest') || // Skip Inngest webhook endpoint
     pathname.startsWith('/api/tenants/lookup') || // Skip tenant lookup API to avoid circular calls
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon.ico') ||

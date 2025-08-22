@@ -135,6 +135,36 @@ git push
 
 ## 🚨 Troubleshooting
 
+### Issue: Internal Server Error 500 After Import
+
+**Symptoms:**
+- Inngest functions complete successfully
+- Users are added to database
+- Website shows 500 error after import completion
+- Middleware logs show authentication attempts on `/api/inngest`
+
+**Cause:** Middleware is trying to authenticate Inngest webhook requests
+
+**Solution:** Exclude `/api/inngest` from authentication middleware
+
+```typescript
+// middleware.ts - Add this line to the skip conditions
+if (
+  pathname.startsWith('/api/auth') ||
+  pathname.startsWith('/api/inngest') || // Add this line
+  // ... other exclusions
+) {
+  return NextResponse.next();
+}
+```
+
+**Deploy the fix:**
+```bash
+git add middleware.ts
+git commit -m "Fix: Exclude /api/inngest from authentication middleware"
+git push
+```
+
 ### Issue: Still Stuck at "Running"
 
 **Cause**: Webhook not configured properly
