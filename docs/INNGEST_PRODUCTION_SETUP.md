@@ -148,13 +148,33 @@ git push
 **Solution:** Exclude `/api/inngest` from authentication middleware
 
 ```typescript
-// middleware.ts - Add this line to the skip conditions
+// middleware.ts - Add this line to the main skip conditions
 if (
   pathname.startsWith('/api/auth') ||
   pathname.startsWith('/api/inngest') || // Add this line
   // ... other exclusions
 ) {
   return NextResponse.next();
+}
+```
+
+**For Multi-Tenant with Subdomains:** Also add to `handleTenantAuthentication` function:
+
+```typescript
+// middleware.ts - In handleTenantAuthentication function
+async function handleTenantAuthentication(request: NextRequest, response: NextResponse, tenant: any) {
+  const pathname = request.nextUrl.pathname;
+
+  // Skip authentication for API routes that don't require tenant context
+  if (
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/inngest') || // Add this line for subdomains
+    pathname.startsWith('/api/upload') ||
+    // ... other exclusions
+  ) {
+    return response;
+  }
+  // ... rest of function
 }
 ```
 

@@ -91,6 +91,22 @@ export async function middleware(request: NextRequest) {
 async function handleTenantAuthentication(request: NextRequest, response: NextResponse, tenant: any) {
   const pathname = request.nextUrl.pathname;
 
+  // Skip authentication for API routes that don't require tenant context
+  if (
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/inngest') || // Skip Inngest webhook endpoint
+    pathname.startsWith('/api/upload') ||
+    pathname.startsWith('/_next') ||
+    pathname.endsWith('.svg') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.jpeg') ||
+    pathname.endsWith('.gif') ||
+    pathname.endsWith('.ico')
+  ) {
+    return response;
+  }
+
   try {
     // Get token with proper error handling for Vercel
     const token = await getToken({ 
