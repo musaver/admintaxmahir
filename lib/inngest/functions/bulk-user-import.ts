@@ -230,6 +230,7 @@ async function processUserChunk(
 export const bulkUserImport = inngest.createFunction(
   { 
     id: 'user-bulk-import',
+    name: 'User Bulk Import',
     concurrency: {
       limit: 10, // Allow up to 10 concurrent import jobs
     }
