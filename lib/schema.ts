@@ -1158,6 +1158,34 @@ export const productTagsRelations = relations(productTags, ({ one }) => ({
   }),
 }));
 
+// Import Jobs - for tracking bulk import operations
+export const importJobs = mysqlTable("import_jobs", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 255 }).notNull(), // Multi-tenant support
+  type: varchar("type", { length: 50 }).notNull(), // users, products, inventory, etc.
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  blobUrl: varchar("blob_url", { length: 500 }).notNull(), // Vercel Blob URL
+  status: varchar("status", { length: 20 }).default("pending"), // pending, processing, completed, failed
+  
+  // Progress tracking
+  totalRecords: int("total_records").default(0),
+  processedRecords: int("processed_records").default(0),
+  successfulRecords: int("successful_records").default(0),
+  failedRecords: int("failed_records").default(0),
+  
+  // Results and errors
+  errors: json("errors"), // Array of error objects
+  results: json("results"), // Summary results
+  
+  // Timestamps
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  startedAt: datetime("started_at"),
+  completedAt: datetime("completed_at"),
+  
+  // Metadata
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+});
+
 // Suppliers Relations
 export const suppliersRelations = relations(suppliers, ({ many }) => ({
   products: many(products),

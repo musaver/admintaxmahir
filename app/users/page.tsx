@@ -18,7 +18,8 @@ import {
   TrashIcon,
   RefreshCwIcon,
   UsersIcon,
-  DownloadIcon
+  DownloadIcon,
+  UploadIcon
 } from 'lucide-react';
 
 interface User {
@@ -301,6 +302,12 @@ export default function UsersList() {
           >
             <DownloadIcon className={`h-4 w-4 mr-2 ${exporting ? 'animate-spin' : ''}`} />
             {exporting ? 'Exporting...' : 'Export CSV'}
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/users/bulk-upload">
+              <UploadIcon className="h-4 w-4 mr-2" /> 
+              Bulk Import
+            </Link>
           </Button>
           <Button onClick={fetchUsers} disabled={loading} variant="outline" size="sm">
             <RefreshCwIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
