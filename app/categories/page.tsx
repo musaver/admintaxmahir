@@ -178,7 +178,7 @@ export default function CategoriesList() {
         <div className="flex items-center space-x-2">
           <Button onClick={fetchCategories} disabled={loading} variant="outline" size="sm">
             <RefreshCwIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            Refresh {loading ? '...' : ''}
           </Button>
           <Button asChild>
             <Link href="/categories/add">
