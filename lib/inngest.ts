@@ -4,5 +4,11 @@ import { Inngest } from 'inngest';
 export const inngest = new Inngest({
   id: 'inventory-app',
   name: 'Inventory Management System',
-  env: process.env.NODE_ENV,
+  env: process.env.INNGEST_ENV || process.env.NODE_ENV || 'development',
+  // Event API configuration for production
+  ...(process.env.INNGEST_BASE_URL && {
+    eventAPI: {
+      baseURL: process.env.INNGEST_BASE_URL,
+    },
+  }),
 });
