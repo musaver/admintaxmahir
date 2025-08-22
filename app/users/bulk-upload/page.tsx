@@ -303,7 +303,7 @@ export default function BulkUserUpload() {
             </div>
 
             {/* Success Details */}
-            {currentJob.results?.successfulUsers && currentJob.results.successfulUsers.length > 0 && (
+            {currentJob.results?.successfulUsers && Array.isArray(currentJob.results.successfulUsers) && currentJob.results.successfulUsers.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-md font-semibold text-green-800 mb-2">✅ Successfully Created Users (showing first 20)</h3>
                 <div className="bg-green-50 border border-green-200 rounded p-3 max-h-60 overflow-y-auto">
@@ -322,7 +322,7 @@ export default function BulkUserUpload() {
             )}
 
             {/* Error Details */}
-            {currentJob.errors && currentJob.errors.length > 0 && (
+            {currentJob.errors && Array.isArray(currentJob.errors) && currentJob.errors.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-md font-semibold text-red-800 mb-2">❌ Errors (showing first 20)</h3>
                 <div className="bg-red-50 border border-red-200 rounded p-3 max-h-60 overflow-y-auto">
