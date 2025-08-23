@@ -341,6 +341,8 @@ async function processProductChunk(
   tenantId: string, 
   startIndex: number
 ): Promise<ProcessingResult> {
+  console.log(`🛒 Processing ${products.length} products for tenant: ${tenantId}`);
+  
   const result: ProcessingResult = {
     successful: 0,
     failed: 0,
@@ -478,6 +480,14 @@ export const bulkUserImport = inngest.createFunction(
   { event: 'user/bulk-import' },
   async ({ event, step }) => {
     const { jobId, blobUrl, tenantId, fileName, importType = 'users' } = event.data;
+    
+    console.log(`🚀 Starting ${importType} import job:`, {
+      jobId,
+      tenantId,
+      fileName,
+      importType,
+      blobUrl: blobUrl.substring(0, 50) + '...'
+    });
 
     // Step 1: Update job status to processing
     await step.run('update-job-status-processing', async () => {
@@ -492,16 +502,24 @@ export const bulkUserImport = inngest.createFunction(
     try {
       // Step 2: Download and parse file
       const parsedData = await step.run('parse-file', async () => {
+        console.log(`📥 Downloading file for ${importType} import...`);
         const response = await fetch(blobUrl);
         if (!response.ok) {
           throw new Error(`Failed to download file: ${response.statusText}`);
         }
         const csvText = await response.text();
+        console.log(`📄 CSV file downloaded, size: ${csvText.length} characters`);
         
         if (importType === 'products') {
-          return { type: 'products', data: parseProductCSV(csvText) };
+          console.log('🔍 Parsing as product CSV...');
+          const data = parseProductCSV(csvText);
+          console.log(`✅ Parsed ${data.length} products from CSV`);
+          return { type: 'products', data };
         } else {
-          return { type: 'users', data: parseUserCSV(csvText) };
+          console.log('🔍 Parsing as user CSV...');
+          const data = parseUserCSV(csvText);
+          console.log(`✅ Parsed ${data.length} users from CSV`);
+          return { type: 'users', data };
         }
       });
 
@@ -533,6 +551,7 @@ export const bulkUserImport = inngest.createFunction(
         const startIndex = chunkIndex * CHUNK_SIZE;
 
         const chunkResult = await step.run(`process-chunk-${chunkIndex}`, async () => {
+          console.log(`🔄 Processing chunk ${chunkIndex + 1}/${chunks.length} for ${importType} (${chunk.length} items)`);
           if (importType === 'products') {
             return processProductChunk(chunk as ProductImportRow[], tenantId, startIndex);
           } else {
