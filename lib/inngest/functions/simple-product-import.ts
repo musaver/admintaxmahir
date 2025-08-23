@@ -35,15 +35,15 @@ function parseCSV(csvText: string): SimpleProductRow[] {
 
 // Simple product processing function
 async function processProducts(
-  products: SimpleProductRow[], 
+  productData: SimpleProductRow[], 
   tenantId: string
 ): Promise<{ successful: number; failed: number; errors: string[] }> {
   let successful = 0;
   let failed = 0;
   const errors: string[] = [];
 
-  for (let i = 0; i < products.length; i++) {
-    const product = products[i];
+  for (let i = 0; i < productData.length; i++) {
+    const product = productData[i];
     
     try {
       // Basic validation
@@ -60,17 +60,54 @@ async function processProducts(
         continue;
       }
 
-      // Create simple product record
+      // Create simple product record with proper field names (camelCase as per schema)
       const productRecord = {
         id: uuidv4(),
-        tenant_id: tenantId, // Use snake_case to match database schema
+        tenantId: tenantId, // Correct camelCase field name
         name: product.name,
         price: price.toString(),
-        slug: product.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-        description: product.description || '',
-        sku: product.sku || '',
-        is_active: true, // Use snake_case to match database schema
-        created_at: new Date(), // Use snake_case to match database schema
+        slug: `${product.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}`, // Make slug unique
+        description: product.description || null,
+        shortDescription: null,
+        sku: product.sku || null,
+        comparePrice: null,
+        costPrice: null,
+        images: null,
+        banner: null,
+        categoryId: null,
+        subcategoryId: null,
+        supplierId: null,
+        tags: null,
+        weight: null,
+        dimensions: null,
+        isFeatured: false,
+        isActive: true, // Correct camelCase field name
+        isDigital: false,
+        requiresShipping: true,
+        taxable: true,
+        taxAmount: '0.00',
+        taxPercentage: '0.00',
+        priceIncludingTax: '0.00',
+        priceExcludingTax: price.toString(),
+        extraTax: '0.00',
+        furtherTax: '0.00',
+        fedPayableTax: '0.00',
+        discount: '0.00',
+        metaTitle: null,
+        metaDescription: null,
+        hsCode: null,
+        productType: 'simple',
+        variationAttributes: null,
+        stockManagementType: 'quantity',
+        pricePerUnit: null,
+        baseWeightUnit: 'grams',
+        thc: null,
+        cbd: null,
+        difficulty: null,
+        floweringTime: null,
+        yieldAmount: null,
+        createdAt: new Date(), // Correct camelCase field name
+        updatedAt: new Date(),
       };
 
       await db.insert(products).values(productRecord);
@@ -97,7 +134,7 @@ export const simpleProductImport = inngest.createFunction(
   },
   { event: 'product/simple-import' },
   async ({ event, step }) => {
-    const { jobId, blobUrl, tenantId, fileName } = event.data;
+    const { jobId, blobUrl, tenantId } = event.data;
 
     // Step 1: Update job status to processing
     await step.run('update-job-status-processing', async () => {
