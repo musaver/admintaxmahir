@@ -316,7 +316,7 @@ async function processUserChunk(
       });
 
       result.successful++;
-      result.successfulUsers.push({
+      result.successfulUsers!.push({
         id: newUserId,
         name: userData.name.trim(),
         email: userData.email.toLowerCase().trim()
@@ -337,11 +337,11 @@ async function processUserChunk(
 
 // Process products in chunks
 async function processProductChunk(
-  products: ProductImportRow[], 
+  productRows: ProductImportRow[], 
   tenantId: string, 
   startIndex: number
 ): Promise<ProcessingResult> {
-  console.log(`🛒 Processing ${products.length} products for tenant: ${tenantId}`);
+  console.log(`🛒 Processing ${productRows.length} products for tenant: ${tenantId}`);
   
   const result: ProcessingResult = {
     successful: 0,
@@ -350,8 +350,8 @@ async function processProductChunk(
     successfulProducts: []
   };
 
-  for (let i = 0; i < products.length; i++) {
-    const productData = products[i];
+  for (let i = 0; i < productRows.length; i++) {
+    const productData = productRows[i];
     const globalRowIndex = startIndex + i + 1; // +1 for header row
 
     try {
@@ -386,19 +386,19 @@ async function processProductChunk(
         continue;
       }
 
-      // Create new product
+      // Create new product - match exact format from working API
       const newProductId = uuidv4();
       const price = parseFloat(productData.price);
       
       const newProduct = {
         id: newProductId,
-        tenantId,
+        tenantId, // This should match the working format
         name: productData.title.trim(),
-        sku: productData.sku.trim(),
-        price: price.toFixed(2), // Convert to proper decimal format
+        slug: `${productData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${newProductId.substring(0, 8)}`,
         description: productData.description?.trim() || null,
-        slug: `${productData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${newProductId.substring(0, 8)}`, // Use unique ID part instead of timestamp
         shortDescription: null,
+        sku: productData.sku.trim() || null,
+        price: price.toString(), // Match working format - use toString(), not toFixed()
         comparePrice: null,
         costPrice: null,
         images: null,
@@ -414,37 +414,45 @@ async function processProductChunk(
         isDigital: false,
         requiresShipping: true,
         taxable: true,
-        taxAmount: '0.00',
-        taxPercentage: '0.00',
-        priceIncludingTax: price.toFixed(2), // Set to same as price
-        priceExcludingTax: price.toFixed(2), // Set to same as price
-        extraTax: '0.00',
-        furtherTax: '0.00',
-        fedPayableTax: '0.00',
-        discount: '0.00',
+        // Tax fields - match working format with null for optional fields
+        taxAmount: null,
+        taxPercentage: null,
+        priceIncludingTax: null,
+        priceExcludingTax: null,
+        extraTax: null,
+        furtherTax: null,
+        fedPayableTax: null,
+        discount: null,
         metaTitle: null,
         metaDescription: null,
-        hsCode: null,
+        // Stock management fields
         productType: 'simple',
         variationAttributes: null,
         stockManagementType: 'quantity',
         pricePerUnit: null,
         baseWeightUnit: 'grams',
+        // Cannabis fields
         thc: null,
         cbd: null,
         difficulty: null,
         floweringTime: null,
         yieldAmount: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       };
 
       // Insert product with error handling
       try {
+        console.log(`🔄 Attempting to insert product: ${newProduct.name} (SKU: ${newProduct.sku})`);
         await db.insert(products).values(newProduct);
         console.log(`✅ Product inserted successfully: ${newProduct.name} (SKU: ${newProduct.sku})`);
       } catch (insertError: any) {
-        console.error(`❌ Failed to insert product: ${newProduct.name} (SKU: ${newProduct.sku})`, insertError);
+        console.error(`❌ Failed to insert product: ${newProduct.name} (SKU: ${newProduct.sku})`);
+        console.error('Database error details:', {
+          message: insertError.message,
+          code: insertError.code,
+          sqlState: insertError.sqlState,
+          sqlMessage: insertError.sqlMessage
+        });
+        console.error('Product data that failed:', JSON.stringify(newProduct, null, 2));
         throw insertError;
       }
 
