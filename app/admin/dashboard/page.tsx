@@ -113,7 +113,7 @@ export default function Dashboard() {
           <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent mb-4 leading-tight">
             Welcome to Tax Mahir Admin
           </h1>
-          <p className="text-gray-300 dark:text-gray-300 light:text-gray-600 text-xl mb-6">
+          <p className="text-gray-600 dark:text-gray-300 text-xl mb-6">
             Manage your business with style and efficiency
           </p>
           
@@ -158,17 +158,17 @@ export default function Dashboard() {
               
               <div className="relative z-10 flex items-center justify-between">
                 <div className="space-y-2">
-                  <p className="text-gray-300 dark:text-gray-300 light:text-gray-600 text-sm font-semibold tracking-wide uppercase">
+                  <p className="text-gray-600 dark:text-gray-300 text-sm font-semibold tracking-wide uppercase">
                     {stat.title}
                   </p>
-                  <p className="text-3xl font-bold text-white dark:text-white light:text-gray-900">
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
                     {stat.value}
                   </p>
                   <div className="flex items-center gap-2">
                     <p className="text-emerald-400 text-sm font-semibold">{stat.change}</p>
                     <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
                   </div>
-                  <p className="text-gray-400 dark:text-gray-400 light:text-gray-600 text-xs">
+                  <p className="text-gray-600 dark:text-gray-400 text-xs">
                     {stat.description}
                   </p>
                 </div>
@@ -217,10 +217,10 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="space-y-3">
-                  <h3 className="text-xl font-bold text-white dark:text-white light:text-gray-900 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-200 group-hover:bg-clip-text transition-all duration-500">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-gray-900 group-hover:to-gray-700 dark:group-hover:from-white dark:group-hover:to-gray-200 group-hover:bg-clip-text transition-all duration-500">
                     {card.title}
                   </h3>
-                  <p className="text-gray-300 dark:text-gray-300 light:text-gray-600 text-sm font-medium">
+                  <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">
                     {card.description}
                   </p>
                   
@@ -277,7 +277,7 @@ export default function Dashboard() {
                   <p className="text-white dark:text-white light:text-gray-900 font-semibold">
                     System initialized successfully
                   </p>
-                  <p className="text-gray-300 dark:text-gray-300 light:text-gray-600 text-sm">
+                  <p className="text-gray-600 dark:text-gray-300 text-sm">
                     Welcome to Tax Mahir Admin Panel - All systems operational
                   </p>
                   <div className="flex items-center gap-2 pt-1">
@@ -287,7 +287,7 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="text-right space-y-1">
-                  <span className="text-gray-300 dark:text-gray-300 light:text-gray-600 text-sm font-medium">Just now</span>
+                  <span className="text-gray-600 dark:text-gray-300 text-sm font-medium">Just now</span>
                   <div className="w-12 h-1 bg-gradient-to-r from-green-400 to-transparent rounded-full"></div>
                 </div>
                 
@@ -306,7 +306,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-4 p-6 rounded-2xl bg-gradient-to-r from-blue-500/15 via-cyan-500/10 to-sky-500/15 border border-blue-500/20 hover:border-blue-400/40 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/15">
                 <div className="w-3 h-3 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full opacity-60"></div>
                 <div className="flex-1">
-                  <p className="text-gray-300 dark:text-gray-300 light:text-gray-700 font-medium">
+                  <p className="text-gray-700 dark:text-gray-300 font-medium">
                     Dashboard loaded with modern styling
                   </p>
                   <p className="text-gray-400 dark:text-gray-400 light:text-gray-600 text-sm">

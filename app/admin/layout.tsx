@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { AdminHeader } from '@/components/AdminHeader';
+import { AdminTopHeader } from '@/components/AdminTopHeader';
 import { ThemeColor } from '@/components/ThemeColorSelector';
 import { useTheme } from '@/contexts/ThemeContext';
 import { User, LogOut, ChevronRight, ChevronDown } from 'lucide-react';
@@ -95,10 +95,10 @@ export default function AdminLayout({
           {item.hasSubItems ? (
             <button
               onClick={() => toggleExpanded(item.name)}
-              className={`w-full flex items-center px-4 py-3 text-base rounded-xl transition-all duration-300 group relative overflow-hidden ${
+              className={`w-full flex items-center px-4 py-3 text-base rounded-lg transition-all duration-300 group relative overflow-hidden ${
                 isActive
-                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/25'
-                  : 'text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-blue-500/20 dark:text-gray-300 dark:hover:text-white light:text-gray-600 light:hover:text-gray-900 light:hover:bg-gradient-to-r light:hover:from-purple-500/10 light:hover:to-blue-500/10'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-gray-700'
               }`}
             >
               <span className="mr-3 text-lg z-10 relative">{item.icon}</span>
@@ -118,10 +118,10 @@ export default function AdminLayout({
           ) : (
             <Link
               href={item.href}
-              className={`flex items-center px-4 py-3 text-base rounded-xl transition-all duration-300 group relative overflow-hidden ${
+              className={`flex items-center px-4 py-3 text-base rounded-lg transition-all duration-300 group relative overflow-hidden ${
                 pathname.startsWith(item.href)
-                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/25'
-                  : 'text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-blue-500/20 dark:text-gray-300 dark:hover:text-white light:text-gray-600 light:hover:text-gray-900 light:hover:bg-gradient-to-r light:hover:from-purple-500/10 light:hover:to-blue-500/10'
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-white hover:bg-purple-50 dark:hover:bg-gray-700'
               }`}
               onClick={() => isMobile && setSidebarOpen(false)}
             >
@@ -144,7 +144,7 @@ export default function AdminLayout({
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3 }}
-                className="ml-4 mt-1 space-y-1 border-l-2 border-gray-700/30 dark:border-gray-700/30 light:border-gray-300/30 pl-4"
+                className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-600 pl-4"
               >
                 {item.subItems.map((subItem: any, subIndex: number) => (
                   <motion.div
@@ -157,8 +157,8 @@ export default function AdminLayout({
                       href={subItem.href}
                       className={`flex items-center px-3 py-2 text-sm rounded-lg transition-all duration-300 group ${
                         pathname.startsWith(subItem.href)
-                          ? 'bg-gradient-to-r from-purple-500/30 to-blue-500/30 text-white border border-purple-500/40'
-                          : 'text-gray-400 hover:text-white hover:bg-gray-700/30 dark:text-gray-400 dark:hover:text-white light:text-gray-500 light:hover:text-gray-900 light:hover:bg-gray-200/30'
+                          ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-gray-700'
                       }`}
                       onClick={() => isMobile && setSidebarOpen(false)}
                     >
@@ -208,23 +208,16 @@ export default function AdminLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 light:from-gray-50 light:via-white light:to-gray-100">
-      {/* Admin Header - Fixed positioning */}
-      <div className="fixed top-0 left-0 right-0 z-50 lg:pl-64">
-        <AdminHeader
-          navigation={navigation}
-          onNavigationFilter={handleNavigationFilter}
-          selectedThemeColor={themeColor}
-          onThemeColorChange={handleThemeColorChange}
-        />
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Admin Top Header */}
+      <AdminTopHeader />
 
       {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-20 left-0 right-0 z-40 flex items-center justify-between p-4 bg-gray-950/80 backdrop-blur-md border-b border-gray-800/50 dark:bg-gray-950/80 dark:border-gray-800/50 light:bg-white/80 light:border-gray-200/50 shadow-lg">
+      <div className="lg:hidden fixed top-20 left-0 right-0 z-40 flex items-center justify-between p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-lg">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="p-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800/50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800/50 light:text-gray-600 light:hover:text-gray-900 light:hover:bg-gray-100/50 transition-all duration-300"
+            className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition-all duration-300"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             <span className="sr-only">Open sidebar</span>
@@ -234,7 +227,7 @@ export default function AdminLayout({
             <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
               <span className="text-white text-sm font-bold">T</span>
             </div>
-            <h1 className="text-lg font-bold text-white dark:text-white light:text-gray-900">Tax Mahir Admin</h1>
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white">Tax Mahir Admin</h1>
           </div>
         </div>
         <ThemeToggle />
@@ -248,18 +241,18 @@ export default function AdminLayout({
           animate={{ x: 0 }}
           exit={{ x: -300 }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="fixed inset-y-0 left-0 w-64 flex flex-col bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 light:from-white light:via-gray-50 light:to-white border-r border-gray-700/50 dark:border-gray-700/50 light:border-gray-200/50 shadow-2xl"
+          className="fixed inset-y-0 left-0 w-64 flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-2xl"
         >
-          <div className="p-4 flex items-center justify-between border-b border-gray-700/50 dark:border-gray-700/50 light:border-gray-200/50">
+          <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pt-20">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
                 <span className="text-white text-sm font-bold">T</span>
               </div>
-              <h2 className="text-xl font-bold text-white dark:text-white light:text-gray-900">Tax Mahir</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Tax Mahir</h2>
             </div>
             <button 
               type="button" 
-              className="lg:hidden text-gray-400 hover:text-white dark:text-gray-400 dark:hover:text-white light:text-gray-500 light:hover:text-gray-900 p-2 rounded-lg hover:bg-gray-800/50 dark:hover:bg-gray-800/50 light:hover:bg-gray-100/50 transition-all duration-300" 
+              className="lg:hidden text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300" 
               onClick={() => setSidebarOpen(false)}
             >
               ✕
@@ -273,37 +266,36 @@ export default function AdminLayout({
       
       {/* Static sidebar for desktop */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 light:from-white light:via-gray-50 light:to-white border-r border-gray-700/50 dark:border-gray-700/50 light:border-gray-200/50 shadow-2xl">
-          <div className="p-4 flex items-center justify-between border-b border-gray-700/50 dark:border-gray-700/50 light:border-gray-200/50">
+        <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 pt-20">
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white text-lg font-bold">T</span>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white dark:text-white light:text-gray-900">Tax Mahir</h2>
-                <p className="text-xs text-gray-400 dark:text-gray-400 light:text-gray-500">Admin Panel</p>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Tax Mahir</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Admin Panel</p>
               </div>
             </div>
-            <ThemeToggle />
           </div>
           <nav className="flex-1 p-4 space-y-1" style={{ overflowY: 'auto' }}>
             {displayNavigation.map((item, index) => renderNavigationItem(item, index, false))}
           </nav>
           
           {/* User section */}
-          <div className="p-4 border-t border-gray-700/50 dark:border-gray-700/50 light:border-gray-200/50">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/50 dark:bg-gray-800/50 light:bg-gray-100/50">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
               <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white dark:text-white light:text-gray-900 truncate">Admin User</p>
-                <p className="text-xs text-gray-400 dark:text-gray-400 light:text-gray-500 truncate">admin@taxmahir.com</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">Admin User</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">admin@taxmahir.com</p>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-gray-400 hover:text-red-400 dark:text-gray-400 dark:hover:text-red-400 light:text-gray-500 light:hover:text-red-500"
+                className="h-8 w-8 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
               >
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -314,10 +306,10 @@ export default function AdminLayout({
       
       {/* Main content */}
       <div className="lg:pl-64 flex flex-col flex-1">
-        <main className="flex-1 pt-36 lg:pt-28 min-h-screen">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              <div className="bg-gray-800/30 dark:bg-gray-800/30 light:bg-white/70 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700/50 dark:border-gray-700/50 light:border-gray-200/50 p-6 min-h-[calc(100vh-12rem)]">
+        <main className="pt-20 min-h-screen">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 min-h-[calc(100vh-8rem)]">
                 {children}
               </div>
             </div>

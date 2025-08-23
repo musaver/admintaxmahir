@@ -32,7 +32,7 @@ sleep 30
 echo "✅ Frontend fixes deployed!"
 echo ""
 echo "🧪 Test the fixes:"
-echo "1. Go to your subdomain: https://swd.hisaab360.com/users/bulk-upload"
+echo "1. Go to your subdomain: https://swd.taxmahir.pk/users/bulk-upload"
 echo "2. Upload a CSV file with some errors (duplicate emails, invalid data)"
 echo "3. Verify the error display works without TypeScript errors"
 echo "4. Check browser console for any remaining errors"

@@ -4,8 +4,8 @@ import "./globals.css";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper"; // NEW wrapper
 
 export const metadata: Metadata = {
-  title: "Hisaab360 - Inventory Management",
-  description: "Complete inventory management solution for businesses",
+  title: "Tax Mahir - Business Services",
+  description: "Complete business services solution for businesses",
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -35,7 +35,22 @@ const geistMono = Geist_Mono({
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark')
+                } else {
+                  document.documentElement.classList.add('light')
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
       </body>

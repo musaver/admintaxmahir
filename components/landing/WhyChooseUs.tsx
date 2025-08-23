@@ -11,12 +11,6 @@ const reasons = [
     color: 'from-green-500 to-emerald-500',
   },
   {
-    icon: Zap,
-    title: 'Business Services',
-    description: 'Company Incorporation, ERP Induction, Bookkeeping, Financial Management, Treasury, Payroll, Taxation, Legal Compliance.',
-    color: 'from-yellow-500 to-orange-500',
-  },
-  {
     icon: Users,
     title: 'Team Collaboration',
     description: 'Work seamlessly with your team with role-based permissions.',
@@ -33,6 +27,12 @@ const reasons = [
     title: '24/7 Support',
     description: 'Round-the-clock customer support whenever you need help.',
     color: 'from-indigo-500 to-purple-500',
+  },
+  {
+    icon: Zap,
+    title: 'Business Services',
+    description: 'Company Registration, Admin & Supply Chain, Taxation & Litigation, Corporate & Legal, Lahore Chamber of Commerce & Industry (LCCI) Support, Procurement Support, Accounting & Payroll, License & Permits, Assistance with Visa Application Process, Graphic Design, Website Design and Social Media Handling, Banking & Financial Services.',
+    color: 'from-yellow-500 to-orange-500',
   },
   {
     icon: Heart,

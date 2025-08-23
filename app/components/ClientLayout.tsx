@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { AdminTopHeader } from '@/components/AdminTopHeader';
 import { 
   MenuIcon,
   LayoutDashboardIcon,
@@ -127,8 +128,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     return (
       <Link
         href={item.href}
-        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent ${
-          active ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
+        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-gray-100 dark:hover:bg-gray-700 ${
+          active ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
         }`}
         onClick={() => mobile && setSidebarOpen(false)}
         title={collapsed ? item.name : undefined}
@@ -202,7 +203,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           {Object.entries(categories).map(([key, category]) => (
             <div key={key} className="mb-4">
               {(!sidebarCollapsed || mobile) && (
-                <div className="mb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <div className="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   {category.name}
                 </div>
               )}
@@ -221,18 +222,18 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
       {/* User Profile */}
       <div className="mt-auto p-4">
-        <div className={`flex items-center gap-3 rounded-lg bg-muted/50 p-3 ${sidebarCollapsed && !mobile ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-3 rounded-lg bg-gray-100 dark:bg-gray-700 p-3 ${sidebarCollapsed && !mobile ? 'justify-center' : ''}`}>
           <Avatar className="h-8 w-8 flex-shrink-0">
-            <AvatarFallback>
+            <AvatarFallback className="bg-purple-500 text-white">
               {session?.user?.email?.charAt(0).toUpperCase() || 'A'}
             </AvatarFallback>
           </Avatar>
           {(!sidebarCollapsed || mobile) && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                 {session?.user?.email || 'Admin User'}
               </p>
-              <p className="text-xs text-muted-foreground">Administrator</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Administrator</p>
             </div>
           )}
         </div>
@@ -243,42 +244,47 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const sidebarWidth = sidebarCollapsed ? 'md:grid-cols-[80px_1fr] lg:grid-cols-[80px_1fr]' : 'md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]';
 
   return (
-    <div className={`grid min-h-screen w-full max-w-full overflow-hidden ${sidebarWidth}`}>
-      {/* Desktop Sidebar */}
-      <div className="hidden border-r bg-muted/40 md:block overflow-y-auto">
-        <SidebarContent />
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Admin Top Header */}
+      <AdminTopHeader />
+      
+      <div className={`grid min-h-screen w-full max-w-full overflow-hidden pt-20 ${sidebarWidth}`}>
+        {/* Desktop Sidebar */}
+        <div className="hidden border-r bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 md:block overflow-y-auto">
+          <SidebarContent />
+        </div>
 
-      <div className="flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Header */}
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 md:hidden flex-shrink-0">
-          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="shrink-0 relative">
-                <MenuIcon className="h-5 w-5" />
-                {pendingOrdersCount > 0 && (
-                  <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                    {pendingOrdersCount > 99 ? '99+' : pendingOrdersCount}
-                  </Badge>
-                )}
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="flex flex-col p-0">
-              <SidebarContent mobile={true} />
-            </SheetContent>
-          </Sheet>
-          <div className="w-full flex-1 min-w-0">
-            <h1 className="text-lg font-semibold truncate">Admin Panel</h1>
-          </div>
-        </header>
+        <div className="flex flex-col min-w-0 overflow-hidden">
+          {/* Mobile Header */}
+          <header className="flex h-14 items-center gap-4 border-b bg-white/40 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 px-4 lg:h-[60px] lg:px-6 md:hidden flex-shrink-0">
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="shrink-0 relative">
+                  <MenuIcon className="h-5 w-5" />
+                  {pendingOrdersCount > 0 && (
+                    <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                      {pendingOrdersCount > 99 ? '99+' : pendingOrdersCount}
+                    </Badge>
+                  )}
+                  <span className="sr-only">Toggle navigation menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="flex flex-col p-0">
+                <SidebarContent mobile={true} />
+              </SheetContent>
+            </Sheet>
+            <div className="w-full flex-1 min-w-0">
+              <h1 className="text-lg font-semibold truncate">Admin Panel</h1>
+            </div>
+          </header>
 
-        {/* Main Content */}
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 overflow-auto min-w-0 max-w-full">
-          <div className="w-full max-w-full min-w-0">
-            {children}
-          </div>
-        </main>
+          {/* Main Content */}
+          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 overflow-auto min-w-0 max-w-full bg-gray-50 dark:bg-gray-900">
+            <div className="w-full max-w-full min-w-0">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );
