@@ -298,6 +298,43 @@
   border-radius: 9999px;
 }
 
+/* Dynamic Theme Colors */
+:root[data-theme-color="purple-blue"] {
+  --theme-primary: 147 51% 56%;
+  --theme-secondary: 221 83% 53%;
+  --theme-gradient: linear-gradient(135deg, hsl(147 51% 56%), hsl(221 83% 53%));
+}
+
+:root[data-theme-color="green-emerald"] {
+  --theme-primary: 142 76% 36%;
+  --theme-secondary: 156 72% 67%;
+  --theme-gradient: linear-gradient(135deg, hsl(142 76% 36%), hsl(156 72% 67%));
+}
+
+:root[data-theme-color="orange-red"] {
+  --theme-primary: 25 95% 53%;
+  --theme-secondary: 0 84% 60%;
+  --theme-gradient: linear-gradient(135deg, hsl(25 95% 53%), hsl(0 84% 60%));
+}
+
+:root[data-theme-color="cyan-blue"] {
+  --theme-primary: 188 94% 68%;
+  --theme-secondary: 221 83% 53%;
+  --theme-gradient: linear-gradient(135deg, hsl(188 94% 68%), hsl(221 83% 53%));
+}
+
+:root[data-theme-color="pink-rose"] {
+  --theme-primary: 330 81% 60%;
+  --theme-secondary: 346 77% 49%;
+  --theme-gradient: linear-gradient(135deg, hsl(330 81% 60%), hsl(346 77% 49%));
+}
+
+:root[data-theme-color="indigo-purple"] {
+  --theme-primary: 239 84% 67%;
+  --theme-secondary: 147 51% 56%;
+  --theme-gradient: linear-gradient(135deg, hsl(239 84% 67%), hsl(147 51% 56%));
+}
+
 /* Enhanced button styling for landing page */
 .landing-page .bg-primary {
   background: hsl(var(--primary));

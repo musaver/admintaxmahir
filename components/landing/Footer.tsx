@@ -1,87 +1,122 @@
-import Image from "next/image";
-import logo from "@/public/landing-assets/logo.png";
-import { Facebook, Twitter, Linkedin, Instagram, Mail, Phone, MapPin } from "lucide-react";
+'use client';
 
-export function Footer() {
+import { motion } from 'framer-motion';
+import { Heart, Twitter, Github, Linkedin, Mail, Package } from 'lucide-react';
+
+const links = [
+  {
+    title: 'Product',
+    items: ['Features', 'Pricing', 'API', 'Integrations'],
+  },
+  {
+    title: 'Company',
+    items: ['About', 'Blog', 'Careers', 'Contact'],
+  },
+  {
+    title: 'Resources',
+    items: ['Help Center', 'Community', 'Tutorials', 'Status'],
+  },
+  {
+    title: 'Legal',
+    items: ['Privacy', 'Terms', 'Security', 'Cookies'],
+  },
+];
+
+const socialLinks = [
+  { icon: Twitter, href: '#', color: 'from-blue-400 to-blue-600' },
+  { icon: Github, href: '#', color: 'from-gray-400 to-gray-600' },
+  { icon: Linkedin, href: '#', color: 'from-blue-600 to-blue-800' },
+  { icon: Mail, href: '#', color: 'from-purple-400 to-purple-600' },
+];
+
+export default function Footer() {
   return (
-    <footer className="bg-foreground text-background">
-      <div className="container mx-auto px-4 max-w-7xl py-16">
-        <div className="grid md:grid-cols-4 gap-8">
-          {/* Company Info */}
-          <div className="space-y-6">
-            <div className="flex items-center space-x-2">
-            <Image className="rounded-lg" src={logo} alt="Hisaab360" width={150} height={100} />
-         
-            </div>
-            <p className="text-background/70 leading-relaxed">
-              Streamline your inventory management with our comprehensive solution designed for modern businesses.
-            </p>
-            {/*<div className="flex space-x-4">
-              <div className="w-10 h-10 bg-background/10 rounded-full flex items-center justify-center hover:bg-background/20 transition-smooth cursor-pointer">
-                <Facebook className="w-5 h-5" />
+    <footer className="py-20 px-6 relative border-t border-gray-800/50">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-6 gap-12 mb-12">
+          {/* Brand */}
+          <div className="md:col-span-2">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="space-y-6"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
+                  <Package className="w-6 h-6 text-white" />
+                </div>
+                <span className="text-2xl font-bold text-white">Tax Mahir</span>
               </div>
-              <div className="w-10 h-10 bg-background/10 rounded-full flex items-center justify-center hover:bg-background/20 transition-smooth cursor-pointer">
-                <Twitter className="w-5 h-5" />
+              <p className="text-gray-400 leading-relaxed">
+                Making inventory management delightful, one business at a time. Join thousands of happy customers worldwide.
+              </p>
+              <div className="flex gap-4">
+                {socialLinks.map((social, index) => (
+                  <motion.a
+                    key={index}
+                    href={social.href}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`w-10 h-10 rounded-xl bg-gradient-to-r ${social.color} flex items-center justify-center transition-transform duration-300 hover:shadow-lg`}
+                  >
+                    <social.icon className="w-5 h-5 text-white" />
+                  </motion.a>
+                ))}
               </div>
-              <div className="w-10 h-10 bg-background/10 rounded-full flex items-center justify-center hover:bg-background/20 transition-smooth cursor-pointer">
-                <Linkedin className="w-5 h-5" />
-              </div>
-              <div className="w-10 h-10 bg-background/10 rounded-full flex items-center justify-center hover:bg-background/20 transition-smooth cursor-pointer">
-                <Instagram className="w-5 h-5" />
-              </div>
-            </div>*/}
+            </motion.div>
           </div>
 
-          {/* Quick Links */}
-          <div className="space-y-6">
-            <h3 className="font-semibold text-lg">Quick Links</h3>
-            <ul className="space-y-3">
-              <li><a href="#features" className="text-background/70 hover:text-background transition-smooth">Features</a></li>
-              <li><a href="#industries" className="text-background/70 hover:text-background transition-smooth">Industries</a></li>
-              <li><a href="#whychooseus" className="text-background/70 hover:text-background transition-smooth">Why Choose Us</a></li>
-              
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div className="space-y-6">
-            <h3 className="font-semibold text-lg">Support</h3>
-            <ul className="space-y-3">
-            <li><a href="#faq" className="text-background/70 hover:text-background transition-smooth">FAQ</a></li>
-            <li><a href="#contact" className="text-background/70 hover:text-background transition-smooth">Contact Us</a></li>
-            <li><a href="mailto:support@hisaab360.com" className="flex items-center space-x-2 text-background/70 hover:text-background transition-smooth"><Mail className="w-5 h-5 text-background/70" />
-            <span className="text-background/70">support@hisaab360.com</span></a></li>
-            </ul>
-          </div>
-
-          {/* Contact Info */}
-          <div className="space-y-6">
-            <h3 className="font-semibold text-lg">Contact</h3>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                
-              </div>
-              <div className="flex items-center space-x-3">
-                <Phone className="w-5 h-5 text-background/70" />
-                <span className="text-background/70">+92 335 5836 228</span>
-              </div>
-              <div className="flex items-start space-x-3">
-                <MapPin className="w-5 h-5 text-background/70 mt-1" />
-                <span className="text-background/70">
-                Alrasheed arcade second floor <br/> 
-                Flat no 1 mujahid street , <br/>
-                Defence road , Rawalpindi
-                </span>
-              </div>
-            </div>
-          </div>
+          {/* Links */}
+          {links.map((group, groupIndex) => (
+            <motion.div
+              key={groupIndex}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: groupIndex * 0.1 }}
+            >
+              <h3 className="font-semibold text-white mb-6">{group.title}</h3>
+              <ul className="space-y-4">
+                {group.items.map((item, itemIndex) => (
+                  <li key={itemIndex}>
+                    <a
+                      href="#"
+                      className="text-gray-400 hover:text-purple-400 transition-colors duration-300 relative group"
+                    >
+                      {item}
+                      <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-blue-400 group-hover:w-full transition-all duration-300"></span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          ))}
         </div>
 
-        <div className="border-t border-background/20 mt-12 pt-8 text-center">
-          <p className="text-background/70">
-            © 2025 Hisaab360. All rights reserved.
+        {/* Bottom */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="pt-8 border-t border-gray-800/50 flex flex-col md:flex-row justify-between items-center gap-6"
+        >
+          <p className="text-gray-400 text-center md:text-left">
+            © 2025 Tax Mahir. Made with{' '}
+            <Heart className="inline w-4 h-4 text-red-500 mx-1" />
+            for businesses everywhere.
           </p>
-        </div>
+          <div className="flex gap-8 text-sm text-gray-400">
+            <a href="#" className="hover:text-purple-400 transition-colors">
+              Status
+            </a>
+            <a href="#" className="hover:text-purple-400 transition-colors">
+              Changelog
+            </a>
+            <a href="#" className="hover:text-purple-400 transition-colors">
+              Documentation
+            </a>
+          </div>
+        </motion.div>
       </div>
     </footer>
   );

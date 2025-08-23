@@ -3,17 +3,18 @@ import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { isSubdomainRequest } from '@/lib/subdomain-utils';
-import { Header } from "@/components/landing/Header";
-import { HeroSection } from "@/components/landing/HeroSection";
-import { FeaturesSection } from "@/components/landing/FeaturesSection";
-import { IndustriesSection } from "@/components/landing/IndustriesSection";
-import { ServicesSection } from "@/components/landing/ServicesSection";
-import { BenefitsSection } from "@/components/landing/BenefitsSection";
-import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
-import { FaqSection } from "@/components/landing/FaqSection";
-import { ContactSection } from "@/components/landing/ContactSection";
-import { CtaSection } from "@/components/landing/CtaSection";
-import { Footer } from "@/components/landing/Footer";
+import Header from "@/components/landing/Header";
+import Hero from "@/components/landing/Hero";
+import Features from "@/components/landing/Features";
+import WhyChooseUs from "@/components/landing/WhyChooseUs";
+import HowItWorks from "@/components/landing/HowItWorks";
+import Industries from "@/components/landing/Industries";
+import AdditionalServices from "@/components/landing/AdditionalServices";
+import Testimonials from "@/components/landing/Testimonials";
+import Pricing from "@/components/landing/Pricing";
+import FAQ from "@/components/landing/FAQ";
+import Contact from "@/components/landing/Contact";
+import Footer from "@/components/landing/Footer";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -73,17 +74,18 @@ export default function HomePage() {
   // This is the main domain - show landing page
   if (showLanding) {
     return (
-      <div className="landing-page min-h-screen bg-background">
+      <div className="min-h-screen bg-gray-950 text-white overflow-x-hidden">
         <Header />
-        <HeroSection />
-        <FeaturesSection />
-        <BenefitsSection />
-        <IndustriesSection />
-        <ServicesSection />
-        <HowItWorksSection />
-        <FaqSection />
-        <ContactSection />
-        <CtaSection />
+        <Hero />
+        <Features />
+        <WhyChooseUs />
+        <HowItWorks />
+        <Industries />
+        {/*<AdditionalServices />*/}
+        <Testimonials />
+        <Pricing />
+        <FAQ />
+        <Contact />
         <Footer />
       </div>
     );

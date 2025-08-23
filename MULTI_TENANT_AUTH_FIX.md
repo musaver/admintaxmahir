@@ -28,7 +28,7 @@ Make sure these are set in your Vercel dashboard:
 
 ```env
 # NextAuth Configuration (CRITICAL)
-NEXTAUTH_URL=https://hisaab360.com
+NEXTAUTH_URL=https://taxmahir.pk
 NEXTAUTH_SECRET=your-super-secure-jwt-secret-here
 
 # Database Configuration
