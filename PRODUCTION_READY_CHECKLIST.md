@@ -67,9 +67,8 @@ NEXT_PUBLIC_ROOT_DOMAIN=yourdomain.com
 vercel --prod
 
 # Or using Git (recommended)
-git add .
-git commit -m "Add production-ready product import with Inngest"
-git push origin main
+
+
 ```
 
 ### 3. **Inngest Setup**

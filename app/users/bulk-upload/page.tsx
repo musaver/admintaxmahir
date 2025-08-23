@@ -6,6 +6,7 @@ interface ImportJob {
   id: string;
   fileName: string;
   status: string;
+  type: string; // 'users' or 'products'
   totalRecords: number;
   processedRecords: number;
   successfulRecords: number;
@@ -17,22 +18,29 @@ interface ImportJob {
   completedAt: string | null;
   errors: Array<{
     row: number;
-    email: string;
+    email?: string;
+    identifier?: string;
     message: string;
   }>;
   results: {
     successful: number;
     failed: number;
-    successfulUsers: Array<{
+    successfulUsers?: Array<{
       id: string;
       name: string;
       email: string;
+    }>;
+    successfulProducts?: Array<{
+      id: string;
+      name: string;
+      sku: string;
     }>;
   } | null;
 }
 
 export default function BulkUserUpload() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'users' | 'products'>('users');
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [currentJob, setCurrentJob] = useState<ImportJob | null>(null);
@@ -51,17 +59,29 @@ export default function BulkUserUpload() {
   };
 
   const downloadTemplate = () => {
-    const csvContent = `Name,Email,Buyer NTN Or CNIC,Buyer Business Name,Buyer Province,Buyer Address,Buyer Registration Type
+    let csvContent = '';
+    let fileName = '';
+    
+    if (activeTab === 'users') {
+      csvContent = `Name,Email,Buyer NTN Or CNIC,Buyer Business Name,Buyer Province,Buyer Address,Buyer Registration Type
 "John Doe","john.doe@example.com","1234567890123","Doe Industries","Punjab","123 Business Street, Lahore","Individual"
 "Jane Smith","jane.smith@example.com","9876543210987","Smith Trading Co","Sindh","456 Commerce Avenue, Karachi","Company"
 "Ahmed Khan","ahmed.khan@example.com","1122334455667","Khan Enterprises","KPK","789 Market Road, Peshawar","Partnership"`;
+      fileName = 'bulk_user_import_template.csv';
+    } else {
+      csvContent = `Product SKU,Product Title,Product Price,Product Description
+"PROD-001","Sample Product","29.99","A great product description"
+"PROD-002","Another Product","49.99","Another excellent product"
+"PROD-003","Third Product","19.99","Third amazing product description"`;
+      fileName = 'bulk_product_import_template.csv';
+    }
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.style.display = 'none';
     a.href = url;
-    a.download = 'bulk_user_import_template.csv';
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -81,6 +101,7 @@ export default function BulkUserUpload() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('uploadedBy', 'current-user'); // TODO: Get from auth context
+      formData.append('type', activeTab); // Add import type
 
       const response = await fetch('/api/users/bulk-upload', {
         method: 'POST',
@@ -151,13 +172,47 @@ export default function BulkUserUpload() {
     <div className="p-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Bulk User Import</h1>
+          <h1 className="text-2xl font-bold">Bulk Import</h1>
           <button
-            onClick={() => router.push('/users')}
+            onClick={() => router.push(activeTab === 'users' ? '/users' : '/products')}
             className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
           >
-            Back to Users
+            Back to {activeTab === 'users' ? 'Users' : 'Products'}
           </button>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => {
+                  setActiveTab('users');
+                  resetForm();
+                }}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'users'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                👥 Import Users
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('products');
+                  resetForm();
+                }}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'products'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                📦 Import Products
+              </button>
+            </nav>
+          </div>
         </div>
 
         {/* Instructions */}
@@ -165,11 +220,22 @@ export default function BulkUserUpload() {
           <h2 className="text-lg font-semibold text-blue-800 mb-3">📋 Instructions</h2>
           <ul className="space-y-2 text-blue-700">
             <li>• Download the CSV template below to see the required format</li>
-            <li>• Required fields: <strong>Name, Email</strong></li>
-            <li>• Optional fields: Buyer NTN/CNIC, Business Name, Province, Address, Registration Type</li>
-            <li>• Supports up to 100MB files (~200,000 users)</li>
+            {activeTab === 'users' ? (
+              <>
+                <li>• Required fields: <strong>Name, Email</strong></li>
+                <li>• Optional fields: Buyer NTN/CNIC, Business Name, Province, Address, Registration Type</li>
+                <li>• Supports up to 100MB files (~200,000 users)</li>
+                <li>• Duplicate emails within your tenant will be skipped</li>
+              </>
+            ) : (
+              <>
+                <li>• Required fields: <strong>Product SKU, Product Title, Product Price</strong></li>
+                <li>• Optional fields: Product Description</li>
+                <li>• Supports up to 100MB files (~300,000 products)</li>
+                <li>• Duplicate SKUs within your tenant will be skipped</li>
+              </>
+            )}
             <li>• Processing happens in background - you'll see real-time progress</li>
-            <li>• Duplicate emails within your tenant will be skipped</li>
             <li>• Save your file as CSV format</li>
           </ul>
         </div>
@@ -178,19 +244,19 @@ export default function BulkUserUpload() {
         <div className="bg-white border rounded-lg p-6 mb-6">
           <h2 className="text-lg font-semibold mb-3">📥 Download Template</h2>
           <p className="text-gray-600 mb-4">
-            Download the CSV template with the correct format and sample data.
+            Download the {activeTab === 'users' ? 'user' : 'product'} CSV template with the correct format and sample data.
           </p>
           <button
             onClick={downloadTemplate}
             className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
           >
-            📄 Download CSV Template
+            📄 Download {activeTab === 'users' ? 'User' : 'Product'} CSV Template
           </button>
         </div>
 
         {/* Upload Form */}
         <div className="bg-white border rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">📤 Upload Users</h2>
+          <h2 className="text-lg font-semibold mb-4">📤 Upload {activeTab === 'users' ? 'Users' : 'Products'}</h2>
           
           {error && (
             <div className="mb-4 p-3 bg-red-100 border border-red-200 text-red-700 rounded">
@@ -303,7 +369,7 @@ export default function BulkUserUpload() {
             </div>
 
             {/* Success Details */}
-            {currentJob.results?.successfulUsers && Array.isArray(currentJob.results.successfulUsers) && currentJob.results.successfulUsers.length > 0 && (
+            {currentJob.type === 'users' && currentJob.results?.successfulUsers && Array.isArray(currentJob.results.successfulUsers) && currentJob.results.successfulUsers.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-md font-semibold text-green-800 mb-2">✅ Successfully Created Users (showing first 20)</h3>
                 <div className="bg-green-50 border border-green-200 rounded p-3 max-h-60 overflow-y-auto">
@@ -321,6 +387,24 @@ export default function BulkUserUpload() {
               </div>
             )}
 
+            {currentJob.type === 'products' && currentJob.results?.successfulProducts && Array.isArray(currentJob.results.successfulProducts) && currentJob.results.successfulProducts.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-md font-semibold text-green-800 mb-2">✅ Successfully Created Products (showing first 20)</h3>
+                <div className="bg-green-50 border border-green-200 rounded p-3 max-h-60 overflow-y-auto">
+                  {currentJob.results.successfulProducts.slice(0, 20).map((product, index) => (
+                    <div key={index} className="text-sm text-green-700 mb-1">
+                      {product.name} (SKU: {product.sku})
+                    </div>
+                  ))}
+                  {currentJob.results.successfulProducts.length > 20 && (
+                    <div className="text-sm text-green-600 italic">
+                      ... and {currentJob.results.successfulProducts.length - 20} more
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Error Details */}
             {currentJob.errors && Array.isArray(currentJob.errors) && currentJob.errors.length > 0 && (
               <div className="mb-6">
@@ -330,7 +414,10 @@ export default function BulkUserUpload() {
                     <div key={index} className="text-sm text-red-700 mb-2">
                       <strong>Row {error.row}:</strong> {error.message}
                       <div className="ml-4 text-red-600">
-                        Email: {error.email}
+                        {currentJob.type === 'users' 
+                          ? `Email: ${error.email || 'N/A'}`
+                          : `SKU: ${error.identifier || 'N/A'}`
+                        }
                       </div>
                     </div>
                   ))}
@@ -346,10 +433,10 @@ export default function BulkUserUpload() {
             {currentJob.status === 'completed' && (
               <div className="pt-4 border-t">
                 <button
-                  onClick={() => router.push('/users')}
+                  onClick={() => router.push(currentJob.type === 'users' ? '/users' : '/products')}
                   className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                 >
-                  View All Users
+                  View All {currentJob.type === 'users' ? 'Users' : 'Products'}
                 </button>
               </div>
             )}

@@ -55,7 +55,7 @@ export const POST = withTenant(async (request: NextRequest, context) => {
 
     // Trigger Inngest background job
     await inngest.send({
-      name: 'product/simple-import',
+      name: 'product/bulk-import',
       data: {
         jobId,
         blobUrl: blob.url,

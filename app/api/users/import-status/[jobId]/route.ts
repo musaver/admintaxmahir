@@ -22,14 +22,14 @@ export async function GET(
       return ErrorResponses.invalidInput('Job ID is required');
     }
 
-    // Get job details with tenant filtering
+    // Get job details with tenant filtering (support both users and products)
     const job = await db
       .select()
       .from(importJobs)
       .where(and(
         eq(importJobs.id, jobId),
-        eq(importJobs.tenantId, tenantId),
-        eq(importJobs.type, 'users')
+        eq(importJobs.tenantId, tenantId)
+        // Remove type filter to support both users and products
       ))
       .limit(1);
 
@@ -57,6 +57,7 @@ export async function GET(
       id: importJob.id,
       fileName: importJob.fileName,
       status: importJob.status,
+      type: importJob.type, // Include type in response
       totalRecords: importJob.totalRecords || 0,
       processedRecords: importJob.processedRecords || 0,
       successfulRecords: importJob.successfulRecords || 0,
