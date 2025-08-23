@@ -278,7 +278,7 @@ export default function ProductsList() {
             Refresh
           </Button>
           <Button asChild variant="outline">
-            <Link href="/users/bulk-upload">
+            <Link href="/users/bulk-upload?tab=products">
               📤 Bulk Import
             </Link>
           </Button>

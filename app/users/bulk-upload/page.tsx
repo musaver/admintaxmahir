@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface ImportJob {
   id: string;
@@ -40,7 +40,11 @@ interface ImportJob {
 
 export default function BulkUserUpload() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'users' | 'products'>('users');
+  const searchParams = useSearchParams();
+  
+  // Check if we should default to products tab
+  const defaultTab = searchParams.get('tab') === 'products' ? 'products' : 'users';
+  const [activeTab, setActiveTab] = useState<'users' | 'products'>(defaultTab);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [currentJob, setCurrentJob] = useState<ImportJob | null>(null);
