@@ -52,17 +52,9 @@ export const POST = withTenant(async (request: NextRequest, context) => {
     };
 
     await db.insert(importJobs).values(importJob);
-    console.log('✅ Import job record created:', { jobId, tenantId: context.tenantId, fileName: file.name });
 
     // Trigger Inngest background job
-    console.log('🚀 Sending Inngest event:', {
-      name: 'product/bulk-import',
-      jobId,
-      tenantId: context.tenantId,
-      fileName: file.name
-    });
-    
-    const inngestResult = await inngest.send({
+    await inngest.send({
       name: 'product/simple-import',
       data: {
         jobId,
@@ -72,8 +64,6 @@ export const POST = withTenant(async (request: NextRequest, context) => {
         uploadedBy: uploadedBy || 'unknown',
       },
     });
-    
-    console.log('✅ Inngest event sent:', inngestResult);
 
     return NextResponse.json({ 
       jobId,

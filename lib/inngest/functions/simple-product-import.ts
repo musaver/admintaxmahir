@@ -86,13 +86,13 @@ async function processProducts(
   return { successful, failed, errors };
 }
 
-// Simplified Inngest function (similar to user import)
+// Production-ready Inngest function (matches user import pattern)
 export const simpleProductImport = inngest.createFunction(
   { 
     id: 'simple-product-import',
-    name: 'Simple Product Import',
+    name: 'Simple Product Import (Production)',
     concurrency: {
-      limit: 5,
+      limit: 10, // Match user import concurrency
     }
   },
   { event: 'product/simple-import' },
@@ -132,8 +132,8 @@ export const simpleProductImport = inngest.createFunction(
         return await processProducts(productData, tenantId);
       });
 
-      // Step 5: Update job completion
-      await step.run('update-job-completion', async () => {
+      // Step 5: Mark job as completed (match user import format)
+      await step.run('mark-job-completed', async () => {
         await db.update(importJobs)
           .set({
             status: 'completed',
@@ -143,28 +143,31 @@ export const simpleProductImport = inngest.createFunction(
             failedRecords: result.failed,
             errors: result.errors.length > 0 ? result.errors : null,
             results: {
-              message: `Import completed: ${result.successful} successful, ${result.failed} failed`,
-              totalProcessed: productData.length,
               successful: result.successful,
-              failed: result.failed
+              failed: result.failed,
+              successfulProducts: [] // Match user import structure
             }
           })
           .where(eq(importJobs.id, jobId));
       });
 
-      console.log(`✅ Product import completed: ${result.successful} successful, ${result.failed} failed`);
-      return result;
+      return { 
+        success: true, 
+        totalProcessed: productData.length,
+        successful: result.successful,
+        failed: result.failed
+      };
 
     } catch (error: any) {
-      console.error('❌ Product import failed:', error);
-
-      // Update job with error status
-      await step.run('update-job-error', async () => {
+      // Mark job as failed (match user import error handling)
+      await step.run('mark-job-failed', async () => {
         await db.update(importJobs)
-          .set({
+          .set({ 
             status: 'failed',
             completedAt: new Date(),
-            errors: [`Import failed: ${error.message}`]
+            errors: [{
+              message: `Import failed: ${error.message}` 
+            }]
           })
           .where(eq(importJobs.id, jobId));
       });
