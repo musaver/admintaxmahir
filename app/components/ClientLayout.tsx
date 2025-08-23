@@ -84,6 +84,27 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     }
   }, [session]);
 
+  // Auto-expand navigation items with active sub-items
+  useEffect(() => {
+    if (!session) return; // Only run when session exists
+    
+    const productsSubItems = [
+      { name: 'Inventory', href: '/inventory', icon: BarChart3Icon },
+      { name: 'Categories', href: '/categories', icon: FolderIcon },
+    ];
+    
+    const hasActiveSub = productsSubItems.some(subItem => {
+      if (subItem.href === '/') {
+        return pathname === '/' || pathname === '/dashboard';
+      }
+      return pathname.startsWith(subItem.href);
+    });
+    
+    if (hasActiveSub && !expandedItems['Products']) {
+      setExpandedItems(prev => ({ ...prev, 'Products': true }));
+    }
+  }, [pathname, expandedItems, session]);
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -115,7 +136,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     /*{ name: 'Tags', href: '/tags', icon: TagIcon, category: 'main' },*/
     
     /*{ name: 'Suppliers', href: '/suppliers', icon: BuildingIcon, category: 'operations' },*/
-    { name: 'Customer Orders', href: '/orders', icon: ShoppingCartIcon, category: 'operations', badge: pendingOrdersCount > 0 ? pendingOrdersCount : null },
+    { name: 'Orders / Invoices', href: '/orders', icon: ShoppingCartIcon, category: 'operations', badge: pendingOrdersCount > 0 ? pendingOrdersCount : null },
     /*{ name: 'Purchase Orders', href: '/orders/purchase', icon: ShoppingCartIcon, category: 'operations' },*/
     /*{ name: 'Drivers', href: '/drivers', icon: TruckIcon, category: 'operations' },*/
     /*{ name: 'Reports', href: '/reports', icon: TrendingUpIcon, category: 'operations' },*/
@@ -162,18 +183,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     return subItems?.some(subItem => isActive(subItem.href)) || false;
   };
 
-  // Auto-expand navigation items with active sub-items
-  useEffect(() => {
-    const productsSubItems = [
-      { name: 'Inventory', href: '/inventory', icon: BarChart3Icon },
-      { name: 'Categories', href: '/categories', icon: FolderIcon },
-    ];
-    
-    const hasActiveSub = productsSubItems.some(subItem => isActive(subItem.href));
-    if (hasActiveSub && !expandedItems['Products']) {
-      setExpandedItems(prev => ({ ...prev, 'Products': true }));
-    }
-  }, [pathname, expandedItems]);
 
   const NavItem = ({ item, mobile = false, collapsed = false }: { item: NavigationItem, mobile?: boolean, collapsed?: boolean }) => {
     const active = isActive(item.href);
@@ -184,12 +193,16 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     
     if (hasSubItems && !collapsed) {
       return (
-        <Collapsible open={expanded} onOpenChange={() => toggleExpanded(item.name)}>
-          <CollapsibleTrigger asChild>
-            <button
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-sidebar-accent w-full text-left ${
-                active || hasActiveSub ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'text-sidebar-foreground hover:text-sidebar-accent-foreground'
-              }`}
+        <Collapsible open={expanded}>
+          <div
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-sidebar-accent w-full ${
+              active || hasActiveSub ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'text-sidebar-foreground hover:text-sidebar-accent-foreground'
+            }`}
+          >
+            <Link
+              href={item.href}
+              className="flex items-center gap-3 flex-1 min-w-0"
+              onClick={() => mobile && setSidebarOpen(false)}
               title={collapsed ? item.name : undefined}
             >
               <Icon className="h-4 w-4 flex-shrink-0" />
@@ -199,15 +212,20 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                   {item.badge > 99 ? '99+' : item.badge}
                 </Badge>
               )}
-              <div className="ml-auto">
+            </Link>
+            <CollapsibleTrigger asChild>
+              <button
+                onClick={() => toggleExpanded(item.name)}
+                className="ml-auto p-1 hover:bg-sidebar-accent-foreground/10 rounded"
+              >
                 {expanded ? (
                   <ChevronUpIcon className="h-4 w-4 text-sidebar-foreground/50" />
                 ) : (
                   <ChevronDownIcon className="h-4 w-4 text-sidebar-foreground/50" />
                 )}
-              </div>
-            </button>
-          </CollapsibleTrigger>
+              </button>
+            </CollapsibleTrigger>
+          </div>
           <CollapsibleContent className="space-y-1 mt-1 pl-3 border-l border-sidebar-border/50 ml-3">
             {item.subItems?.map((subItem) => (
               <Link
