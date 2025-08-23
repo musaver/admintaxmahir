@@ -128,8 +128,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     return (
       <Link
         href={item.href}
-        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-gray-100 dark:hover:bg-gray-700 ${
-          active ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 font-medium' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-sidebar-accent ${
+          active ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'text-sidebar-foreground hover:text-sidebar-accent-foreground'
         }`}
         onClick={() => mobile && setSidebarOpen(false)}
         title={collapsed ? item.name : undefined}
@@ -203,7 +203,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           {Object.entries(categories).map(([key, category]) => (
             <div key={key} className="mb-4">
               {(!sidebarCollapsed || mobile) && (
-                <div className="mb-2 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <div className="mb-2 px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
                   {category.name}
                 </div>
               )}
@@ -222,18 +222,18 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
       {/* User Profile */}
       <div className="mt-auto p-4">
-        <div className={`flex items-center gap-3 rounded-lg bg-gray-100 dark:bg-gray-700 p-3 ${sidebarCollapsed && !mobile ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-3 rounded-lg bg-sidebar-accent p-3 ${sidebarCollapsed && !mobile ? 'justify-center' : ''}`}>
           <Avatar className="h-8 w-8 flex-shrink-0">
-            <AvatarFallback className="bg-purple-500 text-white">
+            <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
               {session?.user?.email?.charAt(0).toUpperCase() || 'A'}
             </AvatarFallback>
           </Avatar>
           {(!sidebarCollapsed || mobile) && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              <p className="text-sm font-medium text-sidebar-accent-foreground truncate">
                 {session?.user?.email || 'Admin User'}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Administrator</p>
+              <p className="text-xs text-sidebar-foreground/70">Administrator</p>
             </div>
           )}
         </div>
@@ -244,19 +244,19 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const sidebarWidth = sidebarCollapsed ? 'md:grid-cols-[80px_1fr] lg:grid-cols-[80px_1fr]' : 'md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Admin Top Header */}
       <AdminTopHeader />
       
       <div className={`grid min-h-screen w-full max-w-full overflow-hidden pt-20 ${sidebarWidth}`}>
         {/* Desktop Sidebar */}
-        <div className="hidden border-r bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 md:block overflow-y-auto">
+        <div className="hidden border-r bg-sidebar border-sidebar-border md:block overflow-y-auto">
           <SidebarContent />
         </div>
 
         <div className="flex flex-col min-w-0 overflow-hidden">
           {/* Mobile Header */}
-          <header className="flex h-14 items-center gap-4 border-b bg-white/40 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 px-4 lg:h-[60px] lg:px-6 md:hidden flex-shrink-0">
+          <header className="flex h-14 items-center gap-4 border-b bg-sidebar/40 border-sidebar-border px-4 lg:h-[60px] lg:px-6 md:hidden flex-shrink-0">
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon" className="shrink-0 relative">
@@ -279,7 +279,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </header>
 
           {/* Main Content */}
-          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 overflow-auto min-w-0 max-w-full bg-gray-50 dark:bg-gray-900">
+          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 overflow-auto min-w-0 max-w-full bg-background">
             <div className="w-full max-w-full min-w-0">
               {children}
             </div>

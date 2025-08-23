@@ -76,10 +76,16 @@ export default function Pricing() {
           </h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto mb-12">
             Choose the perfect plan for your business. All plans include a 14-day free trial.
+            <br />
+            One time registration fee of Rs. 15,000 is required for all plans.
+            <br />
+            <i>
+              Note: Yearly plan is also available with discount.
+            </i>
           </p>
 
           {/* Toggle */}
-          <div className="inline-flex items-center gap-4 bg-gray-800/50 rounded-full p-2 border border-gray-700/50">
+          <div className="hidden items-center gap-4 bg-gray-800/50 rounded-full p-2 border border-gray-700/50">
             <button
               onClick={() => setIsYearly(false)}
               className={`px-6 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
