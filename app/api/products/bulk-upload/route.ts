@@ -13,18 +13,18 @@ export const POST = withTenant(async (request: NextRequest, context) => {
     const uploadedBy = formData.get('uploadedBy') as string;
     
     if (!file) {
-      return ErrorResponses.badRequest('No file provided');
+      return ErrorResponses.invalidInput('No file provided');
     }
 
     // Validate file type (CSV only for now)
     if (!file.name.endsWith('.csv')) {
-      return ErrorResponses.badRequest('Please upload a CSV file');
+      return ErrorResponses.invalidInput('Please upload a CSV file');
     }
 
     // Validate file size (100MB limit for bulk imports)
     const maxSize = 100 * 1024 * 1024; // 100MB
     if (file.size > maxSize) {
-      return ErrorResponses.badRequest('File too large. Maximum size is 100MB.');
+      return ErrorResponses.invalidInput('File too large. Maximum size is 100MB.');
     }
 
     // Generate unique job ID
@@ -63,7 +63,7 @@ export const POST = withTenant(async (request: NextRequest, context) => {
     });
     
     const inngestResult = await inngest.send({
-      name: 'product/bulk-import',
+      name: 'product/simple-import',
       data: {
         jobId,
         blobUrl: blob.url,
