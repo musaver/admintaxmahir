@@ -41,15 +41,7 @@ export function AdminTopHeader() {
         {/* Right Section */}
         <div className="flex items-center gap-3">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground hover:bg-accent">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full text-xs"></span>
-          </Button>
-
-          {/* Settings */}
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-accent">
-            <Settings className="h-5 w-5" />
-          </Button>
+          
 
           {/* Theme Toggle */}
           <ThemeToggle />
