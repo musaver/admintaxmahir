@@ -1,7 +1,7 @@
 import { inngest } from '@/lib/inngest';
 import { db } from '@/lib/db';
 import { importJobs, user, userLoyaltyPoints, products } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 
 interface UserImportRow {
@@ -368,7 +368,10 @@ async function processProductChunk(
       // Check if product with same SKU already exists in this tenant
       const existingProduct = await db.select({ id: products.id })
         .from(products)
-        .where(eq(products.sku, productData.sku.trim()))
+        .where(and(
+          eq(products.sku, productData.sku.trim()),
+          eq(products.tenantId, tenantId)
+        ))
         .limit(1);
 
       if (existingProduct.length > 0) {
@@ -390,9 +393,9 @@ async function processProductChunk(
         tenantId,
         name: productData.title.trim(),
         sku: productData.sku.trim(),
-        price: price.toString(),
+        price: price.toFixed(2), // Convert to proper decimal format
         description: productData.description?.trim() || null,
-        slug: `${productData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}`,
+        slug: `${productData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${newProductId.substring(0, 8)}`, // Use unique ID part instead of timestamp
         shortDescription: null,
         comparePrice: null,
         costPrice: null,
@@ -411,8 +414,8 @@ async function processProductChunk(
         taxable: true,
         taxAmount: '0.00',
         taxPercentage: '0.00',
-        priceIncludingTax: '0.00',
-        priceExcludingTax: price.toString(),
+        priceIncludingTax: price.toFixed(2), // Set to same as price
+        priceExcludingTax: price.toFixed(2), // Set to same as price
         extraTax: '0.00',
         furtherTax: '0.00',
         fedPayableTax: '0.00',
@@ -434,8 +437,14 @@ async function processProductChunk(
         updatedAt: new Date(),
       };
 
-      // Insert product
-      await db.insert(products).values(newProduct);
+      // Insert product with error handling
+      try {
+        await db.insert(products).values(newProduct);
+        console.log(`✅ Product inserted successfully: ${newProduct.name} (SKU: ${newProduct.sku})`);
+      } catch (insertError: any) {
+        console.error(`❌ Failed to insert product: ${newProduct.name} (SKU: ${newProduct.sku})`, insertError);
+        throw insertError;
+      }
 
       result.successful++;
       result.successfulProducts!.push({
