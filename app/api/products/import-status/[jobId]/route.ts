@@ -29,7 +29,7 @@ export async function GET(
       .where(and(
         eq(importJobs.id, jobId),
         eq(importJobs.tenantId, tenantId),
-        eq(importJobs.type, 'users')
+        eq(importJobs.type, 'products')
       ))
       .limit(1);
 
@@ -41,7 +41,7 @@ export async function GET(
 
     // Calculate progress percentage
     const progressPercent = importJob.totalRecords > 0 
-      ? Math.round((importJob.processedRecords / importJob.totalRecords) * 100) 
+      ? Math.round((importJob.processedRecords / importJob.totalRecords) * 100)
       : 0;
 
     // Estimate time remaining (very rough estimate)

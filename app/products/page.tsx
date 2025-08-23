@@ -277,6 +277,11 @@ export default function ProductsList() {
             <RefreshCwIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          <Button asChild variant="outline">
+            <Link href="/products/bulk-upload">
+              📤 Bulk Import
+            </Link>
+          </Button>
           <Button asChild>
             <Link href="/products/add">
               <PlusIcon className="h-4 w-4 mr-2" />
