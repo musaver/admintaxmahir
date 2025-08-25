@@ -101,11 +101,8 @@ export default function Industries() {
           className="text-center mb-20"
         >
           <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-            Industries We
-            <br />
-            <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
-              Love to Help
-            </span>
+            Business Services
+            
           </h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
             From small boutiques to large enterprises, our platform adapts to your business needs.
