@@ -18,7 +18,7 @@ export function AdminTopHeader() {
         {/* Business Name */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-            <Building2 className="w-6 h-6 text-white" />
+            <img src="/taxmahirlogo.png" alt="Tax Mahir" className="w-10 h-10 p-2" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Tax Mahir</h1>
@@ -48,7 +48,7 @@ export function AdminTopHeader() {
 
           {/* User Profile */}
           <div className="flex items-center gap-2 ml-3 pl-3 border-l border-border">
-            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
               <span className="text-white text-sm font-bold">A</span>
             </div>
             <div className="hidden lg:block">

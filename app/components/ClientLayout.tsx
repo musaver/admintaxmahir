@@ -121,7 +121,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const navigation: NavigationItem[] = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboardIcon, category: 'main' },
     ...(isSuperAdmin ? [{ name: 'Tenants', href: '/tenants', icon: BuildingIcon, category: 'main' }] : []),
-    { name: 'Customers', href: '/users', icon: UsersIcon, category: 'main' },
+    { name: 'Users', href: '/users', icon: UsersIcon, category: 'main' },
     { 
       name: 'Products', 
       href: '/products', 
@@ -136,7 +136,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     /*{ name: 'Tags', href: '/tags', icon: TagIcon, category: 'main' },*/
     
     /*{ name: 'Suppliers', href: '/suppliers', icon: BuildingIcon, category: 'operations' },*/
-    { name: 'Orders / Invoices', href: '/orders', icon: ShoppingCartIcon, category: 'operations', badge: pendingOrdersCount > 0 ? pendingOrdersCount : null },
+    { name: 'Orders / Invoices', href: '/orders', icon: ShoppingCartIcon, category: 'main', badge: pendingOrdersCount > 0 ? pendingOrdersCount : null },
     /*{ name: 'Purchase Orders', href: '/orders/purchase', icon: ShoppingCartIcon, category: 'operations' },*/
     /*{ name: 'Drivers', href: '/drivers', icon: TruckIcon, category: 'operations' },*/
     /*{ name: 'Reports', href: '/reports', icon: TrendingUpIcon, category: 'operations' },*/
@@ -156,7 +156,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   const categories = {
     main: { name: 'Main', items: navigation.filter(item => item.category === 'main') },
-    operations: { name: 'Operations', items: navigation.filter(item => item.category === 'operations') },
+    /*operations: { name: 'Operations', items: navigation.filter(item => item.category === 'operations') },*/
     /*catalog: { name: 'Catalog', items: navigation.filter(item => item.category === 'catalog') },*/
     admin: { name: 'Administration', items: navigation.filter(item => item.category === 'admin') },
   };
@@ -231,7 +231,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               <Link
                 key={subItem.name}
                 href={subItem.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-sidebar-accent/70 ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-md transition-all hover:bg-sidebar-accent/70 ${
                   isActive(subItem.href) ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'text-sidebar-foreground/70 hover:text-sidebar-accent-foreground'
                 }`}
                 onClick={() => mobile && setSidebarOpen(false)}
