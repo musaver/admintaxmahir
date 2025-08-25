@@ -104,9 +104,6 @@ export default function Industries() {
             Business Services
             
           </h2>
-          <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            From small boutiques to large enterprises, our platform adapts to your business needs.
-          </p>
         </motion.div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
