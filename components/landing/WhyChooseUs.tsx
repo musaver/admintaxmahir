@@ -30,8 +30,8 @@ const reasons = [
   },
   {
     icon: Zap,
-    title: 'Business Services',
-    description: 'Company Registration, Admin & Supply Chain, Taxation & Litigation, Corporate & Legal, Lahore Chamber of Commerce & Industry (LCCI) Support, Procurement Support, Accounting & Payroll, License & Permits, Assistance with Visa Application Process, Graphic Design, Website Design and Social Media Handling, Banking & Financial Services.',
+    title: 'Accounting ',
+    description: 'Comprehensive financial management with real-time reporting and expense tracking.',
     color: 'from-yellow-500 to-orange-500',
   },
   {

@@ -69,7 +69,7 @@ export default function Hero() {
           We offer comprehensive, one-window business support solutions, FBR digital invoicing, 
           Inventory management - including company incorporation, ERP induction, 
           Bookkeeping, Financial management, Treasury, Payroll, Taxation, 
-          and Legal compliance — so you can focus on growth while we handle 
+          and Legal compliance. <br></br> You can focus on growth while we handle 
           the rest with professionalism and cost-efficiency.
         </motion.p>
 

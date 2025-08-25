@@ -1,56 +1,92 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Store, Coffee, ShoppingCart, Rocket, Shirt, Utensils, Package, Building } from 'lucide-react';
+import { 
+  FileText, 
+  Truck, 
+  Calculator, 
+  Scale, 
+  Building2, 
+  ShoppingBag, 
+  DollarSign, 
+  FileCheck, 
+  Globe, 
+  Plane, 
+  CreditCard 
+} from 'lucide-react';
 
 const industries = [
   {
-    icon: Shirt,
-    title: 'Boutiques',
-    description: 'Fashion and clothing stores',
-    color: 'from-pink-500 to-rose-500',
-  },
-  {
-    icon: Coffee,
-    title: 'Cafés',
-    description: 'Coffee shops and bistros',
-    color: 'from-amber-500 to-orange-500',
-  },
-  {
-    icon: ShoppingCart,
-    title: 'Online Stores',
-    description: 'E-commerce businesses',
+    icon: FileText,
+    title: 'Company Registration',
+    description: 'Complete business registration and incorporation services',
     color: 'from-blue-500 to-indigo-500',
   },
   {
-    icon: Rocket,
-    title: 'Startups',
-    description: 'Growing tech companies',
-    color: 'from-purple-500 to-violet-500',
+    icon: Truck,
+    title: 'Admin & Supply Chain',
+    description: 'Administrative support and supply chain management',
+    color: 'from-amber-500 to-orange-500',
   },
   {
-    icon: Store,
-    title: 'Retail Stores',
-    description: 'Traditional retail outlets',
-    color: 'from-green-500 to-emerald-500',
-  },
-  {
-    icon: Utensils,
-    title: 'Restaurants',
-    description: 'Food service businesses',
+    icon: Calculator,
+    title: 'Taxation & Litigation',
+    description: 'Tax planning, compliance and legal dispute resolution',
     color: 'from-red-500 to-pink-500',
   },
   {
-    icon: Package,
-    title: 'Warehouses',
-    description: 'Distribution centers',
+    icon: Scale,
+    title: 'Corporate & Legal',
+    description: 'Corporate governance and comprehensive legal services',
+    color: 'from-purple-500 to-violet-500',
+  },
+  {
+    icon: Scale,
+    title: 'Commerce',
+    description: 'Lahore Chamber of Commerce',
     color: 'from-cyan-500 to-blue-500',
   },
   {
-    icon: Building,
-    title: 'Enterprises',
-    description: 'Large corporations',
-    color: 'from-gray-500 to-slate-500',
+    icon: Building2,
+    title: 'Industry (LCCI) Support',
+    description: 'Lahore Chamber of Commerce and Industry liaison services',
+    color: 'from-green-500 to-emerald-500',
+  },
+  {
+    icon: ShoppingBag,
+    title: 'Procurement Support',
+    description: 'Strategic procurement and vendor management solutions',
+    color: 'from-teal-500 to-cyan-500',
+  },
+  {
+    icon: DollarSign,
+    title: 'Accounting & Payroll',
+    description: 'Complete bookkeeping, accounting and payroll management',
+    color: 'from-emerald-500 to-green-500',
+  },
+  {
+    icon: FileCheck,
+    title: 'License & Permits',
+    description: 'Business licensing and regulatory permit assistance',
+    color: 'from-blue-500 to-indigo-500',
+  },
+  {
+    icon: Globe,
+    title: 'Website Design',
+    description: 'Professional web design, graphics and social media management',
+    color: 'from-cyan-500 to-blue-500',
+  },
+  {
+    icon: Plane,
+    title: 'Visa Services',
+    description: 'Complete visa application and immigration support services',
+    color: 'from-rose-500 to-pink-500',
+  },
+  {
+    icon: CreditCard,
+    title: 'Financial Services',
+    description: 'Comprehensive banking and financial advisory services',
+    color: 'from-violet-500 to-purple-500',
   },
 ];
 

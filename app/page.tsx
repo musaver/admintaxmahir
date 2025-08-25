@@ -8,6 +8,7 @@ import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
 import WhyChooseUs from "@/components/landing/WhyChooseUs";
 import HowItWorks from "@/components/landing/HowItWorks";
+import ClientLogos from "@/components/landing/ClientLogos";
 import Industries from "@/components/landing/Industries";
 import AdditionalServices from "@/components/landing/AdditionalServices";
 import Testimonials from "@/components/landing/Testimonials";
@@ -80,6 +81,7 @@ export default function HomePage() {
         <Features />
         <WhyChooseUs />
         <HowItWorks />
+        <ClientLogos />
         <Industries />
         {/*<AdditionalServices />*/}
         <Testimonials />

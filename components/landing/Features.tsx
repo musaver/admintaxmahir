@@ -41,10 +41,10 @@ export default function Features() {
           className="text-center mb-20"
         >
           <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-            Powerful Features,
+            Tax Mahir Software,
             <br />
             <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              Playful Experience
+            Powerful Features
             </span>
           </h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">

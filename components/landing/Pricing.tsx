@@ -50,7 +50,7 @@ const plans = [
       'Upto 50,000 Products',
       'Reporting',
       'Support',
-      'Up to 10 Free Sub Accounts',
+      'Up to 20+ Free Sub Accounts',
       'API Access',
     ],
   },
@@ -176,7 +176,7 @@ export default function Pricing() {
                       : 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 border-gray-600'
                   }`}
                 >
-                  Start Free Trial
+                  Select This Plan
                 </Button>
 
                 {/* Hover gradient */}
