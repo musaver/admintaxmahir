@@ -48,7 +48,7 @@ export default function Features() {
             </span>
           </h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            Everything you need to manage your inventory efficiently, wrapped in a delightfully simple interface.
+          Make business management effortless with Tax Mahir. Instantly create and submit invoices to FBR, upload multiple invoices in bulk via Excel, keep your inventory organized with detailed reports, and collaborate seamlessly with up to 5 free sub-accounts – all on one powerful platform
           </p>
         </motion.div>
 

@@ -60,7 +60,7 @@ export default function WhyChooseUs() {
             </span>
           </h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            We're not just another inventory tool. We're your partner in business growth.
+          Tax Mahir makes business easy. From FBR invoicing and bulk uploads to inventory management and compliance, everything is in one secure, cost-effective platform – so you can focus on growth
           </p>
         </motion.div>
 
