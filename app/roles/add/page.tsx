@@ -32,7 +32,7 @@ const permissionModules = [
     ]
   },
   {
-    name: 'Order/Invoice management',
+    name: 'Orders Management',
     permissions: [
       { id: 'orders_view', label: 'View Orders' },
       { id: 'orders_create', label: 'Create Orders' },
