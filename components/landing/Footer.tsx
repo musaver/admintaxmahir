@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Heart, Facebook, Instagram, Linkedin, Mail, Package } from 'lucide-react';
+import { Heart, Facebook, Instagram, Linkedin, Mail, Package, Phone, MapPin } from 'lucide-react';
 
 const links = [
   {
@@ -32,9 +32,9 @@ export default function Footer() {
   return (
     <footer className="py-20 px-6 relative border-t border-gray-800/50">
       <div className="max-w-7xl mx-auto">
-        <div className="grid md:grid-cols-1 gap-12 mb-12">
+        <div className="grid md:grid-cols-2 gap-12 mb-12">
           {/* Brand */}
-          <div className="md:col-span-2">
+          <div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -69,7 +69,58 @@ export default function Footer() {
             </motion.div>
           </div>
 
-          
+          {/* Contact Section */}
+          <div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="space-y-6"
+            >
+              <h3 className="text-2xl font-bold text-white mb-6">Contact Us</h3>
+              
+              <div className="space-y-4">
+                {/* Phone */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
+                    <Phone className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Phone</p>
+                    <a href="tel:03214250013" className="text-white hover:text-green-400 transition-colors">
+                      0321-4250013
+                    </a>
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                    <Mail className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Email</p>
+                    <a href="mailto:info@taxmahir.pk" className="text-white hover:text-blue-400 transition-colors">
+                      info@taxmahir.pk
+                    </a>
+                  </div>
+                </div>
+
+                {/* Address */}
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Address</p>
+                    <p className="text-white leading-relaxed">
+                      Office #152, WBC, Ferozpur Road, Lahore
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </div>
 
         {/* Bottom */}
