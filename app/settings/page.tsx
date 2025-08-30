@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import CurrencySymbol from '../components/CurrencySymbol';
 import { useCurrency } from '@/app/contexts/CurrencyContext';
 import { CurrencyCode } from '@/app/contexts/CurrencyContext';
+import { Separator } from "@/components/ui/separator";
 
 interface TaxSetting {
   enabled: boolean;
@@ -47,21 +48,33 @@ export default function SettingsPage() {
     points_redemption_minimum: { value: 100, type: 'number', description: '' }
   });
 
+  // FBR settings
+  const [fbrSettings, setFbrSettings] = useState({
+    fbrBaseUrl: '',
+    fbrSandboxToken: '',
+    fbrSellerNTNCNIC: '',
+    fbrSellerBusinessName: '',
+    fbrSellerProvince: '',
+    fbrSellerAddress: ''
+  });
+
   useEffect(() => {
     fetchSettings();
   }, []);
 
   const fetchSettings = async () => {
     try {
-      const [stockRes, taxRes, loyaltyRes] = await Promise.all([
+      const [stockRes, taxRes, loyaltyRes, fbrRes] = await Promise.all([
         fetch('/api/settings/stock-management'),
         fetch('/api/settings/tax-settings'),
-        fetch('/api/settings/loyalty')
+        fetch('/api/settings/loyalty'),
+        fetch('/api/settings/fbr')
       ]);
       
       const stockData = await stockRes.json();
       const taxData = await taxRes.json();
       const loyaltyData = await loyaltyRes.json();
+      const fbrData = await fbrRes.json();
       
       setStockManagementEnabled(stockData.stockManagementEnabled);
       setVatTax(taxData.vatTax);
@@ -69,6 +82,10 @@ export default function SettingsPage() {
       
       if (loyaltyData.success) {
         setLoyaltySettings(loyaltyData.settings);
+      }
+      
+      if (fbrData.success) {
+        setFbrSettings(fbrData.settings);
       }
     } catch (err) {
       console.error(err);
@@ -222,6 +239,58 @@ export default function SettingsPage() {
       }
       
       setSuccess('Loyalty settings updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFbrSettingChange = (key: string, value: string) => {
+    setFbrSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleSaveFbrSettings = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      
+      // Validate required fields
+      if (!fbrSettings.fbrBaseUrl.trim()) {
+        throw new Error('FBR Base URL is required');
+      }
+      if (!fbrSettings.fbrSandboxToken.trim()) {
+        throw new Error('FBR Sandbox Token is required');
+      }
+      if (!fbrSettings.fbrSellerNTNCNIC.trim()) {
+        throw new Error('Seller NTN/CNIC is required');
+      }
+      if (!fbrSettings.fbrSellerBusinessName.trim()) {
+        throw new Error('Seller Business Name is required');
+      }
+      if (!fbrSettings.fbrSellerProvince.trim()) {
+        throw new Error('Seller Province is required');
+      }
+      if (!fbrSettings.fbrSellerAddress.trim()) {
+        throw new Error('Seller Address is required');
+      }
+      
+      const response = await fetch('/api/settings/fbr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: fbrSettings })
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update FBR settings');
+      }
+      
+      setSuccess('FBR settings updated successfully');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message);
@@ -729,6 +798,172 @@ export default function SettingsPage() {
             >
               {saving ? 'Saving...' : 'Save Loyalty Settings'}
             </button>
+          </div>
+        </div>
+
+        {/* FBR Settings Section */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">FBR Digital Invoicing</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              Configure FBR (Federal Board of Revenue) settings for digital invoicing compliance
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            {/* API Configuration */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-700">API Configuration</h3>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    FBR Base URL
+                  </label>
+                  <input
+                    type="url"
+                    value={fbrSettings.fbrBaseUrl}
+                    onChange={(e) => handleFbrSettingChange('fbrBaseUrl', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="https://esp.fbr.gov.pk"
+                  />
+                  <p className="text-xs text-gray-500">
+                    The base URL for FBR API endpoints
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    FBR Sandbox Token
+                  </label>
+                  <input
+                    type="password"
+                    value={fbrSettings.fbrSandboxToken}
+                    onChange={(e) => handleFbrSettingChange('fbrSandboxToken', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your FBR API token"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Your FBR sandbox/production API token for authentication
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Seller Information */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-700">Seller Information</h3>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Seller NTN/CNIC
+                  </label>
+                  <input
+                    type="text"
+                    value={fbrSettings.fbrSellerNTNCNIC}
+                    onChange={(e) => handleFbrSettingChange('fbrSellerNTNCNIC', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your NTN or CNIC number"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Your National Tax Number or Computerized National Identity Card number
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Business Name
+                  </label>
+                  <input
+                    type="text"
+                    value={fbrSettings.fbrSellerBusinessName}
+                    onChange={(e) => handleFbrSettingChange('fbrSellerBusinessName', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your registered business name"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Your official business name as registered with FBR
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Province
+                  </label>
+                  <select
+                    value={fbrSettings.fbrSellerProvince}
+                    onChange={(e) => handleFbrSettingChange('fbrSellerProvince', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Province</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Sindh">Sindh</option>
+                    <option value="Khyber Pakhtunkhwa">Khyber Pakhtunkhwa</option>
+                    <option value="Balochistan">Balochistan</option>
+                    <option value="Islamabad Capital Territory">Islamabad Capital Territory</option>
+                    <option value="Gilgit-Baltistan">Gilgit-Baltistan</option>
+                    <option value="Azad Jammu and Kashmir">Azad Jammu and Kashmir</option>
+                  </select>
+                  <p className="text-xs text-gray-500">
+                    The province where your business is registered
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Business Address
+                  </label>
+                  <input
+                    type="text"
+                    value={fbrSettings.fbrSellerAddress}
+                    onChange={(e) => handleFbrSettingChange('fbrSellerAddress', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your complete business address"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Your complete business address for invoicing
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Configuration Status */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <div className="flex items-start space-x-2">
+                <div className="flex-shrink-0">
+                  {Object.values(fbrSettings).every(value => value.trim() !== '') ? (
+                    <div className="text-green-600">✅</div>
+                  ) : (
+                    <div className="text-yellow-600">⚠️</div>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-blue-900">Configuration Status</h4>
+                  <p className="text-sm text-blue-800 mt-1">
+                    {Object.values(fbrSettings).every(value => value.trim() !== '') 
+                      ? 'All FBR settings are configured. Digital invoicing is ready.'
+                      : 'Some FBR settings are missing. Please complete all fields to enable digital invoicing.'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={handleSaveFbrSettings}
+                disabled={saving}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Saving...' : 'Save FBR Settings'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

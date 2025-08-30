@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { settings } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { getTenantContext } from '@/lib/api-helpers';
 
 // Define available currencies (server-side copy)
 const AVAILABLE_CURRENCIES = {
@@ -32,13 +33,18 @@ type CurrencyCode = keyof typeof AVAILABLE_CURRENCIES;
 const DEFAULT_CURRENCY: CurrencyCode = 'PKR';
 const CURRENCY_SETTING_KEY = 'selected_currency';
 
-// Get currency setting from database
-async function getCurrencyFromDatabase(): Promise<CurrencyCode> {
+// Get currency setting from database for a specific tenant
+async function getCurrencyFromDatabase(tenantId: string): Promise<CurrencyCode> {
   try {
     const result = await db
       .select()
       .from(settings)
-      .where(eq(settings.key, CURRENCY_SETTING_KEY))
+      .where(
+        and(
+          eq(settings.tenantId, tenantId),
+          eq(settings.key, CURRENCY_SETTING_KEY)
+        )
+      )
       .limit(1);
 
     if (result.length > 0 && result[0].value) {
@@ -55,13 +61,18 @@ async function getCurrencyFromDatabase(): Promise<CurrencyCode> {
   return DEFAULT_CURRENCY;
 }
 
-// Save currency setting to database
-async function saveCurrencyToDatabase(currency: CurrencyCode): Promise<void> {
+// Save currency setting to database for a specific tenant
+async function saveCurrencyToDatabase(tenantId: string, currency: CurrencyCode): Promise<void> {
   try {
     const existing = await db
       .select()
       .from(settings)
-      .where(eq(settings.key, CURRENCY_SETTING_KEY))
+      .where(
+        and(
+          eq(settings.tenantId, tenantId),
+          eq(settings.key, CURRENCY_SETTING_KEY)
+        )
+      )
       .limit(1);
 
     if (existing.length > 0) {
@@ -72,13 +83,19 @@ async function saveCurrencyToDatabase(currency: CurrencyCode): Promise<void> {
           value: currency,
           updatedAt: new Date()
         })
-        .where(eq(settings.key, CURRENCY_SETTING_KEY));
+        .where(
+          and(
+            eq(settings.tenantId, tenantId),
+            eq(settings.key, CURRENCY_SETTING_KEY)
+          )
+        );
     } else {
       // Create new setting
       await db
         .insert(settings)
         .values({
           id: uuidv4(),
+          tenantId: tenantId,
           key: CURRENCY_SETTING_KEY,
           value: currency,
           type: 'string',
@@ -94,9 +111,17 @@ async function saveCurrencyToDatabase(currency: CurrencyCode): Promise<void> {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const currentCurrency = await getCurrencyFromDatabase();
+    const tenantContext = await getTenantContext(request);
+    if (!tenantContext) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No tenant context' },
+        { status: 401 }
+      );
+    }
+
+    const currentCurrency = await getCurrencyFromDatabase(tenantContext.tenantId);
     
     return NextResponse.json({
       currentCurrency,
@@ -111,6 +136,14 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const tenantContext = await getTenantContext(req);
+    if (!tenantContext) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No tenant context' },
+        { status: 401 }
+      );
+    }
+
     const { currency } = await req.json();
     
     // Validate currency
@@ -122,8 +155,8 @@ export async function POST(req: NextRequest) {
     
     const currencyCode = currency as CurrencyCode;
     
-    // Save currency to database
-    await saveCurrencyToDatabase(currencyCode);
+    // Save currency to database for the specific tenant
+    await saveCurrencyToDatabase(tenantContext.tenantId, currencyCode);
     
     return NextResponse.json({
       success: true,

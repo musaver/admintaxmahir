@@ -177,6 +177,18 @@ export default function AddOrder() {
   });
   
   // Order form data
+  // FBR scenario management
+  const [isCustomScenario, setIsCustomScenario] = useState(false);
+  
+  // Seller information (auto-filled from env but editable)
+  const [sellerInfo, setSellerInfo] = useState({
+    sellerNTNCNIC: '',
+    sellerBusinessName: '',
+    sellerProvince: '',
+    sellerAddress: '',
+    fbrSandboxToken: ''
+  });
+  
   const [orderData, setOrderData] = useState({
     customerId: '',
     email: '',
@@ -373,12 +385,13 @@ export default function AddOrder() {
 
   const fetchInitialData = async () => {
     try {
-      const [productsRes, customersRes, stockSettingRes, driversRes, loyaltyRes] = await Promise.all([
+      const [productsRes, customersRes, stockSettingRes, driversRes, loyaltyRes, sellerInfoRes] = await Promise.all([
         fetch('/api/products'),
         fetch('/api/users'),
         fetch('/api/settings/stock-management'),
         fetch('/api/drivers/available?includeAll=true'),
-        fetch('/api/settings/loyalty')
+        fetch('/api/settings/loyalty'),
+        fetch('/api/seller-info')
       ]);
 
       const productsData = await productsRes.json();
@@ -386,6 +399,7 @@ export default function AddOrder() {
       const stockData = await stockSettingRes.json();
       const driversData = await driversRes.json();
       const loyaltyData = await loyaltyRes.json();
+      const sellerInfoData = await sellerInfoRes.json();
 
       // Process products to include variants
       const processedProducts = await Promise.all(
@@ -440,6 +454,14 @@ export default function AddOrder() {
         setLoyaltySettings(newSettings);
       } else {
         console.log('Loyalty settings fetch failed:', loyaltyData);
+      }
+      
+      // Set seller information from environment variables
+      if (sellerInfoData && !sellerInfoData.error) {
+        console.log('Setting seller info:', sellerInfoData);
+        setSellerInfo(sellerInfoData);
+      } else {
+        console.log('Seller info fetch failed or empty:', sellerInfoData);
       }
     } catch (err) {
       console.error('Error fetching initial data:', err);
@@ -1087,7 +1109,14 @@ export default function AddOrder() {
         buyerBusinessName: orderData.buyerBusinessName || null,
         buyerProvince: orderData.buyerProvince || null,
         buyerAddress: orderData.buyerAddress || null,
-        buyerRegistrationType: orderData.buyerRegistrationType || null
+        buyerRegistrationType: orderData.buyerRegistrationType || null,
+        
+        // Seller fields (for FBR Digital Invoicing)
+        sellerNTNCNIC: sellerInfo.sellerNTNCNIC || null,
+        sellerBusinessName: sellerInfo.sellerBusinessName || null,
+        sellerProvince: sellerInfo.sellerProvince || null,
+        sellerAddress: sellerInfo.sellerAddress || null,
+        fbrSandboxToken: sellerInfo.fbrSandboxToken || null
       };
 
       const response = await fetch('/api/orders', {
@@ -1098,6 +1127,26 @@ export default function AddOrder() {
 
       if (!response.ok) {
         const data = await response.json();
+        
+        // Handle FBR-specific errors with more detail
+        if (data.step === 'fbr_validation' || data.step === 'fbr_connection') {
+          let errorMessage = data.error || 'FBR Digital Invoice submission failed';
+          
+          // Show detailed FBR validation errors
+          if (data.fbrError?.response?.validationResponse?.invoiceStatuses) {
+            const itemErrors = data.fbrError.response.validationResponse.invoiceStatuses
+              .filter((status: any) => status.error)
+              .map((status: any) => `• Item ${status.itemSNo}: ${status.error}`)
+              .join('\n');
+            
+            if (itemErrors) {
+              errorMessage += '\n\nValidation Details:\n' + itemErrors;
+            }
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
         throw new Error(data.error || 'Failed to create order');
       }
 
@@ -1140,7 +1189,27 @@ export default function AddOrder() {
         }
       }
 
-      router.push('/orders');
+      // Show success message and redirect to invoice page
+      if (orderResponse.fbrInvoiceNumber) {
+        console.log('✅ Order created with FBR Digital Invoice:', {
+          orderNumber: orderResponse.orderNumber,
+          fbrInvoiceNumber: orderResponse.fbrInvoiceNumber,
+          orderId: orderResponse.orderId || orderId
+        });
+        
+        // Show success message and redirect to invoice page
+        //alert(`Order created successfully!\n\nOrder Number: ${orderResponse.orderNumber}\nFBR Invoice Number: ${orderResponse.fbrInvoiceNumber}\n\nRedirecting to invoice page...`);
+        router.push(`/orders/${orderResponse.orderId || orderId}/invoice`);
+      } else {
+        console.log('✅ Order created successfully (no FBR submission):', {
+          orderNumber: orderResponse.orderNumber,
+          orderId: orderResponse.orderId || orderId
+        });
+        
+        // Redirect to invoice page even without FBR
+       //alert(`Order created successfully!\n\nOrder Number: ${orderResponse.orderNumber}\n\nRedirecting to invoice page...`);
+        router.push(`/orders/${orderResponse.orderId || orderId}/invoice`);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -1370,6 +1439,99 @@ export default function AddOrder() {
             </CardContent>
           </Card>
 
+          {/* Seller Information - Auto-filled from environment variables */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                🏪 Seller Information
+              </CardTitle>
+              <CardDescription>
+                Your business information for FBR Digital Invoicing. These fields are auto-filled from environment variables but can be modified if needed.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="seller-ntn">Seller NTN/CNIC</Label>
+                  <Input
+                    id="seller-ntn"
+                    type="text"
+                    value={sellerInfo.sellerNTNCNIC}
+                    onChange={(e) => setSellerInfo({...sellerInfo, sellerNTNCNIC: e.target.value})}
+                    placeholder="Enter your NTN or CNIC"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="seller-business">Business Name</Label>
+                  <Input
+                    id="seller-business"
+                    type="text"
+                    value={sellerInfo.sellerBusinessName}
+                    onChange={(e) => setSellerInfo({...sellerInfo, sellerBusinessName: e.target.value})}
+                    placeholder="Enter your business name"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="seller-province">Province</Label>
+                  <Select value={sellerInfo.sellerProvince} onValueChange={(value) => setSellerInfo({...sellerInfo, sellerProvince: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Province" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Punjab">Punjab</SelectItem>
+                      <SelectItem value="Sindh">Sindh</SelectItem>
+                      <SelectItem value="Khyber Pakhtunkhwa">Khyber Pakhtunkhwa</SelectItem>
+                      <SelectItem value="Balochistan">Balochistan</SelectItem>
+                      <SelectItem value="Islamabad Capital Territory">Islamabad Capital Territory</SelectItem>
+                      <SelectItem value="Azad Jammu and Kashmir">Azad Jammu and Kashmir</SelectItem>
+                      <SelectItem value="Gilgit-Baltistan">Gilgit-Baltistan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="seller-address">Business Address</Label>
+                  <Input
+                    id="seller-address"
+                    type="text"
+                    value={sellerInfo.sellerAddress}
+                    onChange={(e) => setSellerInfo({...sellerInfo, sellerAddress: e.target.value})}
+                    placeholder="Enter your complete business address"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="fbr-token">FBR Sandbox Token</Label>
+                <Input
+                  id="fbr-token"
+                  type="password"
+                  value={sellerInfo.fbrSandboxToken}
+                  onChange={(e) => setSellerInfo({...sellerInfo, fbrSandboxToken: e.target.value})}
+                  placeholder="Enter your FBR sandbox token"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Your FBR sandbox token for API authentication. This is auto-filled from environment variables.
+                </p>
+              </div>
+              
+              {(!sellerInfo.sellerNTNCNIC || !sellerInfo.sellerBusinessName || !sellerInfo.fbrSandboxToken) && (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-yellow-800">
+                    <span>⚠️</span>
+                    <span className="font-medium">Missing Seller Information</span>
+                  </div>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Please ensure your seller information is complete for FBR Digital Invoicing. 
+                    You can set default values in your environment variables (FBR_SELLER_*).
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Buyer Information - Show only when customer is selected */}
           {orderData.customerId && (
             <Card>
@@ -1442,10 +1604,8 @@ export default function AddOrder() {
                     <SelectValue placeholder="Select Registration Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="individual">Individual</SelectItem>
-                    <SelectItem value="company">Company</SelectItem>
-                    <SelectItem value="partnership">Partnership</SelectItem>
-                    <SelectItem value="sole_proprietorship">Sole Proprietorship</SelectItem>
+                    <SelectItem value="Registered">Registered</SelectItem>
+                    <SelectItem value="Unregistered">Unregistered</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1595,14 +1755,82 @@ export default function AddOrder() {
               </div>
                 <div className="space-y-2">
                   <Label htmlFor="scenario-id">Scenario ID</Label>
-                  <Input
-                    id="scenario-id"
-                  type="text"
-                  value={orderData.scenarioId}
-                  onChange={(e) => setOrderData({...orderData, scenarioId: e.target.value})}
-                  placeholder="Scenario identifier"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Select 
+                      value={isCustomScenario ? "custom" : orderData.scenarioId} 
+                      onValueChange={(value) => {
+                        if (value === "custom") {
+                          setIsCustomScenario(true);
+                          setOrderData({...orderData, scenarioId: ""});
+                        } else {
+                          setIsCustomScenario(false);
+                          setOrderData({...orderData, scenarioId: value});
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select FBR Scenario" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 overflow-y-auto">
+                        <SelectItem value="SN001">SN001 - Goods at standard rate (default)</SelectItem>
+                        <SelectItem value="SN002">SN002 - Goods at standard rate (with WHT)</SelectItem>
+                        <SelectItem value="SN003">SN003 - Goods at standard rate (default)</SelectItem>
+                        <SelectItem value="SN004">SN004 - Goods at standard rate (default)</SelectItem>
+                        <SelectItem value="SN005">SN005 - Goods at Reduced Rate</SelectItem>
+                        <SelectItem value="SN006">SN006 - Exempt goods</SelectItem>
+                        <SelectItem value="SN007">SN007 - Goods at zero-rate</SelectItem>
+                        <SelectItem value="SN008">SN008 - 3rd Schedule Goods</SelectItem>
+                        <SelectItem value="SN009">SN009 - Cotton ginners</SelectItem>
+                        <SelectItem value="SN010">SN010 - Ship breaking</SelectItem>
+                        <SelectItem value="SN011">SN011 - Steel Melters / Re-Rollers</SelectItem>
+                        <SelectItem value="SN012">SN012 - Petroleum products</SelectItem>
+                        <SelectItem value="SN013">SN013 - Natural Gas / CNG</SelectItem>
+                        <SelectItem value="SN014">SN014 - Electric power / Electricity</SelectItem>
+                        <SelectItem value="SN015">SN015 - Telecommunication services</SelectItem>
+                        <SelectItem value="SN016">SN016 - Processing / Conversion of Goods</SelectItem>
+                        <SelectItem value="SN017">SN017 - Goods liable to FED in ST mode</SelectItem>
+                        <SelectItem value="SN018">SN018 - Services with FED in ST mode</SelectItem>
+                        <SelectItem value="SN019">SN019 - Services rendered or provided</SelectItem>
+                        <SelectItem value="SN020">SN020 - Mobile phones (9th Schedule)</SelectItem>
+                        <SelectItem value="SN021">SN021 - Drugs at fixed rate (Eighth Schedule)</SelectItem>
+                        <SelectItem value="SN022">SN022 - Services (ICT Ordinance)</SelectItem>
+                        <SelectItem value="SN023">SN023 - Services liable to FED in ST mode</SelectItem>
+                        <SelectItem value="SN024">SN024 - Non-Adjustable Supplies</SelectItem>
+                        <SelectItem value="SN025">SN025 - Drugs at fixed ST rate (Eighth Schedule)</SelectItem>
+                        <SelectItem value="SN026">SN026 - Goods at standard rate (Tested ✅)</SelectItem>
+                        <SelectItem value="SN027">SN027 - Retail Supplies (Invoice Level)</SelectItem>
+                        <SelectItem value="SN028">SN028 - Retail Supplies (Item Level)</SelectItem>
+                        <SelectItem value="custom">Custom Scenario...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    {isCustomScenario && (
+                      <Input
+                        id="custom-scenario-id"
+                        type="text"
+                        value={orderData.scenarioId}
+                        onChange={(e) => setOrderData({...orderData, scenarioId: e.target.value})}
+                        placeholder="Enter custom scenario ID (e.g., SN029)"
+                      />
+                    )}
+                  </div>
+                  
+                  {orderData.scenarioId && (
+                    <div className="text-sm text-muted-foreground">
+                      {orderData.scenarioId === "SN001" && "⚠️ Not valid for unregistered buyers"}
+                      {orderData.scenarioId === "SN002" && "Requires withholding tax at item level"}
+                      {orderData.scenarioId === "SN005" && "Uses 1% tax rate"}
+                      {orderData.scenarioId === "SN006" && "Tax-exempt goods (0% tax)"}
+                      {orderData.scenarioId === "SN007" && "Zero-rate goods (0% tax)"}
+                      {orderData.scenarioId === "SN008" && "Requires fixed retail price"}
+                      {orderData.scenarioId === "SN017" && "Requires FED payable amount"}
+                      {orderData.scenarioId === "SN018" && "Services with FED in ST mode"}
+                      {orderData.scenarioId === "SN026" && "✅ Tested and working for unregistered buyers"}
+                      {orderData.scenarioId === "SN027" && "Retail supplies at invoice level"}
+                      {orderData.scenarioId === "SN028" && "Retail supplies at item level"}
+                    </div>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="invoice-number">Invoice Number</Label>
                   <Input

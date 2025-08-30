@@ -221,7 +221,7 @@ export async function checkTenantLimits(tenantId: string, resource: 'users' | 'p
  */
 export function getTenantSettings(tenant: Tenant): any {
   const defaultSettings = {
-    currency: 'USD',
+    currency: 'PKR',
     timezone: 'UTC',
     dateFormat: 'MM/DD/YYYY',
     stockManagementEnabled: true,

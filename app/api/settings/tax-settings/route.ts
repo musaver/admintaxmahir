@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { settings } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { getTenantContext } from '@/lib/api-helpers';
 
 const VAT_TAX_KEY = 'vat_tax_settings';
 const SERVICE_TAX_KEY = 'service_tax_settings';
@@ -19,21 +20,35 @@ const DEFAULT_TAX_SETTING: TaxSetting = {
   value: 0
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Get both VAT and Service tax settings
+    const tenantContext = await getTenantContext(request);
+    if (!tenantContext) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No tenant context' },
+        { status: 401 }
+      );
+    }
+
+    // Get both VAT and Service tax settings for the tenant
     const taxSettings = await db
       .select()
       .from(settings)
       .where(
-        eq(settings.key, VAT_TAX_KEY)
+        and(
+          eq(settings.tenantId, tenantContext.tenantId),
+          eq(settings.key, VAT_TAX_KEY)
+        )
       );
     
     const serviceSettings = await db
       .select()
       .from(settings)
       .where(
-        eq(settings.key, SERVICE_TAX_KEY)
+        and(
+          eq(settings.tenantId, tenantContext.tenantId),
+          eq(settings.key, SERVICE_TAX_KEY)
+        )
       );
     
     const allTaxSettings = [...taxSettings, ...serviceSettings];
@@ -59,6 +74,7 @@ export async function GET() {
     if (!allTaxSettings.some(s => s.key === VAT_TAX_KEY)) {
       await db.insert(settings).values({
         id: uuidv4(),
+        tenantId: tenantContext.tenantId,
         key: VAT_TAX_KEY,
         value: JSON.stringify(DEFAULT_TAX_SETTING),
         type: 'json',
@@ -70,6 +86,7 @@ export async function GET() {
     if (!allTaxSettings.some(s => s.key === SERVICE_TAX_KEY)) {
       await db.insert(settings).values({
         id: uuidv4(),
+        tenantId: tenantContext.tenantId,
         key: SERVICE_TAX_KEY,
         value: JSON.stringify(DEFAULT_TAX_SETTING),
         type: 'json',
@@ -90,6 +107,14 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const tenantContext = await getTenantContext(req);
+    if (!tenantContext) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No tenant context' },
+        { status: 401 }
+      );
+    }
+
     const { vatTax, serviceTax } = await req.json();
 
     // Validate input
@@ -123,7 +148,12 @@ export async function POST(req: NextRequest) {
       const existingVat = await db
         .select()
         .from(settings)
-        .where(eq(settings.key, VAT_TAX_KEY))
+        .where(
+          and(
+            eq(settings.tenantId, tenantContext.tenantId),
+            eq(settings.key, VAT_TAX_KEY)
+          )
+        )
         .limit(1);
 
       if (existingVat.length > 0) {
@@ -133,10 +163,16 @@ export async function POST(req: NextRequest) {
             value: JSON.stringify(vatTax),
             updatedAt: new Date(),
           })
-          .where(eq(settings.key, VAT_TAX_KEY));
+          .where(
+            and(
+              eq(settings.tenantId, tenantContext.tenantId),
+              eq(settings.key, VAT_TAX_KEY)
+            )
+          );
       } else {
         await db.insert(settings).values({
           id: uuidv4(),
+          tenantId: tenantContext.tenantId,
           key: VAT_TAX_KEY,
           value: JSON.stringify(vatTax),
           type: 'json',
@@ -151,7 +187,12 @@ export async function POST(req: NextRequest) {
       const existingService = await db
         .select()
         .from(settings)
-        .where(eq(settings.key, SERVICE_TAX_KEY))
+        .where(
+          and(
+            eq(settings.tenantId, tenantContext.tenantId),
+            eq(settings.key, SERVICE_TAX_KEY)
+          )
+        )
         .limit(1);
 
       if (existingService.length > 0) {
@@ -161,10 +202,16 @@ export async function POST(req: NextRequest) {
             value: JSON.stringify(serviceTax),
             updatedAt: new Date(),
           })
-          .where(eq(settings.key, SERVICE_TAX_KEY));
+          .where(
+            and(
+              eq(settings.tenantId, tenantContext.tenantId),
+              eq(settings.key, SERVICE_TAX_KEY)
+            )
+          );
       } else {
         await db.insert(settings).values({
           id: uuidv4(),
+          tenantId: tenantContext.tenantId,
           key: SERVICE_TAX_KEY,
           value: JSON.stringify(serviceTax),
           type: 'json',

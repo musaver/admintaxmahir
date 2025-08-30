@@ -93,7 +93,7 @@ export const POST = withTenant(async (request: NextRequest, context) => {
     });
 
   } catch (error: any) {
-    console.error(`Error starting bulk ${importType || 'user'} import:`, error);
+    console.error(`Error starting bulk user import:`, error);
     return ErrorResponses.serverError(`Failed to start import: ${error.message}`);
   }
 });

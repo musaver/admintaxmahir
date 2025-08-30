@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { settings } from '@/lib/schema';
 import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { getTenantContext } from '@/lib/api-helpers';
 
 // Default loyalty settings
 const DEFAULT_LOYALTY_SETTINGS = {
@@ -48,14 +49,25 @@ const DEFAULT_LOYALTY_SETTINGS = {
   }
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Get all loyalty-related settings
+    const tenantContext = await getTenantContext(request);
+    if (!tenantContext) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No tenant context' },
+        { status: 401 }
+      );
+    }
+
+    // Get all loyalty-related settings for this tenant
     const loyaltySettings = await db
       .select()
       .from(settings)
       .where(
-        eq(settings.isActive, true)
+        and(
+          eq(settings.tenantId, tenantContext.tenantId),
+          eq(settings.isActive, true)
+        )
       );
 
     // Convert to key-value object
@@ -120,6 +132,14 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const tenantContext = await getTenantContext(req);
+    if (!tenantContext) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No tenant context' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { settings: newSettings } = body;
 
@@ -174,11 +194,16 @@ export async function POST(req: NextRequest) {
           processedValue = String(value);
       }
 
-      // Check if setting exists
+      // Check if setting exists for this tenant
       const existingSetting = await db
         .select()
         .from(settings)
-        .where(eq(settings.key, key))
+        .where(
+          and(
+            eq(settings.tenantId, tenantContext.tenantId),
+            eq(settings.key, key)
+          )
+        )
         .limit(1);
 
       if (existingSetting.length > 0) {
@@ -191,13 +216,19 @@ export async function POST(req: NextRequest) {
               description: description || DEFAULT_LOYALTY_SETTINGS[key as keyof typeof DEFAULT_LOYALTY_SETTINGS]?.description,
               updatedAt: new Date()
             })
-            .where(eq(settings.key, key))
+            .where(
+              and(
+                eq(settings.tenantId, tenantContext.tenantId),
+                eq(settings.key, key)
+              )
+            )
         );
       } else {
         // Create new
         updatePromises.push(
           db.insert(settings).values({
             id: uuidv4(),
+            tenantId: tenantContext.tenantId,
             key,
             value: processedValue,
             type,

@@ -9,6 +9,8 @@ import {
   int,
   decimal,
   json,
+  unique,
+  index,
 } from 'drizzle-orm/mysql-core';
 
 // ✅ Tenants table - Core table for multi-tenancy
@@ -727,14 +729,19 @@ export const suppliers = mysqlTable("suppliers", {
 // Application Settings
 export const settings = mysqlTable("settings", {
   id: varchar("id", { length: 255 }).primaryKey(),
-  key: varchar("key", { length: 255 }).notNull().unique(), // e.g., 'stock_management_enabled'
+  tenantId: varchar("tenant_id", { length: 255 }), // Multi-tenant support - null for global settings
+  key: varchar("key", { length: 255 }).notNull(), // e.g., 'stock_management_enabled'
   value: text("value").notNull(), // JSON string for complex values
   type: varchar("type", { length: 50 }).default("string"), // string, boolean, number, json
   description: text("description"),
   isActive: boolean("is_active").default(true),
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => ({
+  // Composite unique constraint to allow same key for different tenants
+  tenantKeyUnique: unique("settings_tenant_key_unique").on(table.tenantId, table.key),
+  tenantIdIdx: index("idx_settings_tenant_id").on(table.tenantId),
+}));
 
 // ✅ User Loyalty Points
 export const userLoyaltyPoints = mysqlTable("user_loyalty_points", {

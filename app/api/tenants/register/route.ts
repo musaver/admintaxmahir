@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
         postalCode: postalCode || null,
         primaryColor: '#3b82f6', // Default blue
         settings: JSON.stringify({
-          currency: 'USD',
+          currency: 'PKR',
           timezone: 'UTC',
           stockManagementEnabled: true,
           loyaltyPointsEnabled: false,

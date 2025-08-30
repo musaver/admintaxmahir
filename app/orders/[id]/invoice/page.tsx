@@ -223,7 +223,10 @@ export default function OrderInvoice() {
                   <h1 className="text-3xl font-bold text-gray-800">INVOICE</h1>
                   <p className="text-gray-600 mt-2">Invoice #{order.orderNumber}</p>
                   {order.invoiceNumber && (
-                    <p className="text-gray-600 mt-1">Invoice Number: {order.invoiceNumber}</p>
+                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-green-800 font-semibold">✅ FBR Digital Invoice Number:</p>
+                      <p className="text-green-900 font-mono text-lg">{order.invoiceNumber}</p>
+                    </div>
                   )}
                   {order.invoiceRefNo && (
                     <p className="text-gray-600 mt-1">Ref No: {order.invoiceRefNo}</p>
@@ -455,9 +458,15 @@ export default function OrderInvoice() {
                     )}
                     {order.validationResponse && (
                       <div className="mt-2">
-                        <span className='text-sm text-gray-500'>Validation:</span>
-                        <div className="text-xs text-gray-400 mt-1 p-2 bg-gray-50 rounded font-mono max-h-20 overflow-y-auto">
-                          {order.validationResponse}
+                        <span className='text-sm text-gray-500'>FBR Validation:</span>
+                        <div className="text-xs mt-1 p-2 bg-green-50 border border-green-200 rounded max-h-20 overflow-y-auto">
+                          <div className="text-green-700 font-medium">✅ Successfully validated with FBR</div>
+                          <details className="mt-1">
+                            <summary className="text-xs text-green-600 cursor-pointer">View validation details</summary>
+                            <div className="text-xs text-gray-600 mt-1 font-mono">
+                              {order.validationResponse}
+                            </div>
+                          </details>
                         </div>
                       </div>
                     )}

@@ -157,7 +157,7 @@ async function handleTenantAuthentication(request: NextRequest, response: NextRe
 
     // Add tenant info to response headers for authenticated requests
     if (token) {
-      response.headers.set('x-user-tenant-id', token.tenantId || '');
+      response.headers.set('x-user-tenant-id', (token.tenantId as string) || '');
     }
 
     return response;

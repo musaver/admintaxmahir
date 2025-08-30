@@ -1,18 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { settings } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { getTenantContext } from '@/lib/api-helpers';
 
 const STOCK_MANAGEMENT_KEY = 'stock_management_enabled';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Try to get the setting from database
+    const tenantContext = await getTenantContext(request);
+    if (!tenantContext) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No tenant context' },
+        { status: 401 }
+      );
+    }
+
+    // Try to get the setting from database for the specific tenant
     const setting = await db
       .select()
       .from(settings)
-      .where(eq(settings.key, STOCK_MANAGEMENT_KEY))
+      .where(
+        and(
+          eq(settings.tenantId, tenantContext.tenantId),
+          eq(settings.key, STOCK_MANAGEMENT_KEY)
+        )
+      )
       .limit(1);
 
     let stockManagementEnabled = true; // Default value
@@ -21,9 +35,10 @@ export async function GET() {
       // Parse the stored value
       stockManagementEnabled = setting[0].value === 'true';
     } else {
-      // Create default setting if it doesn't exist
+      // Create default setting if it doesn't exist for this tenant
       await db.insert(settings).values({
         id: uuidv4(),
+        tenantId: tenantContext.tenantId,
         key: STOCK_MANAGEMENT_KEY,
         value: 'true',
         type: 'boolean',
@@ -41,32 +56,51 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const tenantContext = await getTenantContext(req);
+    if (!tenantContext) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No tenant context' },
+        { status: 401 }
+      );
+    }
+
     const { enabled } = await req.json();
     
     if (typeof enabled !== 'boolean') {
       return NextResponse.json({ error: 'enabled must be a boolean value' }, { status: 400 });
     }
 
-    // Check if setting exists
+    // Check if setting exists for this tenant
     const existingSetting = await db
       .select()
       .from(settings)
-      .where(eq(settings.key, STOCK_MANAGEMENT_KEY))
+      .where(
+        and(
+          eq(settings.tenantId, tenantContext.tenantId),
+          eq(settings.key, STOCK_MANAGEMENT_KEY)
+        )
+      )
       .limit(1);
 
     if (existingSetting.length > 0) {
-      // Update existing setting
+      // Update existing setting for this tenant
       await db
         .update(settings)
         .set({
           value: enabled.toString(),
           updatedAt: new Date(),
         })
-        .where(eq(settings.key, STOCK_MANAGEMENT_KEY));
+        .where(
+          and(
+            eq(settings.tenantId, tenantContext.tenantId),
+            eq(settings.key, STOCK_MANAGEMENT_KEY)
+          )
+        );
     } else {
-      // Create new setting
+      // Create new setting for this tenant
       await db.insert(settings).values({
         id: uuidv4(),
+        tenantId: tenantContext.tenantId,
         key: STOCK_MANAGEMENT_KEY,
         value: enabled.toString(),
         type: 'boolean',

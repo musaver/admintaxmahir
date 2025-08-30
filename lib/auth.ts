@@ -12,7 +12,6 @@ export const authOptions: NextAuthOptions = {
   // Don't use adapter with JWT strategy - causes conflicts
   // adapter: DrizzleAdapter(db),
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development',
   session: {
     strategy: "jwt",
     maxAge: 24 * 60 * 60, // 24 hours
@@ -353,7 +352,6 @@ export const authOptions: NextAuthOptions = {
       return `${baseUrl}/`;
     },
   },
-  debug: process.env.NODE_ENV === "development",
   logger: {
     error(code, metadata) {
       console.error("NextAuth Error:", code, metadata);

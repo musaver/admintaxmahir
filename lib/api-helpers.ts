@@ -27,7 +27,7 @@ export async function getTenantContext(request: NextRequest): Promise<TenantCont
   return {
     tenantId: tenantInfo.tenantId,
     tenantSlug: tenantInfo.tenantSlug,
-    userId: session?.user?.id,
+    userId: (session?.user as any)?.id,
     userRole: (session?.user as any)?.role,
   };
 }

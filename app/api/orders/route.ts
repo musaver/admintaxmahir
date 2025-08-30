@@ -170,7 +170,14 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       buyerBusinessName,
       buyerProvince,
       buyerAddress,
-      buyerRegistrationType
+      buyerRegistrationType,
+      
+      // Seller fields (for FBR Digital Invoicing)
+      sellerNTNCNIC,
+      sellerBusinessName,
+      sellerProvince,
+      sellerAddress,
+      fbrSandboxToken
     } = body;
 
     // Validate required fields
@@ -262,7 +269,160 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       }
     }
 
-    // Create the order
+    // FBR Digital Invoicing Validation (BEFORE order creation)
+    let fbrResponse = null;
+    let fbrInvoiceNumber = null;
+    
+    if (scenarioId) {
+      console.log(`\n=== FBR DIGITAL INVOICING VALIDATION (PRE-ORDER) ===`);
+      console.log(`Scenario: ${scenarioId}, Invoice Type: ${invoiceType || 'Sale Invoice'}`);
+      
+      try {
+        // Prepare order data for FBR submission
+        const orderForFbr = {
+          email,
+          scenarioId,
+          invoiceType: invoiceType || 'Sale Invoice',
+          invoiceDate: invoiceDate ? new Date(invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          invoiceRefNo,
+          subtotal: parseFloat(subtotal.toString()),
+          totalAmount: parseFloat(totalAmount.toString()),
+          taxAmount: parseFloat((taxAmount || 0).toString()),
+          currency,
+          
+          // Buyer information
+          buyerNTNCNIC,
+          buyerBusinessName,
+          buyerProvince,
+          buyerAddress,
+          buyerRegistrationType: buyerRegistrationType || 'Unregistered',
+          
+          // Seller information (for FBR Digital Invoicing)
+          sellerNTNCNIC,
+          sellerBusinessName,
+          sellerProvince,
+          sellerAddress,
+          fbrSandboxToken,
+          
+          // Billing/Shipping addresses for fallback buyer info
+          billingFirstName,
+          billingLastName,
+          billingAddress1,
+          billingAddress2,
+          billingCity,
+          billingState,
+          billingPostalCode,
+          billingCountry,
+          shippingFirstName,
+          shippingLastName,
+          shippingAddress1,
+          shippingAddress2,
+          shippingCity,
+          shippingState,
+          shippingPostalCode,
+          shippingCountry,
+          
+          // Order items with all FBR-required fields
+          items: items.map(item => ({
+            productId: item.productId,
+            productName: item.productName,
+            productDescription: item.productDescription || item.productName,
+            variantTitle: item.variantTitle,
+            sku: item.sku,
+            hsCode: item.hsCode,
+            uom: item.uom || 'PCS',
+            quantity: item.quantity,
+            price: parseFloat(item.price.toString()),
+            totalPrice: parseFloat(item.totalPrice.toString()),
+            
+            // Weight-based fields
+            isWeightBased: item.isWeightBased || false,
+            weightQuantity: item.weightQuantity,
+            weightUnit: item.weightUnit,
+            
+            // Tax and additional fields
+            taxAmount: item.taxAmount,
+            taxPercentage: item.taxPercentage,
+            priceIncludingTax: item.priceIncludingTax,
+            priceExcludingTax: item.priceExcludingTax,
+            extraTax: item.extraTax,
+            furtherTax: item.furtherTax,
+            fedPayableTax: item.fedPayableTax,
+            discount: item.discount,
+            
+            // FBR-specific fields
+            itemSerialNumber: item.itemSerialNumber,
+            sroScheduleNumber: item.sroScheduleNumber,
+            fixedNotifiedValueOrRetailPrice: item.fixedNotifiedValueOrRetailPrice,
+          }))
+        };
+
+        // Submit to FBR via our internal API
+        const fbrSubmissionResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/fbr/submit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(orderForFbr),
+        });
+
+        const fbrResult = await fbrSubmissionResponse.json();
+        fbrResponse = fbrResult;
+
+        if (fbrResult.ok && fbrResult.response?.invoiceNumber) {
+          console.log('✅ FBR submission successful:', {
+            step: fbrResult.step,
+            invoiceNumber: fbrResult.response?.invoiceNumber,
+            message: fbrResult.response?.message,
+          });
+          
+          fbrInvoiceNumber = fbrResult.response.invoiceNumber;
+        } else {
+          console.error('❌ FBR submission failed:', {
+            step: fbrResult.step,
+            error: fbrResult.error,
+            validationError: fbrResult.response?.validationResponse?.error,
+          });
+          
+          // Return error immediately - don't create the order
+          let errorMessage = 'FBR Digital Invoice submission failed';
+          
+          if (fbrResult.response?.validationResponse?.error) {
+            errorMessage += `: ${fbrResult.response.validationResponse.error}`;
+          } else if (fbrResult.error) {
+            errorMessage += `: ${fbrResult.error}`;
+          }
+          
+          // Include detailed validation errors if available
+          if (fbrResult.response?.validationResponse?.invoiceStatuses) {
+            const itemErrors = fbrResult.response.validationResponse.invoiceStatuses
+              .filter((status: any) => status.error)
+              .map((status: any) => `Item ${status.itemSNo}: ${status.error}`)
+              .join('; ');
+            
+            if (itemErrors) {
+              errorMessage += `. Details: ${itemErrors}`;
+            }
+          }
+          
+          return NextResponse.json({ 
+            error: errorMessage,
+            fbrError: fbrResult,
+            step: 'fbr_validation'
+          }, { status: 400 });
+        }
+      } catch (fbrError) {
+        console.error('❌ Error during FBR submission:', fbrError);
+        
+        return NextResponse.json({ 
+          error: `FBR submission failed: ${fbrError instanceof Error ? fbrError.message : String(fbrError)}`,
+          step: 'fbr_connection'
+        }, { status: 500 });
+      }
+      console.log(`=== END FBR DIGITAL INVOICING VALIDATION ===\n`);
+    }
+
+    // Create the order (only if FBR validation passed)
     await db.insert(orders).values({
       id: orderId,
       tenantId: context.tenantId, // Add tenant ID
@@ -298,9 +458,9 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       invoiceType: invoiceType || null,
       invoiceRefNo: invoiceRefNo || null,
       scenarioId: scenarioId || null,
-      invoiceNumber: invoiceNumber || null,
+      invoiceNumber: fbrInvoiceNumber || invoiceNumber || null,
       invoiceDate: invoiceDate ? new Date(invoiceDate) : null,
-      validationResponse: validationResponse || null,
+      validationResponse: fbrResponse ? JSON.stringify(fbrResponse) : validationResponse || null,
       
       // Billing address
       billingFirstName: billingFirstName || null,
@@ -710,7 +870,11 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       ...createdOrder[0],
       items: createdItems,
       orderId: orderId,
-      orderNumber: orderNumber
+      orderNumber: orderNumber,
+      fbrResponse: fbrResponse, // Include FBR submission result
+      fbrInvoiceNumber: fbrInvoiceNumber, // Include FBR invoice number
+      success: true,
+      message: fbrInvoiceNumber ? `Order created successfully with FBR Invoice ${fbrInvoiceNumber}` : 'Order created successfully'
     }, { status: 201 });
   } catch (error) {
     console.error('Error creating order:', error);
