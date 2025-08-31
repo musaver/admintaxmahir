@@ -186,8 +186,14 @@ export default function AddOrder() {
     sellerBusinessName: '',
     sellerProvince: '',
     sellerAddress: '',
-    fbrSandboxToken: ''
+    fbrSandboxToken: '',
+    fbrBaseUrl: ''
   });
+
+  // Email and FBR submission control checkboxes
+  const [skipCustomerEmail, setSkipCustomerEmail] = useState(false);
+  const [skipSellerEmail, setSkipSellerEmail] = useState(false);
+  const [skipFbrSubmission, setSkipFbrSubmission] = useState(false);
   
   const [orderData, setOrderData] = useState({
     customerId: '',
@@ -216,7 +222,7 @@ export default function AddOrder() {
     invoiceRefNo: '',
     scenarioId: '',
     invoiceNumber: '',
-    invoiceDate: undefined as Date | undefined,
+    invoiceDate: new Date() as Date | undefined,
     validationResponse: '',
     // Buyer fields (from selected user)
     buyerNTNCNIC: '',
@@ -435,7 +441,7 @@ export default function AddOrder() {
 
       setProducts(processedProducts);
       setCustomers(customersData);
-      setStockManagementEnabled(stockData.stockManagementEnabled || true);
+      setStockManagementEnabled(stockData.stockManagementEnabled ?? true);
       setAvailableDrivers(driversData.drivers || []);
       
       // Set loyalty settings
@@ -703,10 +709,12 @@ export default function AddOrder() {
     }
 
     // Calculate total price including addons for group products
-    let totalPrice = price * finalQuantity;
+    // Use priceIncludingTax if available, otherwise fall back to base price
+    const effectivePrice = productSelection.priceIncludingTax || price;
+    let totalPrice = effectivePrice * finalQuantity;
     if (product.productType === 'group' && selectedAddons.length > 0) {
       const addonsPrice = selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0);
-      totalPrice = (price + addonsPrice) * finalQuantity;
+      totalPrice = (effectivePrice + addonsPrice) * finalQuantity;
     }
 
     const newItem: OrderItem = {
@@ -788,8 +796,20 @@ export default function AddOrder() {
     if (quantity <= 0) return;
     
     const updatedItems = [...orderItems];
+    const item = updatedItems[index];
     updatedItems[index].quantity = quantity;
-    updatedItems[index].totalPrice = updatedItems[index].price * quantity;
+    
+    // Use priceIncludingTax if available, otherwise fall back to base price
+    const effectivePrice = item.priceIncludingTax || item.price;
+    let totalPrice = effectivePrice * quantity;
+    
+    // Add addon prices for group products
+    if (item.addons && Array.isArray(item.addons) && item.addons.length > 0) {
+      const addonsPrice = item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0);
+      totalPrice = (effectivePrice + addonsPrice) * quantity;
+    }
+    
+    updatedItems[index].totalPrice = totalPrice;
     setOrderItems(updatedItems);
   };
 
@@ -884,8 +904,11 @@ export default function AddOrder() {
   };
 
   const calculateTotals = () => {
-    const subtotal = orderItems.reduce((sum, item) => {
-      let itemTotal = item.price * item.quantity;
+    // Calculate total using 'Price including tax' for each product
+    const totalAmount = orderItems.reduce((sum, item) => {
+      // Use priceIncludingTax if available, otherwise fall back to regular price
+      const itemPrice = item.priceIncludingTax || item.price;
+      let itemTotal = itemPrice * item.quantity;
       
       // Add addon prices for group products
       if (item.addons && Array.isArray(item.addons) && item.addons.length > 0) {
@@ -898,25 +921,25 @@ export default function AddOrder() {
       return sum + itemTotal;
     }, 0);
     
+    // Apply order-level discounts
     const discountAmount = orderData.discountType === 'percentage' 
-      ? subtotal * (orderData.discountAmount / 100)
+      ? totalAmount * (orderData.discountAmount / 100)
       : orderData.discountAmount;
-    const discountedSubtotal = subtotal - discountAmount;
     
     // Apply points discount
     const pointsDiscountAmount = orderData.pointsDiscountAmount || 0;
-    const afterPointsDiscount = Math.max(0, discountedSubtotal - pointsDiscountAmount);
     
-    const taxAmount = afterPointsDiscount * (orderData.taxRate / 100);
-    const totalAmount = afterPointsDiscount + taxAmount + orderData.shippingAmount;
+    // Final total after all discounts
+    const finalTotal = Math.max(0, totalAmount - discountAmount - pointsDiscountAmount);
 
     return {
-      subtotal,
+      totalAmount: finalTotal,
       discountAmount,
       pointsDiscountAmount,
-      taxAmount,
-      totalAmount,
-      afterPointsDiscount
+      // Keep these for backward compatibility but they're not used in new summary
+      subtotal: totalAmount,
+      taxAmount: 0,
+      afterPointsDiscount: finalTotal
     };
   };
 
@@ -1116,7 +1139,13 @@ export default function AddOrder() {
         sellerBusinessName: sellerInfo.sellerBusinessName || null,
         sellerProvince: sellerInfo.sellerProvince || null,
         sellerAddress: sellerInfo.sellerAddress || null,
-        fbrSandboxToken: sellerInfo.fbrSandboxToken || null
+        fbrSandboxToken: sellerInfo.fbrSandboxToken || null,
+        fbrBaseUrl: sellerInfo.fbrBaseUrl || null,
+        
+        // Email and FBR submission control flags
+        skipCustomerEmail,
+        skipSellerEmail,
+        skipFbrSubmission
       };
 
       const response = await fetch('/api/orders', {
@@ -1283,7 +1312,7 @@ export default function AddOrder() {
           </CardContent>
         </Card>
       )}
-
+{/*
       {!stockManagementEnabled && (
         <Card className="mb-6 border-orange-200 bg-orange-50">
           <CardContent className="pt-6">
@@ -1299,8 +1328,8 @@ export default function AddOrder() {
           </CardContent>
         </Card>
       )}
-
-      {stockManagementEnabled && (
+*/}
+      {stockManagementEnabled ? (
         <Card className="mb-6 border-blue-200 bg-blue-50">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
@@ -1309,6 +1338,20 @@ export default function AddOrder() {
               <h3 className="font-medium text-blue-800">Stock Management Enabled</h3>
                 <p className="text-sm text-blue-700 mt-1">
                 Orders will check inventory levels where available. Products without inventory records can still be ordered.
+              </p>
+            </div>
+          </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="mb-6 border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
+            <div>
+              <h3 className="font-medium text-orange-800">Stock Management Disabled</h3>
+                <p className="text-sm text-orange-700 mt-1">
+                Orders will be created without checking or reducing inventory levels. Stock quantities will remain unchanged.
               </p>
             </div>
           </div>
@@ -1436,6 +1479,20 @@ export default function AddOrder() {
                   </Select>
               </div>
             </div>
+            
+            {/* Email Options */}
+            <div className="flex items-center space-x-2 pt-4 border-t">
+              <input
+                type="checkbox"
+                id="skip-customer-email"
+                checked={skipCustomerEmail}
+                onChange={(e) => setSkipCustomerEmail(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="skip-customer-email" className="text-sm">
+                Do not send email to customer
+              </Label>
+            </div>
             </CardContent>
           </Card>
 
@@ -1503,21 +1560,37 @@ export default function AddOrder() {
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="fbr-token">FBR Sandbox Token</Label>
-                <Input
-                  id="fbr-token"
-                  type="password"
-                  value={sellerInfo.fbrSandboxToken}
-                  onChange={(e) => setSellerInfo({...sellerInfo, fbrSandboxToken: e.target.value})}
-                  placeholder="Enter your FBR sandbox token"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Your FBR sandbox token for API authentication. This is auto-filled from environment variables.
-                </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fbr-base-url">FBR Base URL</Label>
+                  <Input
+                    id="fbr-base-url"
+                    type="url"
+                    value={sellerInfo.fbrBaseUrl}
+                    onChange={(e) => setSellerInfo({...sellerInfo, fbrBaseUrl: e.target.value})}
+                    placeholder="https://sandbox-api.fbr.gov.pk/di_data/v1/di"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    FBR API base URL (sandbox or production). Auto-filled from settings.
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="fbr-token">FBR Sandbox Token</Label>
+                  <Input
+                    id="fbr-token"
+                    type="password"
+                    value={sellerInfo.fbrSandboxToken}
+                    onChange={(e) => setSellerInfo({...sellerInfo, fbrSandboxToken: e.target.value})}
+                    placeholder="Enter your FBR sandbox token"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Your FBR sandbox token for API authentication. Auto-filled from settings.
+                  </p>
+                </div>
               </div>
               
-              {(!sellerInfo.sellerNTNCNIC || !sellerInfo.sellerBusinessName || !sellerInfo.fbrSandboxToken) && (
+              {(!sellerInfo.sellerNTNCNIC || !sellerInfo.sellerBusinessName || !sellerInfo.fbrSandboxToken || !sellerInfo.fbrBaseUrl) && (
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="flex items-center gap-2 text-yellow-800">
                     <span>⚠️</span>
@@ -1529,6 +1602,20 @@ export default function AddOrder() {
                   </p>
                 </div>
               )}
+              
+              {/* Email Options */}
+              <div className="flex items-center space-x-2 pt-4 border-t">
+                <input
+                  type="checkbox"
+                  id="skip-seller-email"
+                  checked={skipSellerEmail}
+                  onChange={(e) => setSkipSellerEmail(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="skip-seller-email" className="text-sm">
+                  Do not send email to seller
+                </Label>
+              </div>
             </CardContent>
           </Card>
 
@@ -1873,6 +1960,20 @@ export default function AddOrder() {
                 onChange={(e) => setOrderData({...orderData, validationResponse: e.target.value})}
                 placeholder="Validation response data..."
               />
+            </div>
+            
+            {/* FBR Submission Options */}
+            <div className="flex items-center space-x-2 pt-4 border-t">
+              <input
+                type="checkbox"
+                id="skip-fbr-submission"
+                checked={skipFbrSubmission}
+                onChange={(e) => setSkipFbrSubmission(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="skip-fbr-submission" className="text-sm">
+                Do not submit invoice to FBR (create order only)
+              </Label>
             </div>
             </CardContent>
           </Card>
@@ -2351,12 +2452,13 @@ export default function AddOrder() {
                         <Label htmlFor="tax-amount-edit" className="text-sm">Tax Amount</Label>
                         <Input
                           id="tax-amount-edit"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productSelection.taxAmount}
-                      onChange={(e) => setProductSelection({...productSelection, taxAmount: parseFloat(e.target.value) || 0})}
-                      placeholder="0.00"
+                      type="text"
+                      value={productSelection.taxAmount === 0 ? '' : productSelection.taxAmount}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProductSelection({...productSelection, taxAmount: value === '' ? 0 : parseFloat(value) || 0});
+                      }}
+                      placeholder="Enter amount"
                           className="text-sm"
                     />
                   </div>
@@ -2365,13 +2467,13 @@ export default function AddOrder() {
                         <Label htmlFor="tax-percentage-edit" className="text-sm">Tax Percentage (%)</Label>
                         <Input
                           id="tax-percentage-edit"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={productSelection.taxPercentage}
-                      onChange={(e) => setProductSelection({...productSelection, taxPercentage: parseFloat(e.target.value) || 0})}
-                      placeholder="0.00"
+                      type="text"
+                      value={productSelection.taxPercentage === 0 ? '' : productSelection.taxPercentage}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProductSelection({...productSelection, taxPercentage: value === '' ? 0 : parseFloat(value) || 0});
+                      }}
+                      placeholder="Enter percentage"
                           className="text-sm"
                     />
                   </div>
@@ -2380,12 +2482,13 @@ export default function AddOrder() {
                         <Label htmlFor="price-including-tax-edit" className="text-sm">Price Including Tax</Label>
                         <Input
                           id="price-including-tax-edit"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productSelection.priceIncludingTax}
-                      onChange={(e) => setProductSelection({...productSelection, priceIncludingTax: parseFloat(e.target.value) || 0})}
-                      placeholder="0.00"
+                      type="text"
+                      value={productSelection.priceIncludingTax === 0 ? '' : productSelection.priceIncludingTax}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProductSelection({...productSelection, priceIncludingTax: value === '' ? 0 : parseFloat(value) || 0});
+                      }}
+                      placeholder="Enter price"
                           className="text-sm"
                     />
                   </div>
@@ -2394,12 +2497,13 @@ export default function AddOrder() {
                         <Label htmlFor="price-excluding-tax-edit" className="text-sm">Price Excluding Tax</Label>
                         <Input
                           id="price-excluding-tax-edit"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productSelection.priceExcludingTax}
-                      onChange={(e) => setProductSelection({...productSelection, priceExcludingTax: parseFloat(e.target.value) || 0})}
-                      placeholder="0.00"
+                      type="text"
+                      value={productSelection.priceExcludingTax === 0 ? '' : productSelection.priceExcludingTax}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProductSelection({...productSelection, priceExcludingTax: value === '' ? 0 : parseFloat(value) || 0});
+                      }}
+                      placeholder="Enter price"
                           className="text-sm"
                     />
                   </div>
@@ -2408,12 +2512,13 @@ export default function AddOrder() {
                         <Label htmlFor="extra-tax-edit" className="text-sm">Extra Tax</Label>
                         <Input
                           id="extra-tax-edit"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productSelection.extraTax}
-                      onChange={(e) => setProductSelection({...productSelection, extraTax: parseFloat(e.target.value) || 0})}
-                      placeholder="0.00"
+                      type="text"
+                      value={productSelection.extraTax === 0 ? '' : productSelection.extraTax}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProductSelection({...productSelection, extraTax: value === '' ? 0 : parseFloat(value) || 0});
+                      }}
+                      placeholder="Enter amount"
                           className="text-sm"
                     />
                   </div>
@@ -2422,12 +2527,13 @@ export default function AddOrder() {
                         <Label htmlFor="further-tax-edit" className="text-sm">Further Tax</Label>
                         <Input
                           id="further-tax-edit"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productSelection.furtherTax}
-                      onChange={(e) => setProductSelection({...productSelection, furtherTax: parseFloat(e.target.value) || 0})}
-                      placeholder="0.00"
+                      type="text"
+                      value={productSelection.furtherTax === 0 ? '' : productSelection.furtherTax}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProductSelection({...productSelection, furtherTax: value === '' ? 0 : parseFloat(value) || 0});
+                      }}
+                      placeholder="Enter amount"
                           className="text-sm"
                     />
                   </div>
@@ -2436,12 +2542,13 @@ export default function AddOrder() {
                         <Label htmlFor="fed-payable-tax-edit" className="text-sm">FED Payable Tax</Label>
                         <Input
                           id="fed-payable-tax-edit"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productSelection.fedPayableTax}
-                      onChange={(e) => setProductSelection({...productSelection, fedPayableTax: parseFloat(e.target.value) || 0})}
-                      placeholder="0.00"
+                      type="text"
+                      value={productSelection.fedPayableTax === 0 ? '' : productSelection.fedPayableTax}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProductSelection({...productSelection, fedPayableTax: value === '' ? 0 : parseFloat(value) || 0});
+                      }}
+                      placeholder="Enter amount"
                           className="text-sm"
                     />
                   </div>
@@ -2450,12 +2557,13 @@ export default function AddOrder() {
                         <Label htmlFor="discount-amount-edit" className="text-sm">Discount Amount</Label>
                         <Input
                           id="discount-amount-edit"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={productSelection.discountAmount}
-                      onChange={(e) => setProductSelection({...productSelection, discountAmount: parseFloat(e.target.value) || 0})}
-                      placeholder="0.00"
+                      type="text"
+                      value={productSelection.discountAmount === 0 ? '' : productSelection.discountAmount}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setProductSelection({...productSelection, discountAmount: value === '' ? 0 : parseFloat(value) || 0});
+                      }}
+                      placeholder="Enter amount"
                           className="text-sm"
                     />
                   </div>
@@ -2464,12 +2572,13 @@ export default function AddOrder() {
                         <Label htmlFor="fixed-notified-value-edit" className="text-sm">Fixed Notified Value/Retail Price</Label>
                         <Input
                           id="fixed-notified-value-edit"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={productSelection.fixedNotifiedValueOrRetailPrice}
-                          onChange={(e) => setProductSelection({...productSelection, fixedNotifiedValueOrRetailPrice: parseFloat(e.target.value) || 0})}
-                          placeholder="Withheld tax (if any)"
+                          type="text"
+                          value={productSelection.fixedNotifiedValueOrRetailPrice === 0 ? '' : productSelection.fixedNotifiedValueOrRetailPrice}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setProductSelection({...productSelection, fixedNotifiedValueOrRetailPrice: value === '' ? 0 : parseFloat(value) || 0});
+                          }}
+                          placeholder="Enter value"
                           className="text-sm"
                         />
                       </div>
@@ -2554,10 +2663,10 @@ export default function AddOrder() {
                           <div className="text-sm">
                             {item.addons && Array.isArray(item.addons) && item.addons.length > 0 ? (
                               <div className="text-right">
-                                                <div className="flex items-center gap-1">Base: <CurrencySymbol />{item.price.toFixed(2)}</div>
+                                                <div className="flex items-center gap-1">Price Inc. Tax: <CurrencySymbol />{(item.priceIncludingTax || item.price).toFixed(2)}</div>
                 <div className="flex items-center gap-1">Addons: <CurrencySymbol />{item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0).toFixed(2)}</div>
                 <div className="font-medium border-t pt-1 flex items-center gap-1">
-                  <CurrencySymbol />{(item.price + item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)).toFixed(2)} x 
+                  <CurrencySymbol />{((item.priceIncludingTax || item.price) + item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)).toFixed(2)} x 
                   <input
                     type="number"
                     min="1"
@@ -2570,11 +2679,11 @@ export default function AddOrder() {
                               </div>
                             ) : item.isWeightBased ? (
                               <div className="flex items-center gap-1">
-                                <CurrencySymbol />{item.price.toFixed(2)} (for {formatWeightAuto(item.weightQuantity || 0).formattedString})
+                                Price Inc. Tax: <CurrencySymbol />{(item.priceIncludingTax || item.price).toFixed(2)} (for {formatWeightAuto(item.weightQuantity || 0).formattedString})
                               </div>
                             ) : (
                               <div className="flex items-center gap-1">
-                                <CurrencySymbol />{item.price.toFixed(2)} x 
+                                Price Inc. Tax: <CurrencySymbol />{(item.priceIncludingTax || item.price).toFixed(2)} x 
                                 <input
                                   type="number"
                                   min="1"
@@ -2862,11 +2971,6 @@ export default function AddOrder() {
               </CardHeader>
               <CardContent className="space-y-4">
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                    <span className="flex items-center gap-1 font-medium"><CurrencySymbol />{totals.subtotal.toFixed(2)}</span>
-              </div>
-              
               {totals.discountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Discount:</span>
@@ -2880,16 +2984,6 @@ export default function AddOrder() {
                       <span className="flex items-center gap-1 font-medium">-<CurrencySymbol />{totals.pointsDiscountAmount.toFixed(2)}</span>
                 </div>
               )}
-              
-              <div className="flex justify-between">
-                <span>Tax ({orderData.taxRate}%):</span>
-                    <span className="flex items-center gap-1 font-medium"><CurrencySymbol />{totals.taxAmount.toFixed(2)}</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span>Shipping:</span>
-                    <span className="flex items-center gap-1 font-medium"><CurrencySymbol />{orderData.shippingAmount.toFixed(2)}</span>
-              </div>
               
                   <Separator />
                   

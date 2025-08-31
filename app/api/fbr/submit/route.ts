@@ -15,6 +15,10 @@ import type { Order, FbrApiResponse } from '@/lib/fbr/types';
 
 export async function POST(req: NextRequest) {
   try {
+    // Get tenant context for FBR settings
+    const { getTenantContext } = await import('@/lib/api-helpers');
+    const tenantContext = await getTenantContext(req);
+    
     const body = await req.json();
     
     // Check if we received an FBR invoice directly or an order to convert
@@ -32,6 +36,7 @@ export async function POST(req: NextRequest) {
       // Order object that needs to be converted
       const order: Order = body;
       customToken = order.fbrSandboxToken;
+      const customBaseUrl = order.fbrBaseUrl;
       console.log('🔄 Converting order to FBR invoice format');
       
       // Validate order data first
@@ -67,7 +72,8 @@ export async function POST(req: NextRequest) {
     });
     
     // Step 1: Validate invoice with FBR
-    const validateResp = await validateInvoice(fbrInvoice, customToken);
+    const customBaseUrl = (body as any).fbrBaseUrl;
+    const validateResp = await validateInvoice(fbrInvoice, customToken, tenantContext?.tenantId, customBaseUrl);
     const validationStatus = validateResp?.validationResponse?.status;
     
     if (validationStatus !== 'Valid') {
@@ -87,7 +93,7 @@ export async function POST(req: NextRequest) {
     console.log('✅ FBR validation successful, proceeding to post invoice');
     
     // Step 2: Post invoice to FBR
-    const postResp = await postInvoice(fbrInvoice, customToken);
+    const postResp = await postInvoice(fbrInvoice, customToken, tenantContext?.tenantId, customBaseUrl);
     
     console.log('📤 FBR post completed:', {
       success: postResp.success,

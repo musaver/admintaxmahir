@@ -580,16 +580,29 @@ export default function EditOrder() {
   const calculateNewTotal = () => {
     if (!order) return 0;
     
-    // Ensure all values are numbers
-    const subtotal = Number(order.subtotal) || 0;
-    const taxAmount = Number(order.taxAmount) || 0;
-    const shippingAmount = Number(editData.shippingAmount) || 0;
+    // Calculate total using 'Price including tax' for each product item
+    const itemsTotal = order.items?.reduce((sum: number, item: any) => {
+      // Use priceIncludingTax if available, otherwise fall back to regular price
+      const itemPrice = item.priceIncludingTax || item.price;
+      let itemTotal = itemPrice * item.quantity;
+      
+      // Add addon prices if any
+      if (item.addons && Array.isArray(item.addons) && item.addons.length > 0) {
+        const addonsTotal = item.addons.reduce((addonSum: number, addon: any) => 
+          addonSum + (addon.price * addon.quantity), 0
+        );
+        itemTotal += addonsTotal * item.quantity;
+      }
+      
+      return sum + itemTotal;
+    }, 0) || 0;
+    
+    // Apply discounts
     const discountAmount = Number(editData.discountAmount) || 0;
     const pointsDiscountAmount = Number(editData.pointsDiscountAmount) || 0;
     
-    // Calculate: subtotal - discount - points discount + tax + shipping
-    const discountedSubtotal = subtotal - discountAmount - pointsDiscountAmount;
-    const total = discountedSubtotal + taxAmount + shippingAmount;
+    // Final total after all discounts
+    const total = itemsTotal - discountAmount - pointsDiscountAmount;
     
     return Math.max(0, total); // Ensure total is never negative
   };
@@ -599,17 +612,11 @@ export default function EditOrder() {
       return 0;
     }
     
-    const subtotal = Number(order.subtotal) || 0;
-    const taxAmount = Number(order.taxAmount) || 0;
-    const shippingAmount = Number(editData.shippingAmount) || 0;
-    const discountAmount = Number(editData.discountAmount) || 0;
-    const pointsDiscountAmount = Number(editData.pointsDiscountAmount) || 0;
+    // Use the new total calculation method
+    const newTotal = calculateNewTotal();
     
-    // Calculate new total for points calculation
-    const discountedSubtotal = subtotal - discountAmount - pointsDiscountAmount;
-    const newTotal = Math.max(0, discountedSubtotal + taxAmount + shippingAmount);
-    
-    const baseAmount = loyaltySettings.earningBasis === 'total' ? newTotal : subtotal;
+    // For points calculation, use the same total since we're now using price including tax
+    const baseAmount = loyaltySettings.earningBasis === 'total' ? newTotal : newTotal;
     
     if (baseAmount < loyaltySettings.minimumOrder) {
       return 0;
@@ -1044,7 +1051,7 @@ export default function EditOrder() {
                             if (parsedAddons.length > 0) {
                               return (
                                 <div>
-                                  <div className="text-sm">Base: {formatCurrency(item.price)} x {item.quantity}</div>
+                                  <div className="text-sm">Price Inc. Tax: {formatCurrency(item.priceIncludingTax || item.price)} x {item.quantity}</div>
                                   <div className="text-xs text-gray-500">
                                     +Addons: {formatCurrency(parsedAddons.reduce((sum, addon) => sum + ((Number(addon.price) || 0) * (Number(addon.quantity) || 1)), 0))} x {item.quantity}
                                   </div>
@@ -1053,11 +1060,11 @@ export default function EditOrder() {
                             } else if (item.isWeightBased && item.weightQuantity) {
                               return (
                                 <div className="text-sm">
-                                  {formatCurrency(item.price)} (for {formatWeightAuto(item.weightQuantity).formattedString})
+                                  Price Inc. Tax: {formatCurrency(item.priceIncludingTax || item.price)} (for {formatWeightAuto(item.weightQuantity).formattedString})
                                 </div>
                               );
                             } else {
-                              return <div>{formatCurrency(item.price)} x {item.quantity}</div>;
+                              return <div>Price Inc. Tax: {formatCurrency(item.priceIncludingTax || item.price)} x {item.quantity}</div>;
                             }
                           })()}
                         </div>
@@ -1264,21 +1271,6 @@ export default function EditOrder() {
 
             {/* Financial Summary */}
             <div className="space-y-3 mb-6">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(order.subtotal)}</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span>Tax:</span>
-                <span>{formatCurrency(order.taxAmount)}</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span>Shipping:</span>
-                <span>{formatCurrency(editData.shippingAmount)}</span>
-              </div>
-              
               {editData.discountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Discount:</span>

@@ -1,9 +1,16 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
+import { isSubdomainRequest } from '@/lib/subdomain-utils';
 
-// Define available currencies (copied from API route to avoid server imports)
+// Define available currencies (PKR first as default)
 export const AVAILABLE_CURRENCIES = {
+  'PKR': { 
+    name: 'Rs (Rupees)', 
+    symbol: '₨', // Unicode rupee symbol
+    code: 'PKR',
+    position: 'before'
+  },
   'USD': { 
     name: 'US Dollar', 
     symbol: '$', // Standard dollar symbol
@@ -14,12 +21,6 @@ export const AVAILABLE_CURRENCIES = {
     name: 'Dirham', 
     symbol: '&#xe001;', // Custom font character
     code: 'AED',
-    position: 'before'
-  },
-  'PKR': { 
-    name: 'Rs (Rupees)', 
-    symbol: '₨', // Unicode rupee symbol
-    code: 'PKR',
     position: 'before'
   }
 } as const;
@@ -50,19 +51,52 @@ interface CurrencyProviderProps {
   children: ReactNode;
 }
 
+// Helper function to get currency from localStorage
+const getCurrencyFromStorage = (): CurrencyCode => {
+  if (typeof window === 'undefined') return 'PKR';
+  
+  try {
+    const stored = localStorage.getItem('selectedCurrency');
+    if (stored && AVAILABLE_CURRENCIES[stored as CurrencyCode]) {
+      return stored as CurrencyCode;
+    }
+  } catch (error) {
+    console.warn('Failed to read currency from localStorage:', error);
+  }
+  
+  return 'PKR';
+};
+
+// Helper function to save currency to localStorage
+const saveCurrencyToStorage = (currency: CurrencyCode) => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.setItem('selectedCurrency', currency);
+  } catch (error) {
+    console.warn('Failed to save currency to localStorage:', error);
+  }
+};
+
 export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) => {
-  const [currentCurrency, setCurrentCurrency] = useState<CurrencyCode>('PKR');
-  const [loading, setLoading] = useState(true);
+  // Initialize with stored currency or PKR default
+  const [currentCurrency, setCurrentCurrency] = useState<CurrencyCode>(() => getCurrencyFromStorage());
+  const [loading, setLoading] = useState(false); // Start with false to prevent initial flash
   const [error, setError] = useState<string | null>(null);
   const { data: session, status } = useSession();
 
-  // Fetch current currency settings only when user is authenticated
+  // Fetch current currency settings only when user is authenticated and on a subdomain
   useEffect(() => {
-    if (status === 'authenticated' && session) {
+    // Check if we're on a subdomain (tenant) or main domain
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+    const isSubdomain = isSubdomainRequest(hostname);
+    
+    if (status === 'authenticated' && session && isSubdomain) {
       fetchCurrencySettings();
-    } else if (status === 'unauthenticated') {
-      // User is not authenticated, use default currency and stop loading
-      setCurrentCurrency('PKR');
+    } else if (status !== 'loading') {
+      // User is not authenticated or on main domain, ensure we have the stored currency
+      const storedCurrency = getCurrencyFromStorage();
+      setCurrentCurrency(storedCurrency);
       setLoading(false);
     }
     // Don't do anything if status is 'loading'
@@ -75,16 +109,24 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
       
       const response = await fetch('/api/settings/currency');
       if (!response.ok) {
-        throw new Error('Failed to fetch currency settings');
+        // Don't throw error, just log and use stored/default
+        console.warn('Failed to fetch currency settings, using stored/default PKR');
+        const storedCurrency = getCurrencyFromStorage();
+        setCurrentCurrency(storedCurrency);
+        return;
       }
       
       const data = await response.json();
-      setCurrentCurrency(data.currentCurrency);
+      const fetchedCurrency = data.currentCurrency || 'PKR';
+      setCurrentCurrency(fetchedCurrency);
+      // Save to localStorage for future use
+      saveCurrencyToStorage(fetchedCurrency);
     } catch (err: any) {
       console.error('Error fetching currency settings:', err);
-      setError(err.message);
-      // Fallback to default currency
-      setCurrentCurrency('PKR');
+      // Don't set error state to avoid breaking the UI
+      // Just fallback to stored/default currency silently
+      const storedCurrency = getCurrencyFromStorage();
+      setCurrentCurrency(storedCurrency);
     } finally {
       setLoading(false);
     }
@@ -93,6 +135,10 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
   const setCurrency = async (currency: CurrencyCode) => {
     try {
       setError(null);
+      
+      // Immediately update local state and localStorage for instant feedback
+      setCurrentCurrency(currency);
+      saveCurrencyToStorage(currency);
       
       const response = await fetch('/api/settings/currency', {
         method: 'POST',
@@ -106,7 +152,9 @@ export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({ children }) 
       }
       
       const result = await response.json();
+      // Confirm the currency was set correctly
       setCurrentCurrency(result.currentCurrency);
+      saveCurrencyToStorage(result.currentCurrency);
     } catch (err: any) {
       console.error('Error updating currency:', err);
       setError(err.message);

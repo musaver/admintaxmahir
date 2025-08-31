@@ -499,7 +499,10 @@ export async function sendSupplierInvoiceEmail(order: Order, supplier: Supplier)
 }
 
 // Send invoice emails to both customer and supplier
-export async function sendInvoiceEmails(order: Order, supplier?: Supplier): Promise<{
+export async function sendInvoiceEmails(order: Order, supplier?: Supplier, options?: {
+  skipCustomerEmail?: boolean;
+  skipSellerEmail?: boolean;
+}): Promise<{
   customerEmailSent: boolean;
   supplierEmailSent: boolean;
   errors: string[];
@@ -510,18 +513,22 @@ export async function sendInvoiceEmails(order: Order, supplier?: Supplier): Prom
     errors: [] as string[]
   };
 
-  // Send email to customer
-  try {
-    await sendCustomerInvoiceEmail(order);
-    results.customerEmailSent = true;
-    console.log(`Invoice email sent to customer: ${order.email}`);
-  } catch (error: any) {
-    results.errors.push(`Failed to send email to customer (${order.email}): ${error.message}`);
-    console.error('Customer email error:', error);
+  // Send email to customer (unless skipped)
+  if (!options?.skipCustomerEmail) {
+    try {
+      await sendCustomerInvoiceEmail(order);
+      results.customerEmailSent = true;
+      console.log(`Invoice email sent to customer: ${order.email}`);
+    } catch (error: any) {
+      results.errors.push(`Failed to send email to customer (${order.email}): ${error.message}`);
+      console.error('Customer email error:', error);
+    }
+  } else {
+    console.log('⏭️ Skipping customer email as requested');
   }
 
-  // Send email to supplier if provided
-  if (supplier?.email) {
+  // Send email to supplier if provided (unless skipped)
+  if (supplier?.email && !options?.skipSellerEmail) {
     try {
       await sendSupplierInvoiceEmail(order, supplier);
       results.supplierEmailSent = true;
@@ -530,6 +537,8 @@ export async function sendInvoiceEmails(order: Order, supplier?: Supplier): Prom
       results.errors.push(`Failed to send email to supplier (${supplier.email}): ${error.message}`);
       console.error('Supplier email error:', error);
     }
+  } else if (options?.skipSellerEmail) {
+    console.log('⏭️ Skipping seller email as requested');
   }
 
   return results;

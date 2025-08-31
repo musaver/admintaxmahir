@@ -30,7 +30,7 @@ const CurrencySymbol: React.FC<CurrencySymbolProps> = ({
         className={`currency-symbol ${className}`.trim()}
         style={style}
       >
-        $ {/* Fallback to USD while loading */}
+        ₨ {/* Fallback to PKR Rupees while loading */}
       </span>
     );
   }

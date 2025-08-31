@@ -5,8 +5,14 @@ import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { getTenantContext } from '@/lib/api-helpers';
 
-// Define available currencies (server-side copy)
+// Define available currencies (PKR first as default)
 const AVAILABLE_CURRENCIES = {
+  'PKR': { 
+    name: 'Rs (Rupees)', 
+    symbol: '₨', // Unicode rupee symbol
+    code: 'PKR',
+    position: 'before'
+  },
   'USD': { 
     name: 'US Dollar', 
     symbol: '$', // Standard dollar symbol
@@ -17,12 +23,6 @@ const AVAILABLE_CURRENCIES = {
     name: 'Dirham', 
     symbol: '&#xe001;', // Custom font character
     code: 'AED',
-    position: 'before'
-  },
-  'PKR': { 
-    name: 'Rs (Rupees)', 
-    symbol: '₨', // Unicode rupee symbol
-    code: 'PKR',
     position: 'before'
   }
 } as const;
@@ -115,10 +115,12 @@ export async function GET(request: NextRequest) {
   try {
     const tenantContext = await getTenantContext(request);
     if (!tenantContext) {
-      return NextResponse.json(
-        { error: 'Unauthorized - No tenant context' },
-        { status: 401 }
-      );
+      // Return default PKR currency when no tenant context (e.g., unauthenticated users)
+      return NextResponse.json({
+        currentCurrency: DEFAULT_CURRENCY,
+        availableCurrencies: AVAILABLE_CURRENCIES,
+        currencySettings: AVAILABLE_CURRENCIES[DEFAULT_CURRENCY]
+      });
     }
 
     const currentCurrency = await getCurrencyFromDatabase(tenantContext.tenantId);
@@ -130,7 +132,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching currency settings:', error);
-    return NextResponse.json({ error: 'Failed to fetch currency settings' }, { status: 500 });
+    // Return default PKR currency on error
+    return NextResponse.json({
+      currentCurrency: DEFAULT_CURRENCY,
+      availableCurrencies: AVAILABLE_CURRENCIES,
+      currencySettings: AVAILABLE_CURRENCIES[DEFAULT_CURRENCY]
+    });
   }
 }
 

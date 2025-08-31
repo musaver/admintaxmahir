@@ -150,6 +150,7 @@ export interface Order {
   sellerProvince?: string;
   sellerAddress?: string;
   fbrSandboxToken?: string;
+  fbrBaseUrl?: string;
   
   // Order items
   items: OrderItem[];

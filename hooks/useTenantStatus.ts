@@ -16,10 +16,13 @@ export function useTenantStatus() {
 
     const checkTenantStatus = async () => {
       try {
-        // Check tenant status via API
+        // Check tenant status via API (with cache headers)
         const response = await fetch(`/api/tenants/lookup?slug=${user.tenantSlug}`, {
           method: 'GET',
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'Cache-Control': 'max-age=1800' // Request cached version if available (30 minutes)
+          }
         });
 
         if (!response.ok) {
@@ -80,8 +83,8 @@ export function useTenantStatus() {
     // Initial check
     checkTenantStatus();
 
-    // Set up periodic checking every 30 seconds
-    intervalRef.current = setInterval(checkTenantStatus, 30000);
+    // Set up periodic checking every 30 minutes (reduced from 30 seconds)
+    intervalRef.current = setInterval(checkTenantStatus, 30 * 60 * 1000);
 
     return () => {
       if (intervalRef.current) {

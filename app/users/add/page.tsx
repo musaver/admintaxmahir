@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AddUser() {
   const router = useRouter();
@@ -138,14 +139,20 @@ export default function AddUser() {
           <label className="block text-gray-700 mb-2" htmlFor="buyerProvince">
             Buyer Province
           </label>
-          <input
-            type="text"
-            id="buyerProvince"
-            name="buyerProvince"
-            value={formData.buyerProvince}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-          />
+          <Select value={formData.buyerProvince} onValueChange={(value) => setFormData({...formData, buyerProvince: value})}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select Province" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Punjab">Punjab</SelectItem>
+              <SelectItem value="Sindh">Sindh</SelectItem>
+              <SelectItem value="Khyber Pakhtunkhwa (KPK)">Khyber Pakhtunkhwa (KPK)</SelectItem>
+              <SelectItem value="Balochistan">Balochistan</SelectItem>
+              <SelectItem value="Islamabad Capital Territory (ICT)">Islamabad Capital Territory (ICT)</SelectItem>
+              <SelectItem value="Azad Jammu & Kashmir (AJK)">Azad Jammu & Kashmir (AJK)</SelectItem>
+              <SelectItem value="Gilgit-Baltistan (GB)">Gilgit-Baltistan (GB)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="mb-4">
@@ -166,19 +173,15 @@ export default function AddUser() {
           <label className="block text-gray-700 mb-2" htmlFor="buyerRegistrationType">
             Buyer Registration Type
           </label>
-          <select
-            id="buyerRegistrationType"
-            name="buyerRegistrationType"
-            value={formData.buyerRegistrationType}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-          >
-            <option value="">Select Registration Type</option>
-            <option value="individual">Individual</option>
-            <option value="company">Company</option>
-            <option value="partnership">Partnership</option>
-            <option value="sole_proprietorship">Sole Proprietorship</option>
-          </select>
+          <Select value={formData.buyerRegistrationType} onValueChange={(value) => setFormData({...formData, buyerRegistrationType: value})}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select Registration Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Registered">Registered</SelectItem>
+              <SelectItem value="Unregistered">Unregistered</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         
         <div className="flex gap-4">

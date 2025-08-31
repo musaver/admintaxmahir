@@ -10,12 +10,51 @@
 
 import type { FbrInvoice, FbrValidationResponse, FbrPostResponse } from './types';
 
-// Environment variables - these must be set in your .env.local
+/**
+ * Get FBR settings from tenant database
+ * @param tenantId The tenant ID to get settings for
+ * @returns FBR settings object with baseUrl and token
+ */
+async function getTenantFbrSettings(tenantId: string): Promise<{ baseUrl?: string; token?: string }> {
+  try {
+    const { db } = await import('@/lib/db');
+    const { settings } = await import('@/lib/schema');
+    const { eq, and } = await import('drizzle-orm');
+    
+    const fbrSettings = await db
+      .select()
+      .from(settings)
+      .where(
+        and(
+          eq(settings.tenantId, tenantId),
+          eq(settings.isActive, true)
+        )
+      );
+
+    let baseUrl = '';
+    let token = '';
+
+    for (const setting of fbrSettings) {
+      if (setting.key === 'fbr_base_url' || setting.key === 'FBR_BASE_URL') {
+        baseUrl = setting.value || '';
+      } else if (setting.key === 'fbr_sandbox_token' || setting.key === 'FBR_SANDBOX_TOKEN') {
+        token = setting.value || '';
+      }
+    }
+
+    return { baseUrl, token };
+  } catch (error) {
+    console.warn('Error fetching tenant FBR settings:', error);
+    return {};
+  }
+}
+
+// Environment variables - these can be overridden by tenant settings
 const BASE_URL = process.env.FBR_BASE_URL;
 const TOKEN = process.env.FBR_SANDBOX_TOKEN;
 
 if (!BASE_URL || !TOKEN) {
-  console.warn('⚠️  FBR environment variables not configured. Set FBR_BASE_URL and FBR_SANDBOX_TOKEN');
+  console.warn('⚠️  FBR environment variables not configured. Will use tenant-specific settings if available.');
 }
 
 /**
@@ -107,11 +146,30 @@ export function sanitize(obj: any): any {
  * 
  * @param payload The FBR invoice payload
  * @param customToken Optional custom token to use instead of environment variable
+ * @param tenantId Optional tenant ID to get tenant-specific FBR settings
  * @returns Validation response from FBR
  */
-export async function validateInvoice(payload: FbrInvoice, customToken?: string): Promise<FbrValidationResponse> {
-  if (!BASE_URL) {
-    throw new Error('FBR_BASE_URL environment variable is not configured');
+export async function validateInvoice(payload: FbrInvoice, customToken?: string, tenantId?: string, customBaseUrl?: string): Promise<FbrValidationResponse> {
+  let baseUrl = customBaseUrl || BASE_URL;
+  let token = customToken || TOKEN;
+
+  // Try to get tenant-specific settings if tenantId is provided
+  if (tenantId) {
+    const tenantSettings = await getTenantFbrSettings(tenantId);
+    if (tenantSettings.baseUrl && !customBaseUrl) {
+      baseUrl = tenantSettings.baseUrl;
+    }
+    if (tenantSettings.token && !customToken) {
+      token = tenantSettings.token;
+    }
+  }
+
+  if (!baseUrl) {
+    throw new Error('FBR_BASE_URL environment variable is not configured and no tenant-specific base URL found');
+  }
+  
+  if (!token) {
+    throw new Error('FBR token is not configured (neither environment variable nor tenant-specific token found)');
   }
   
   try {
@@ -123,9 +181,9 @@ export async function validateInvoice(payload: FbrInvoice, customToken?: string)
       itemCount: sanitizedPayload.items?.length || 0,
     });
     
-    const response = await fetch(`${BASE_URL}/validateinvoicedata_sb`, {
+    const response = await fetch(`${baseUrl}/validateinvoicedata_sb`, {
       method: 'POST',
-      headers: getHeaders(customToken),
+      headers: getHeaders(token),
       body: JSON.stringify(sanitizedPayload),
     });
     
@@ -172,11 +230,30 @@ export async function validateInvoice(payload: FbrInvoice, customToken?: string)
  * 
  * @param payload The FBR invoice payload (should be pre-validated)
  * @param customToken Optional custom token to use instead of environment variable
+ * @param tenantId Optional tenant ID to get tenant-specific FBR settings
  * @returns Post response from FBR
  */
-export async function postInvoice(payload: FbrInvoice, customToken?: string): Promise<FbrPostResponse> {
-  if (!BASE_URL) {
-    throw new Error('FBR_BASE_URL environment variable is not configured');
+export async function postInvoice(payload: FbrInvoice, customToken?: string, tenantId?: string, customBaseUrl?: string): Promise<FbrPostResponse> {
+  let baseUrl = customBaseUrl || BASE_URL;
+  let token = customToken || TOKEN;
+
+  // Try to get tenant-specific settings if tenantId is provided
+  if (tenantId) {
+    const tenantSettings = await getTenantFbrSettings(tenantId);
+    if (tenantSettings.baseUrl && !customBaseUrl) {
+      baseUrl = tenantSettings.baseUrl;
+    }
+    if (tenantSettings.token && !customToken) {
+      token = tenantSettings.token;
+    }
+  }
+
+  if (!baseUrl) {
+    throw new Error('FBR_BASE_URL environment variable is not configured and no tenant-specific base URL found');
+  }
+  
+  if (!token) {
+    throw new Error('FBR token is not configured (neither environment variable nor tenant-specific token found)');
   }
   
   try {
@@ -188,9 +265,9 @@ export async function postInvoice(payload: FbrInvoice, customToken?: string): Pr
       itemCount: sanitizedPayload.items?.length || 0,
     });
     
-    const response = await fetch(`${BASE_URL}/postinvoicedata_sb`, {
+    const response = await fetch(`${baseUrl}/postinvoicedata_sb`, {
       method: 'POST',
-      headers: getHeaders(customToken),
+      headers: getHeaders(token),
       body: JSON.stringify(sanitizedPayload),
     });
     

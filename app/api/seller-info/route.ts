@@ -46,12 +46,16 @@ export async function GET(request: NextRequest) {
       sellerBusinessName: process.env.FBR_SELLER_BUSINESS_NAME || '',
       sellerProvince: process.env.FBR_SELLER_PROVINCE || '',
       sellerAddress: process.env.FBR_SELLER_ADDRESS || '',
-      fbrSandboxToken: process.env.FBR_SANDBOX_TOKEN || ''
+      fbrSandboxToken: process.env.FBR_SANDBOX_TOKEN || '',
+      fbrBaseUrl: process.env.FBR_BASE_URL || ''
     };
 
     // Override with tenant-specific settings if available
     for (const setting of fbrSettingsData) {
       switch (setting.key) {
+        case FBR_SETTING_KEYS.FBR_BASE_URL:
+          sellerInfo.fbrBaseUrl = setting.value || sellerInfo.fbrBaseUrl;
+          break;
         case FBR_SETTING_KEYS.FBR_SANDBOX_TOKEN:
           sellerInfo.fbrSandboxToken = setting.value || sellerInfo.fbrSandboxToken;
           break;

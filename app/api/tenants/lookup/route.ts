@@ -56,10 +56,16 @@ export async function GET(request: NextRequest) {
       status: tenant?.status,
     });
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       tenant,
       timestamp: new Date().toISOString(),
     });
+    
+    // Add cache headers to reduce repeated requests
+    response.headers.set('Cache-Control', 'public, max-age=1800, stale-while-revalidate=3600'); // 30 minutes cache, 1 hour stale
+    response.headers.set('CDN-Cache-Control', 'public, max-age=1800');
+    
+    return response;
     
   } catch (error) {
     console.error('Error in tenant lookup API:', error);

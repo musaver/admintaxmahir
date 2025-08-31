@@ -1,7 +1,8 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { extractSubdomain, getTenantBySlug } from "@/lib/tenant-production";
+import { extractSubdomain } from "@/lib/tenant-production";
+import { getCachedTenant } from "@/lib/tenant-cache";
 
 export async function middleware(request: NextRequest) {
   // Get the pathname and hostname
@@ -44,8 +45,8 @@ export async function middleware(request: NextRequest) {
     
     let tenant = null;
     try {
-      // Get tenant information
-      tenant = await getTenantBySlug(subdomain);
+      // Get tenant information (with caching)
+      tenant = await getCachedTenant(subdomain);
       console.log('Tenant lookup result:', tenant ? `Found: ${tenant.name} (${tenant.status})` : 'Not found');
       
       if (!tenant) {

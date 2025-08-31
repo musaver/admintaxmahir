@@ -5,7 +5,7 @@ import { AVAILABLE_CURRENCIES, CurrencyCode } from '@/app/contexts/CurrencyConte
  */
 export const formatCurrency = (
   amount: number, 
-  currencyCode: CurrencyCode = 'AED',
+  currencyCode: CurrencyCode = 'PKR',
   options: {
     showSymbol?: boolean;
     decimalPlaces?: number;

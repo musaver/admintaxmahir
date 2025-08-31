@@ -39,31 +39,8 @@ import {
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const pathname = usePathname();
   const { data: session, status } = useSession();
-
-  // Fetch pending orders count
-  useEffect(() => {
-    const fetchOrdersCount = async () => {
-      try {
-        const response = await fetch('/api/orders/count');
-        if (response.ok) {
-          const data = await response.json();
-          setPendingOrdersCount(data.pendingCount);
-        }
-      } catch (error) {
-        console.error('Error fetching orders count:', error);
-      }
-    };
-
-    if (session) {
-      fetchOrdersCount();
-      // Refresh count every 30 seconds
-      const interval = setInterval(fetchOrdersCount, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [session]);
 
   if (status === 'loading') {
     return (
@@ -87,7 +64,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     
     { name: 'Inventory', href: '/inventory', icon: BarChart3Icon, category: 'operations' },
     { name: 'Suppliers', href: '/suppliers', icon: BuildingIcon, category: 'operations' },
-    { name: 'Customer Orders', href: '/orders', icon: ShoppingCartIcon, category: 'operations', badge: pendingOrdersCount > 0 ? pendingOrdersCount : null },
+    { name: 'Customer Orders', href: '/orders', icon: ShoppingCartIcon, category: 'operations' },
     /*{ name: 'Purchase Orders', href: '/orders/purchase', icon: ShoppingCartIcon, category: 'operations' },*/
     /*{ name: 'Drivers', href: '/drivers', icon: TruckIcon, category: 'operations' },*/
     { name: 'Reports', href: '/reports', icon: TrendingUpIcon, category: 'operations' },
@@ -254,13 +231,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 md:hidden flex-shrink-0">
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="shrink-0 relative">
+              <Button variant="outline" size="icon" className="shrink-0">
                 <MenuIcon className="h-5 w-5" />
-                {pendingOrdersCount > 0 && (
-                  <Badge variant="destructive" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                    {pendingOrdersCount > 99 ? '99+' : pendingOrdersCount}
-                  </Badge>
-                )}
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>

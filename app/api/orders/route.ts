@@ -177,7 +177,13 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       sellerBusinessName,
       sellerProvince,
       sellerAddress,
-      fbrSandboxToken
+      fbrSandboxToken,
+      fbrBaseUrl,
+      
+      // Email and FBR submission control flags
+      skipCustomerEmail,
+      skipSellerEmail,
+      skipFbrSubmission
     } = body;
 
     // Validate required fields
@@ -303,6 +309,7 @@ export const POST = withTenant(async (req: NextRequest, context) => {
           sellerProvince,
           sellerAddress,
           fbrSandboxToken,
+          fbrBaseUrl,
           
           // Billing/Shipping addresses for fallback buyer info
           billingFirstName,
@@ -357,59 +364,68 @@ export const POST = withTenant(async (req: NextRequest, context) => {
           }))
         };
 
-        // Submit to FBR via our internal API
-        const fbrSubmissionResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/fbr/submit`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(orderForFbr),
-        });
-
-        const fbrResult = await fbrSubmissionResponse.json();
-        fbrResponse = fbrResult;
-
-        if (fbrResult.ok && fbrResult.response?.invoiceNumber) {
-          console.log('✅ FBR submission successful:', {
-            step: fbrResult.step,
-            invoiceNumber: fbrResult.response?.invoiceNumber,
-            message: fbrResult.response?.message,
+        // Submit to FBR via our internal API (unless skipped)
+        if (!skipFbrSubmission) {
+          const fbrSubmissionResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/fbr/submit`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-tenant-id': context.tenantId,
+              'x-tenant-slug': context.tenantSlug,
+            },
+            body: JSON.stringify(orderForFbr),
           });
-          
-          fbrInvoiceNumber = fbrResult.response.invoiceNumber;
+
+          const fbrResult = await fbrSubmissionResponse.json();
+          fbrResponse = fbrResult;
         } else {
-          console.error('❌ FBR submission failed:', {
-            step: fbrResult.step,
-            error: fbrResult.error,
-            validationError: fbrResult.response?.validationResponse?.error,
-          });
-          
-          // Return error immediately - don't create the order
-          let errorMessage = 'FBR Digital Invoice submission failed';
-          
-          if (fbrResult.response?.validationResponse?.error) {
-            errorMessage += `: ${fbrResult.response.validationResponse.error}`;
-          } else if (fbrResult.error) {
-            errorMessage += `: ${fbrResult.error}`;
-          }
-          
-          // Include detailed validation errors if available
-          if (fbrResult.response?.validationResponse?.invoiceStatuses) {
-            const itemErrors = fbrResult.response.validationResponse.invoiceStatuses
-              .filter((status: any) => status.error)
-              .map((status: any) => `Item ${status.itemSNo}: ${status.error}`)
-              .join('; ');
+          console.log('⏭️ Skipping FBR submission as requested');
+          fbrResponse = { skipped: true, message: 'FBR submission skipped by user request' };
+        }
+
+        if (!skipFbrSubmission) {
+          if (fbrResponse.ok && fbrResponse.response?.invoiceNumber) {
+            console.log('✅ FBR submission successful:', {
+              step: fbrResponse.step,
+              invoiceNumber: fbrResponse.response?.invoiceNumber,
+              message: fbrResponse.response?.message,
+            });
             
-            if (itemErrors) {
-              errorMessage += `. Details: ${itemErrors}`;
-            }
-          }
+            fbrInvoiceNumber = fbrResponse.response.invoiceNumber;
+          } else {
+            console.error('❌ FBR submission failed:', {
+              step: fbrResponse.step,
+              error: fbrResponse.error,
+              validationError: fbrResponse.response?.validationResponse?.error,
+            });
           
-          return NextResponse.json({ 
-            error: errorMessage,
-            fbrError: fbrResult,
-            step: 'fbr_validation'
-          }, { status: 400 });
+            // Return error immediately - don't create the order
+            let errorMessage = 'FBR Digital Invoice submission failed';
+            
+            if (fbrResponse.response?.validationResponse?.error) {
+              errorMessage += `: ${fbrResponse.response.validationResponse.error}`;
+            } else if (fbrResponse.error) {
+              errorMessage += `: ${fbrResponse.error}`;
+            }
+            
+            // Include detailed validation errors if available
+            if (fbrResponse.response?.validationResponse?.invoiceStatuses) {
+              const itemErrors = fbrResponse.response.validationResponse.invoiceStatuses
+                .filter((status: any) => status.error)
+                .map((status: any) => `Item ${status.itemSNo}: ${status.error}`)
+                .join('; ');
+              
+              if (itemErrors) {
+                errorMessage += `. Details: ${itemErrors}`;
+              }
+            }
+            
+            return NextResponse.json({ 
+              error: errorMessage,
+              fbrError: fbrResponse,
+              step: 'fbr_validation'
+            }, { status: 400 });
+          }
         }
       } catch (fbrError) {
         console.error('❌ Error during FBR submission:', fbrError);
@@ -850,8 +866,11 @@ export const POST = withTenant(async (req: NextRequest, context) => {
         }
       }
 
-      // Send emails
-      const emailResults = await sendInvoiceEmails(orderForEmail, supplierForEmail);
+      // Send emails (conditionally based on checkboxes)
+      const emailResults = await sendInvoiceEmails(orderForEmail, supplierForEmail, {
+        skipCustomerEmail,
+        skipSellerEmail
+      });
       
       console.log('Email results:', emailResults);
       if (emailResults.errors.length > 0) {

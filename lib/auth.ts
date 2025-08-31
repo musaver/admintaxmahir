@@ -247,6 +247,14 @@ export const authOptions: NextAuthOptions = {
           token.type = (user as any).type;
           token.role = (user as any).role;
           token.roleId = (user as any).roleId;
+          
+          // Initialize tenant caching for session
+          if ((user as any).tenantSlug) {
+            const tenant = await getTenantBySlug((user as any).tenantSlug);
+            token.tenantStatus = tenant?.status || 'inactive';
+            token.lastTenantCheck = Date.now();
+          }
+          
           console.log("JWT callback - setting token data:", {
             id: user.id,
             tenantId: (user as any).tenantId,
@@ -265,12 +273,30 @@ export const authOptions: NextAuthOptions = {
         if (session.user && token.id) {
           // For tenant admin users, verify tenant is still active
           if (token.tenantId && token.tenantId !== 'super-admin' && token.tenantSlug) {
-            const tenant = await getTenantBySlug(token.tenantSlug as string);
+            // Only check tenant status every 30 minutes to reduce database load
+            const lastTenantCheck = token.lastTenantCheck as number || 0;
+            const now = Date.now();
+            const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
             
-            if (!tenant || tenant.status !== 'active') {
-              console.log("Tenant suspended or not found during session:", token.tenantSlug);
-              // Return null session to force logout
-              return { ...session, user: null } as any;
+            if (now - lastTenantCheck > thirtyMinutes) {
+              console.log('🔄 Checking tenant status (30min interval):', token.tenantSlug);
+              const tenant = await getTenantBySlug(token.tenantSlug as string);
+              
+              if (!tenant || tenant.status !== 'active') {
+                console.log("Tenant suspended or not found during session:", token.tenantSlug);
+                // Return null session to force logout
+                return { ...session, user: null } as any;
+              }
+              
+              // Update the last check timestamp in the token for next time
+              token.lastTenantCheck = now;
+              token.tenantStatus = tenant.status;
+            } else {
+              // Use cached tenant status from token
+              if (token.tenantStatus !== 'active') {
+                console.log("Cached tenant status is inactive:", token.tenantSlug);
+                return { ...session, user: null } as any;
+              }
             }
             
             // Also check if user's role is still active

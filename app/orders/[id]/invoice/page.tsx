@@ -221,7 +221,7 @@ export default function OrderInvoice() {
               <div className="flex justify-between items-start">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-800">INVOICE</h1>
-                  <p className="text-gray-600 mt-2">Invoice #{order.orderNumber}</p>
+                  <p className="text-gray-600 mt-2">Order no: {order.orderNumber}</p>
                   {order.invoiceNumber && (
                     <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                       <p className="text-green-800 font-semibold">✅ FBR Digital Invoice Number:</p>
@@ -247,65 +247,8 @@ export default function OrderInvoice() {
 
             {/* Invoice Details */}
             <div className="p-8 border-b border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-8">
-                {/* Supplier */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">🏢 Supplier:</h3>
-                  <div className="text-gray-600">
-                    {/* Primary: Show seller business fields from order */}
-                    { order.supplier ? (
-                      /* Fallback: Show supplier table data if seller fields are empty */
-                      <>
-                        {order.supplier.name && <p className="font-medium">{order.supplier.name}</p>} 
-                        {order.supplier.sellerBusinessName && <p className="text-sm text-gray-500">{order.supplier.sellerBusinessName}</p>}
-                        {order.supplier.email && <p className="mt-1 text-sm text-gray-500">{order.supplier.email}</p>}
-                        {order.supplier.sellerNTNCNIC && <p className="text-sm text-gray-500">NTN / CNIC: {order.supplier.sellerNTNCNIC}</p>}
-                        {order.supplier.sellerProvince && <p className="text-sm text-gray-500">Province: {order.supplier.sellerProvince}</p>}
-                        {order.supplier.sellerAddress && <p className="text-sm text-gray-500">Address: {order.supplier.sellerAddress}</p>}
-
-                        
-                        
-                        
-                        {order.supplier.fax && <p>Fax: {order.supplier.fax}</p>}
-                        {order.supplier.website && <p className="text-blue-600 text-sm break-all">{order.supplier.website}</p>}
-                        {order.supplier.taxId && (
-                          <div className="mt-2">
-                            <span className="text-xs text-gray-500">Tax ID: </span>
-                            <span className="font-mono text-sm">{order.supplier.taxId}</span>
-                          </div>
-                        )}
-                        
-                        {/* Address from supplier table */}
-                        {(order.supplier.addressLine1 || order.supplier.addressLine2 || order.supplier.city || order.supplier.state || order.supplier.postalCode || order.supplier.country) && (
-                          <div className="mt-3 pt-2 border-t border-gray-200">
-                            <p className="text-xs font-medium text-gray-700 mb-1">Address:</p>
-                            {order.supplier.addressLine1 && <p className="text-sm">{order.supplier.addressLine1}</p>}
-                            {order.supplier.addressLine2 && <p className="text-sm">{order.supplier.addressLine2}</p>}
-                            <p className="text-sm">
-                              {order.supplier.city && `${order.supplier.city}, `}
-                              {order.supplier.state && `${order.supplier.state} `}
-                              {order.supplier.postalCode}
-                            </p>
-                            {order.supplier.country && <p className="text-sm">{order.supplier.country}</p>}
-                          </div>
-                        )}
-                        
-                        {/* Primary Contact */}
-                        {(order.supplier.primaryContactName || order.supplier.primaryContactEmail || order.supplier.primaryContactPhone || order.supplier.primaryContactMobile) && (
-                          <div className="mt-3 pt-2 border-t border-gray-200">
-                            <p className="text-xs font-medium text-gray-700 mb-1">Primary Contact:</p>
-                            {order.supplier.primaryContactName && <p className="text-sm">{order.supplier.primaryContactName}</p>}
-                            {order.supplier.primaryContactEmail && <p className="text-sm">{order.supplier.primaryContactEmail}</p>}
-                            {order.supplier.primaryContactPhone && <p className="text-sm">Phone: {order.supplier.primaryContactPhone}</p>}
-                            {order.supplier.primaryContactMobile && <p className="text-sm">Mobile: {order.supplier.primaryContactMobile}</p>}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-gray-400 italic">No supplier information</p>
-                    )}
-                  </div>
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8">
+              
 
 
                 {/* Buyer */}
@@ -494,7 +437,7 @@ export default function OrderInvoice() {
                       <th className="text-left py-3 px-2">SRO/Schedule</th>
                       <th className="text-center py-3 px-2">Quantity</th>
                       <th className="text-center py-3 px-2">UOM</th>
-                      <th className="text-right py-3 px-2">Unit Price</th>
+                      <th className="text-right py-3 px-2">Price Inc. Tax</th>
                       <th className="text-right py-3 px-2">Total</th>
                     </tr>
                   </thead>
@@ -565,14 +508,15 @@ export default function OrderInvoice() {
                               )}
                             </td>
                             
-                            {/* Unit Price */}
+                            {/* Price Inc. Tax */}
                             <td className="py-3 px-2 text-right">
                               {(() => {
                                 const parsedAddons = parseAddons(item.addons);
+                                const effectivePrice = item.priceIncludingTax || item.price;
                                 if (parsedAddons.length > 0) {
                                   return (
                                     <div>
-                                      <div className="text-sm">Base: {formatAmount(item.price)}</div>
+                                      <div className="text-sm">Price Inc. Tax: {formatAmount(effectivePrice)}</div>
                                       <div className="text-xs text-gray-500">
                                         +Addons: {formatAmount(parsedAddons.reduce((sum: number, addon: any) => sum + ((Number(addon.price) || 0) * (Number(addon.quantity) || 1)), 0))}
                                       </div>
@@ -581,14 +525,14 @@ export default function OrderInvoice() {
                                 } else if (item.isWeightBased && item.weightQuantity) {
                                   return (
                                     <div className="text-sm">
-                                      {formatAmount(item.price)}
+                                      {formatAmount(effectivePrice)}
                                       <div className="text-xs text-gray-500">
                                         (for {formatWeightAuto(item.weightQuantity).formattedString})
                                       </div>
                                     </div>
                                   );
                                 } else {
-                                  return formatAmount(item.price);
+                                  return formatAmount(effectivePrice);
                                 }
                               })()}
                             </td>
@@ -749,38 +693,57 @@ export default function OrderInvoice() {
 
             {/* Totals */}
             <div className="p-8 bg-gray-50">
-              <div className="max-w-md ml-auto">
-                <div className="space-y-2">
-                  <div className="flex justify-between py-2">
-                    <span>Subtotal:</span>
-                    <span>{formatAmount(order.subtotal)}</span>
+              <div className="flex justify-between items-start">
+                {/* FBR Logos - Left Side - Only show if invoice has FBR invoice number */}
+                {order.invoiceNumber && (
+                  <div className="flex-shrink-0 flex items-center gap-4">
+                    <img 
+                      src="/digital-invoicing-logo.webp" 
+                      alt="FBR Digital Invoicing" 
+                      className="h-20 w-auto object-contain"
+                    />
+                    <img 
+                      src="/fbr-pakistan-logo.png" 
+                      alt="FBR Pakistan" 
+                      className="h-20 w-auto object-contain"
+                    />
                   </div>
-                  
-                  {parseFloat(order.taxAmount) > 0 && (
+                )}
+                
+                {/* Totals - Right Side */}
+                <div className="max-w-md">
+                  <div className="space-y-2">
                     <div className="flex justify-between py-2">
-                      <span>Tax:</span>
-                      <span>{formatAmount(order.taxAmount)}</span>
+                      <span>Subtotal:</span>
+                      <span>{formatAmount(order.subtotal)}</span>
                     </div>
-                  )}
-                  
-                  {parseFloat(order.shippingAmount) > 0 && (
-                    <div className="flex justify-between py-2">
-                      <span>Shipping:</span>
-                      <span>{formatAmount(order.shippingAmount)}</span>
-                    </div>
-                  )}
-                  
-                  {parseFloat(order.discountAmount) > 0 && (
-                    <div className="flex justify-between py-2 text-green-600">
-                      <span>Discount:</span>
-                      <span>-{formatAmount(order.discountAmount)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="border-t-2 border-gray-300 pt-2">
-                    <div className="flex justify-between py-2 text-xl font-bold">
-                      <span>Total:</span>
-                      <span>{formatAmount(order.totalAmount)}</span>
+                    
+                    {parseFloat(order.taxAmount) > 0 && (
+                      <div className="flex justify-between py-2">
+                        <span>Tax:</span>
+                        <span>{formatAmount(order.taxAmount)}</span>
+                      </div>
+                    )}
+                    
+                    {parseFloat(order.shippingAmount) > 0 && (
+                      <div className="flex justify-between py-2">
+                        <span>Shipping:</span>
+                        <span>{formatAmount(order.shippingAmount)}</span>
+                      </div>
+                    )}
+                    
+                    {parseFloat(order.discountAmount) > 0 && (
+                      <div className="flex justify-between py-2 text-green-600">
+                        <span>Discount:</span>
+                        <span>-{formatAmount(order.discountAmount)}</span>
+                      </div>
+                    )}
+                    
+                    <div className="border-t-2 border-gray-300 pt-2">
+                      <div className="flex justify-between py-2 text-xl font-bold">
+                        <span>Total:</span>
+                        <span>{formatAmount(order.totalAmount)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
