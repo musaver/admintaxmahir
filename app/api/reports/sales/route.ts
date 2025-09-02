@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { orders, orderItems, products, productVariants, user } from '@/lib/schema';
 import { eq, and, gte, lte, desc, sql, count, sum } from 'drizzle-orm';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
 
-export async function GET(req: NextRequest) {
+export const GET = withTenant(async (req: NextRequest, context) => {
   try {
     const { searchParams } = new URL(req.url);
     const startDate = searchParams.get('startDate');
@@ -28,8 +29,8 @@ export async function GET(req: NextRequest) {
       statusFilters.push(eq(orders.status, status));
     }
 
-    // Combine all filters
-    const whereConditions = [...dateFilters, ...statusFilters];
+    // Combine all filters including tenant filter
+    const whereConditions = [eq(orders.tenantId, context.tenantId), ...dateFilters, ...statusFilters];
 
     // Get sales summary statistics
     const salesSummary = await db
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
         totalDiscount: sum(orders.discountAmount)
       })
       .from(orders)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+      .where(and(...whereConditions));
 
     // Get orders with customer details
     const ordersWithDetails = await db
@@ -51,8 +52,11 @@ export async function GET(req: NextRequest) {
         user: user
       })
       .from(orders)
-      .leftJoin(user, eq(orders.userId, user.id))
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .leftJoin(user, and(
+        eq(orders.userId, user.id),
+        eq(user.tenantId, context.tenantId)
+      ))
+      .where(and(...whereConditions))
       .orderBy(desc(orders.createdAt));
 
     // Get top products by revenue
@@ -66,7 +70,7 @@ export async function GET(req: NextRequest) {
       })
       .from(orderItems)
       .innerJoin(orders, eq(orderItems.orderId, orders.id))
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .where(and(...whereConditions))
       .groupBy(orderItems.productId, orderItems.productName)
       .orderBy(desc(sum(orderItems.totalPrice)))
       .limit(10);
@@ -79,7 +83,7 @@ export async function GET(req: NextRequest) {
         totalRevenue: sum(orders.totalAmount)
       })
       .from(orders)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .where(and(...whereConditions))
       .groupBy(orders.status);
 
     // Get sales by payment status
@@ -90,7 +94,7 @@ export async function GET(req: NextRequest) {
         totalRevenue: sum(orders.totalAmount)
       })
       .from(orders)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .where(and(...whereConditions))
       .groupBy(orders.paymentStatus);
 
     // Get daily sales data for charts (last 30 days or filtered range)
@@ -101,7 +105,7 @@ export async function GET(req: NextRequest) {
         totalRevenue: sum(orders.totalAmount)
       })
       .from(orders)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .where(and(...whereConditions))
       .groupBy(sql`DATE(${orders.createdAt})`)
       .orderBy(sql`DATE(${orders.createdAt})`);
 
@@ -114,7 +118,7 @@ export async function GET(req: NextRequest) {
         averageOrderValue: sql<number>`AVG(${orders.totalAmount})`
       })
       .from(orders)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .where(and(...whereConditions))
       .groupBy(sql`DATE_FORMAT(${orders.createdAt}, '%Y-%m')`)
       .orderBy(sql`DATE_FORMAT(${orders.createdAt}, '%Y-%m')`);
 
@@ -206,6 +210,6 @@ export async function GET(req: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching sales reports:', error);
-    return NextResponse.json({ error: 'Failed to fetch sales reports' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch sales reports');
   }
-} 
+}); 

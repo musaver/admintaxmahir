@@ -407,7 +407,7 @@ export default function SalesReport() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-xl font-bold text-green-600">
     {formatCurrency(data.summary.totalRevenue)}
                   </p>
                 </div>

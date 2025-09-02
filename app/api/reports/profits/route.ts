@@ -3,8 +3,9 @@ import { db } from '@/lib/db';
 import { orders, orderItems, products, productVariants } from '@/lib/schema';
 import { eq, and, gte, lte, desc } from 'drizzle-orm';
 import { calculateItemProfit, calculateOrderProfitSummary, formatProfitDataForExport, OrderItemData } from '@/utils/profitUtils';
+import { withTenant, ErrorResponses } from '@/lib/api-helpers';
 
-export async function GET(req: NextRequest) {
+export const GET = withTenant(async (req: NextRequest, context) => {
   try {
     const { searchParams } = new URL(req.url);
     const startDate = searchParams.get('startDate');
@@ -29,8 +30,8 @@ export async function GET(req: NextRequest) {
       productFilters.push(eq(orderItems.productId, productId));
     }
 
-    // Combine all filters
-    const whereConditions = [...dateFilters, ...productFilters];
+    // Combine all filters including tenant filter
+    const whereConditions = [eq(orders.tenantId, context.tenantId), ...dateFilters, ...productFilters];
 
     // Fetch orders with items that have cost prices
     const ordersWithItems = await db
@@ -42,9 +43,15 @@ export async function GET(req: NextRequest) {
       })
       .from(orders)
       .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
-      .leftJoin(products, eq(orderItems.productId, products.id))
-      .leftJoin(productVariants, eq(orderItems.variantId, productVariants.id))
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .leftJoin(products, and(
+        eq(orderItems.productId, products.id),
+        eq(products.tenantId, context.tenantId)
+      ))
+      .leftJoin(productVariants, and(
+        eq(orderItems.variantId, productVariants.id),
+        eq(productVariants.tenantId, context.tenantId)
+      ))
+      .where(and(...whereConditions))
       .orderBy(desc(orders.createdAt));
 
     // Transform data for profit calculations
@@ -134,6 +141,6 @@ export async function GET(req: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching profit reports:', error);
-    return NextResponse.json({ error: 'Failed to fetch profit reports' }, { status: 500 });
+    return ErrorResponses.serverError('Failed to fetch profit reports');
   }
-} 
+}); 

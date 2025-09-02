@@ -292,8 +292,8 @@ export default function ProfitsReport() {
               className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Products</option>
-              {products.map(product => (
-                <option key={product.id} value={product.id}>{product.name}</option>
+              {products.map((product, index) => (
+                <option key={`product-${product.id || index}`} value={product.id}>{product.name}</option>
               ))}
             </select>
           </div>
@@ -400,7 +400,7 @@ export default function ProfitsReport() {
             <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Profit Overview</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{data.summary.profitableItems}</div>
+                <div className="text-xl font-bold text-green-600">{data.summary.profitableItems}</div>
                 <div className="text-sm text-green-700">Profitable Items</div>
               </div>
               <div className="text-center p-4 bg-red-50 rounded-lg">

@@ -731,7 +731,7 @@ export default function InventoryList() {
             <CheckCircleIcon className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.inStockItems}</div>
+            <div className="text-xl font-bold text-green-600">{stats.inStockItems}</div>
           </CardContent>
         </Card>
 
@@ -740,7 +740,7 @@ export default function InventoryList() {
             <CardTitle className="text-sm font-medium">Total Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-xl font-bold text-green-600">
               <CurrencySymbol />{stats.totalValue.toFixed(2)}
             </div>
           </CardContent>

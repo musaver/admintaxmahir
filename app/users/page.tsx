@@ -348,7 +348,7 @@ export default function UsersList() {
             <CardTitle className="text-sm font-medium">With Address</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.usersWithAddress}</div>
+            <div className="text-xl font-bold text-green-600">{stats.usersWithAddress}</div>
           </CardContent>
         </Card>
 

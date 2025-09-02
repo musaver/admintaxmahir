@@ -467,7 +467,7 @@ export default function UserPointsHistoryPage() {
             <CardTitle className="text-sm font-medium text-gray-500">Total Earned</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-xl font-bold text-green-600">
               {loyaltyPoints?.totalPointsEarned || 0}
             </div>
           </CardContent>

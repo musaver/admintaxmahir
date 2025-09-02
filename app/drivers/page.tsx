@@ -311,23 +311,23 @@ export default function DriversList() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+          <div className="text-xl font-bold text-gray-900">{stats.total}</div>
           <div className="text-sm text-gray-600">Total Drivers</div>
         </div>
         <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-green-600">{stats.available}</div>
+          <div className="text-xl font-bold text-green-600">{stats.available}</div>
           <div className="text-sm text-gray-600">Available</div>
         </div>
         <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-yellow-600">{stats.busy}</div>
+          <div className="text-xl font-bold text-yellow-600">{stats.busy}</div>
           <div className="text-sm text-gray-600">Busy</div>
         </div>
         <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-gray-600">{stats.offline}</div>
+          <div className="text-xl font-bold text-gray-600">{stats.offline}</div>
           <div className="text-sm text-gray-600">Offline</div>
         </div>
         <div className="bg-white p-4 rounded-lg border">
-          <div className="text-2xl font-bold text-blue-600">{stats.totalAssignments}</div>
+          <div className="text-xl font-bold text-blue-600">{stats.totalAssignments}</div>
           <div className="text-sm text-gray-600">Active Deliveries</div>
         </div>
       </div>

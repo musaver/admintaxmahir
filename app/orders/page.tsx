@@ -794,7 +794,7 @@ export default function OrdersList() {
             <DollarSignIcon className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-xl font-bold text-green-600">
               {formatCurrency(stats.totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground">Gross revenue</p>
@@ -831,7 +831,7 @@ export default function OrdersList() {
             <CheckCircleIcon className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.completedOrders}</div>
+            <div className="text-xl font-bold text-green-600">{stats.completedOrders}</div>
             <p className="text-xs text-muted-foreground">Successfully fulfilled</p>
           </CardContent>
         </Card>

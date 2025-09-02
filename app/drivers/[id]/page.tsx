@@ -471,7 +471,7 @@ export default function DriverDetailsPage() {
               
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="text-center p-3 bg-green-50 rounded-lg">
-                  <p className="text-2xl font-bold text-green-600">{driver.completedDeliveries}</p>
+                  <p className="text-xl font-bold text-green-600">{driver.completedDeliveries}</p>
                   <p className="text-xs text-gray-600">Completed</p>
                 </div>
                 <div className="text-center p-3 bg-red-50 rounded-lg">

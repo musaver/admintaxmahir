@@ -308,7 +308,7 @@ export default function ProductsList() {
             <CardTitle className="text-sm font-medium">Active Products</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.activeProducts}</div>
+            <div className="text-xl font-bold text-green-600">{stats.activeProducts}</div>
           </CardContent>
         </Card>
 

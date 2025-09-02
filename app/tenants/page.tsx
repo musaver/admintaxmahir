@@ -161,7 +161,7 @@ export default function TenantsPage() {
           <div className="text-sm text-gray-600">Total Tenants</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="text-2xl font-bold text-green-600">
+          <div className="text-xl font-bold text-green-600">
             {tenants.filter((t: any) => t.status === 'active').length}
           </div>
           <div className="text-sm text-gray-600">Active Tenants</div>

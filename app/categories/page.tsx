@@ -206,7 +206,7 @@ export default function CategoriesList() {
             <CardTitle className="text-sm font-medium">Active Categories</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.activeCategories}</div>
+            <div className="text-xl font-bold text-green-600">{stats.activeCategories}</div>
           </CardContent>
         </Card>
 
