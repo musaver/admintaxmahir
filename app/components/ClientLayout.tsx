@@ -64,7 +64,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     
     { name: 'Inventory', href: '/inventory', icon: BarChart3Icon, category: 'operations' },
     { name: 'Suppliers', href: '/suppliers', icon: BuildingIcon, category: 'operations' },
-    { name: 'Customer Orders', href: '/orders', icon: ShoppingCartIcon, category: 'operations' },
+    { name: 'Invoices / Orders', href: '/orders', icon: ShoppingCartIcon, category: 'operations' },
     /*{ name: 'Purchase Orders', href: '/orders/purchase', icon: ShoppingCartIcon, category: 'operations' },*/
     /*{ name: 'Drivers', href: '/drivers', icon: TruckIcon, category: 'operations' },*/
     { name: 'Reports', href: '/reports', icon: TrendingUpIcon, category: 'operations' },

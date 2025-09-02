@@ -738,7 +738,7 @@ export default function OrdersList() {
       {/* Header */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 w-full">
         <div className="min-w-0 flex-1">
-          <h1 className="text-3xl font-bold tracking-tight truncate">Orders Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight truncate">Orders/Invoices  Management</h1>
           <p className="text-muted-foreground">
             Manage customer orders and track sales performance
           </p>
