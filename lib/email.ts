@@ -276,9 +276,8 @@ export function generateInvoiceHtml(order: Order, isForSupplier: boolean = false
             <!-- Company Header -->
             <div class="company-header">
                 <h2>Taxmahir</h2>
-                <p>Alrasheed arcade second floor</p>
-                <p>Flat no 1 mujahid street, Defence road, Rawalpindi</p>
-                <p>Phone: +92 335 5836 228</p>
+                <p>Office #152, WBC, Ferozpur Road, Lahore</p>
+                <p>Phone: 0321-4250013</p>
                 <p>Email: support@taxmahir.pk</p>
             </div>
 

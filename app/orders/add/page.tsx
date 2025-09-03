@@ -1458,7 +1458,7 @@ export default function AddOrder() {
               {debugJson.orderData && (
                 <div>
                   <h4 className="font-medium text-blue-800 mb-2">📤 Order Data (Input to FBR Mapper):</h4>
-                  <pre className="bg-white p-3 rounded border text-xs overflow-auto max-h-96">
+                  <pre className=" p-3 rounded border text-xs overflow-auto max-h-96">
                     {JSON.stringify(debugJson.orderData, null, 2)}
                   </pre>
                 </div>
@@ -1467,7 +1467,7 @@ export default function AddOrder() {
               {debugJson.fbrPayload && (
                 <div>
                   <h4 className="font-medium text-blue-800 mb-2">📋 Generated FBR JSON Payload:</h4>
-                  <pre className="bg-white p-3 rounded border text-xs overflow-auto max-h-96">
+                  <pre className=" p-3 rounded border text-xs overflow-auto max-h-96">
                     {JSON.stringify(debugJson.fbrPayload, null, 2)}
                   </pre>
                 </div>
@@ -1899,7 +1899,7 @@ export default function AddOrder() {
 
               <div className="space-y-4">
                 {/* Use All Points Toggle */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 rounded-lg">
                   <div>
                     <label className="text-sm font-medium text-gray-700">Use All Available Points</label>
                     <p className="text-xs text-gray-500">
@@ -2804,7 +2804,7 @@ export default function AddOrder() {
                 </div>
                 <div className="space-y-2">
                   {orderItems.map((item, index) => (
-                    <div key={index} className="p-3 bg-gray-50 rounded">
+                    <div key={index} className="p-3 rounded">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="font-medium">{item.productName}</div>

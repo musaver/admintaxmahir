@@ -414,15 +414,11 @@ export default function OrderInvoice() {
                   <div className="text-slate-200 space-y-1 text-sm">
                     <div className="flex items-center justify-end gap-2">
                       <MapPin className="h-4 w-4" />
-                      <span>Alrasheed arcade second floor</span>
-                    </div>
-                    <div className="text-right">
-                      <p>Flat no 1 mujahid street</p>
-                      <p>Defence road, Rawalpindi</p>
+                      <span>Office #152, WBC, Ferozpur Road, Lahore</span>
                     </div>
                     <div className="flex items-center justify-end gap-2 pt-2">
                       <Phone className="h-4 w-4" />
-                      <span>+92 335 5836 228</span>
+                      <span>0321-4250013</span>
                     </div>
                     <div className="flex items-center justify-end gap-2">
                       <Mail className="h-4 w-4" />
