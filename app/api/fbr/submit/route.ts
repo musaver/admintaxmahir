@@ -54,6 +54,12 @@ export async function POST(req: NextRequest) {
       try {
         fbrInvoice = await mapOrderToFbrInvoice(order);
         console.log('✅ Order converted to FBR format successfully');
+        
+        // 🔍 DEBUG: Log the final FBR JSON payload
+        console.log('\n🔍 === FINAL FBR JSON PAYLOAD ===');
+        console.log('📋 Generated FBR Invoice JSON:');
+        console.log(JSON.stringify(fbrInvoice, null, 2));
+        console.log('===============================\n');
       } catch (mappingError) {
         return NextResponse.json({
           step: 'mapping',
@@ -83,11 +89,18 @@ export async function POST(req: NextRequest) {
         details: validateResp?.validationResponse?.details,
       });
       
+      // 🔍 DEBUG: Log the complete FBR validation response
+      console.log('\n🔍 === FBR VALIDATION ERROR RESPONSE ===');
+      console.log('❌ Complete FBR validation response:');
+      console.log(JSON.stringify(validateResp, null, 2));
+      console.log('=====================================\n');
+      
       return NextResponse.json({
         step: 'validate',
         ok: false,
         response: validateResp,
-      } as FbrApiResponse, { status: 400 });
+        fbrInvoice, // Include the generated FBR payload for debugging
+      } as FbrApiResponse & { fbrInvoice: any }, { status: 400 });
     }
     
     console.log('✅ FBR validation successful, proceeding to post invoice');

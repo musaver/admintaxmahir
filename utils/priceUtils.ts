@@ -17,6 +17,16 @@ export const formatPrice = (price: number): string => {
 };
 
 /**
+ * Safely format price as currency string (without currency symbol)
+ * Handles non-numeric values by converting them to numbers first
+ * Use with CurrencySymbol component: <CurrencySymbol />{safeFormatPrice(price)}
+ */
+export const safeFormatPrice = (price: any): string => {
+  const numericPrice = sanitizePrice(price);
+  return numericPrice.toFixed(2);
+};
+
+/**
  * Calculate discount percentage
  */
 export const calculateDiscountPercentage = (price: number, comparePrice: number): number => {
@@ -185,6 +195,7 @@ export const isValidSlug = (slug: string): boolean => {
 
 export default {
   formatPrice,
+  safeFormatPrice,
   calculateDiscountPercentage,
   calculateProfitMargin,
   getPriceDisplay,

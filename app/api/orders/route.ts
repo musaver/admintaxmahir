@@ -366,6 +366,12 @@ export const POST = withTenant(async (req: NextRequest, context) => {
 
         // Submit to FBR via our internal API (unless skipped)
         if (!skipFbrSubmission) {
+          // 🔍 DEBUG: Log the exact JSON being sent to FBR
+          console.log('\n🔍 === FBR SUBMISSION DEBUG ===');
+          console.log('📤 Order data being sent to FBR mapper:');
+          console.log(JSON.stringify(orderForFbr, null, 2));
+          console.log('=================================\n');
+
           const fbrSubmissionResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/fbr/submit`, {
             method: 'POST',
             headers: {
@@ -422,7 +428,10 @@ export const POST = withTenant(async (req: NextRequest, context) => {
             
             return NextResponse.json({ 
               error: errorMessage,
-              fbrError: fbrResponse,
+              fbrError: {
+                ...fbrResponse,
+                fbrInvoice: fbrResponse.fbrInvoice // Pass through the generated FBR payload
+              },
               step: 'fbr_validation'
             }, { status: 400 });
           }

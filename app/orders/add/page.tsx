@@ -25,6 +25,7 @@ import {
   calculateWeightBasedPrice,
   getWeightUnits
 } from '@/utils/weightUtils';
+import { safeFormatPrice } from '@/utils/priceUtils';
 import { useCurrency } from '@/app/contexts/CurrencyContext';
 
 interface Product {
@@ -154,6 +155,16 @@ export default function AddOrder() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [stockManagementEnabled, setStockManagementEnabled] = useState(true);
+  
+  // Debug JSON display state
+  const [debugJson, setDebugJson] = useState<{
+    orderData?: any;
+    fbrPayload?: any;
+    fbrError?: any;
+    showDebug: boolean;
+  }>({
+    showDebug: false
+  });
   
   // Sticky sidebar state
   const [isSticky, setIsSticky] = useState(false);
@@ -1051,6 +1062,103 @@ export default function AddOrder() {
     }
   };
 
+  // Function to preview JSON without submitting
+  const handlePreviewJson = () => {
+    if (orderItems.length === 0) {
+      setError('Please add at least one product to preview JSON');
+      return;
+    }
+
+    const totals = calculateTotals();
+    
+    const submitData = {
+      userId: orderData.customerId || null,
+      email: orderData.email,
+      phone: orderData.phone,
+      status: orderData.status,
+      paymentStatus: orderData.paymentStatus,
+      subtotal: totals.subtotal,
+      taxAmount: totals.taxAmount,
+      shippingAmount: orderData.shippingAmount,
+      discountAmount: totals.discountAmount,
+      totalAmount: totals.totalAmount,
+      currency: orderData.currency,
+      notes: orderData.notes,
+      
+      // Supplier field
+      supplierId: orderData.supplierId || null,
+      
+      // Invoice and validation fields
+      invoiceType: orderData.invoiceType || null,
+      invoiceRefNo: orderData.invoiceRefNo || null,
+      scenarioId: orderData.scenarioId || null,
+      invoiceNumber: orderData.invoiceNumber || null,
+      invoiceDate: orderData.invoiceDate || null,
+      validationResponse: orderData.validationResponse || null,
+      
+      // Driver assignment fields
+      assignedDriverId: orderData.assignedDriverId || null,
+      deliveryStatus: orderData.deliveryStatus,
+      
+      // Loyalty points fields
+      pointsToRedeem: orderData.pointsToRedeem,
+      pointsDiscountAmount: orderData.pointsDiscountAmount,
+      
+      // Billing address
+      billingFirstName: customerInfo.billingFirstName,
+      billingLastName: customerInfo.billingLastName,
+      billingAddress1: customerInfo.billingAddress1,
+      billingAddress2: customerInfo.billingAddress2,
+      billingCity: customerInfo.billingCity,
+      billingState: customerInfo.billingState,
+      billingPostalCode: customerInfo.billingPostalCode,
+      billingCountry: customerInfo.billingCountry,
+      
+      // Shipping address
+      shippingFirstName: customerInfo.sameAsBilling ? customerInfo.billingFirstName : customerInfo.shippingFirstName,
+      shippingLastName: customerInfo.sameAsBilling ? customerInfo.billingLastName : customerInfo.shippingLastName,
+      shippingAddress1: customerInfo.sameAsBilling ? customerInfo.billingAddress1 : customerInfo.shippingAddress1,
+      shippingAddress2: customerInfo.sameAsBilling ? customerInfo.billingAddress2 : customerInfo.shippingAddress2,
+      shippingCity: customerInfo.sameAsBilling ? customerInfo.billingCity : customerInfo.shippingCity,
+      shippingState: customerInfo.sameAsBilling ? customerInfo.billingState : customerInfo.shippingState,
+      shippingPostalCode: customerInfo.sameAsBilling ? customerInfo.billingPostalCode : customerInfo.shippingPostalCode,
+      shippingCountry: customerInfo.sameAsBilling ? customerInfo.billingCountry : customerInfo.shippingCountry,
+      
+      // Order items
+      items: orderItems,
+      
+      // Buyer fields (from selected customer)
+      buyerNTNCNIC: orderData.buyerNTNCNIC || null,
+      buyerBusinessName: orderData.buyerBusinessName || null,
+      buyerProvince: orderData.buyerProvince || null,
+      buyerAddress: orderData.buyerAddress || null,
+      buyerRegistrationType: orderData.buyerRegistrationType || null,
+      
+      // Seller fields (for FBR Digital Invoicing)
+      sellerNTNCNIC: sellerInfo.sellerNTNCNIC || null,
+      sellerBusinessName: sellerInfo.sellerBusinessName || null,
+      sellerProvince: sellerInfo.sellerProvince || null,
+      sellerAddress: sellerInfo.sellerAddress || null,
+      fbrSandboxToken: sellerInfo.fbrSandboxToken || null,
+      fbrBaseUrl: sellerInfo.fbrBaseUrl || null,
+      
+      // Email and FBR submission control flags
+      skipCustomerEmail,
+      skipSellerEmail,
+      skipFbrSubmission
+    };
+
+    // Show the JSON preview
+    setDebugJson({
+      orderData: submitData,
+      fbrPayload: null,
+      fbrError: null,
+      showDebug: true
+    });
+    
+    setError(''); // Clear any existing errors
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -1148,6 +1256,15 @@ export default function AddOrder() {
         skipFbrSubmission
       };
 
+      // 🔍 DEBUG: Capture the order data for display
+      setDebugJson(prev => ({
+        ...prev,
+        orderData: submitData,
+        fbrPayload: null,
+        fbrError: null,
+        showDebug: true
+      }));
+
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1156,6 +1273,15 @@ export default function AddOrder() {
 
       if (!response.ok) {
         const data = await response.json();
+        
+        // 🔍 DEBUG: Capture FBR error data for display
+        if (data.step === 'fbr_validation' || data.step === 'fbr_connection') {
+          setDebugJson(prev => ({
+            ...prev,
+            fbrError: data.fbrError,
+            fbrPayload: data.fbrError?.fbrInvoice || null
+          }));
+        }
         
         // Handle FBR-specific errors with more detail
         if (data.step === 'fbr_validation' || data.step === 'fbr_connection') {
@@ -1309,6 +1435,53 @@ export default function AddOrder() {
               <span className="font-medium">Error:</span>
               <span>{error}</span>
         </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 🔍 DEBUG: JSON Display */}
+      {debugJson.showDebug && (
+        <Card className="mb-6 border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-blue-900">🔍 Debug: FBR Submission Data</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDebugJson(prev => ({ ...prev, showDebug: false }))}
+              >
+                Hide Debug
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              {debugJson.orderData && (
+                <div>
+                  <h4 className="font-medium text-blue-800 mb-2">📤 Order Data (Input to FBR Mapper):</h4>
+                  <pre className="bg-white p-3 rounded border text-xs overflow-auto max-h-96">
+                    {JSON.stringify(debugJson.orderData, null, 2)}
+                  </pre>
+                </div>
+              )}
+              
+              {debugJson.fbrPayload && (
+                <div>
+                  <h4 className="font-medium text-blue-800 mb-2">📋 Generated FBR JSON Payload:</h4>
+                  <pre className="bg-white p-3 rounded border text-xs overflow-auto max-h-96">
+                    {JSON.stringify(debugJson.fbrPayload, null, 2)}
+                  </pre>
+                </div>
+              )}
+              
+              {debugJson.fbrError && (
+                <div>
+                  <h4 className="font-medium text-red-800 mb-2">❌ FBR Error Response:</h4>
+                  <pre className="bg-red-50 p-3 rounded border border-red-200 text-xs overflow-auto max-h-96">
+                    {JSON.stringify(debugJson.fbrError, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -2569,7 +2742,10 @@ export default function AddOrder() {
                   </div>
                   
                       <div className="space-y-2">
-                        <Label htmlFor="fixed-notified-value-edit" className="text-sm">Fixed Notified Value/Retail Price</Label>
+                        <Label htmlFor="fixed-notified-value-edit" className={`text-sm ${orderData.scenarioId === 'SN008' ? 'text-red-600 font-medium' : ''}`}>
+                          Fixed Notified Value/Retail Price
+                          {orderData.scenarioId === 'SN008' && <span className="text-red-500 ml-1">*</span>}
+                        </Label>
                         <Input
                           id="fixed-notified-value-edit"
                           type="text"
@@ -2578,9 +2754,15 @@ export default function AddOrder() {
                             const value = e.target.value;
                             setProductSelection({...productSelection, fixedNotifiedValueOrRetailPrice: value === '' ? 0 : parseFloat(value) || 0});
                           }}
-                          placeholder="Enter value"
-                          className="text-sm"
+                          placeholder={orderData.scenarioId === 'SN008' ? 'Required for 3rd Schedule Goods' : 'Enter value'}
+                          className={`text-sm ${orderData.scenarioId === 'SN008' ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                          required={orderData.scenarioId === 'SN008'}
                         />
+                        {orderData.scenarioId === 'SN008' && (
+                          <p className="text-xs text-red-600">
+                            💡 This field is mandatory for 3rd Schedule Goods (SN008). If not specified, the item price will be used.
+                          </p>
+                        )}
                       </div>
                       
                       <div className="space-y-2">
@@ -2663,10 +2845,10 @@ export default function AddOrder() {
                           <div className="text-sm">
                             {item.addons && Array.isArray(item.addons) && item.addons.length > 0 ? (
                               <div className="text-right">
-                                                <div className="flex items-center gap-1">Price Inc. Tax: <CurrencySymbol />{(item.priceIncludingTax || item.price).toFixed(2)}</div>
-                <div className="flex items-center gap-1">Addons: <CurrencySymbol />{item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0).toFixed(2)}</div>
+                                                <div className="flex items-center gap-1">Price Inc. Tax: <CurrencySymbol />{safeFormatPrice(item.priceIncludingTax || item.price)}</div>
+                <div className="flex items-center gap-1">Addons: <CurrencySymbol />{safeFormatPrice(item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0))}</div>
                 <div className="font-medium border-t pt-1 flex items-center gap-1">
-                  <CurrencySymbol />{((item.priceIncludingTax || item.price) + item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)).toFixed(2)} x 
+                  <CurrencySymbol />{safeFormatPrice((item.priceIncludingTax || item.price) + item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0))} x 
                   <input
                     type="number"
                     min="1"
@@ -2674,16 +2856,16 @@ export default function AddOrder() {
                     onChange={(e) => handleUpdateItemQuantity(index, parseInt(e.target.value) || 1)}
                     className="w-16 mx-1 p-1 border rounded text-center"
                   />
-                  = <CurrencySymbol />{item.totalPrice.toFixed(2)}
+                  = <CurrencySymbol />{safeFormatPrice(item.totalPrice)}
                 </div>
                               </div>
                             ) : item.isWeightBased ? (
                               <div className="flex items-center gap-1">
-                                Price Inc. Tax: <CurrencySymbol />{(item.priceIncludingTax || item.price).toFixed(2)} (for {formatWeightAuto(item.weightQuantity || 0).formattedString})
+                                Price Inc. Tax: <CurrencySymbol />{safeFormatPrice(item.priceIncludingTax || item.price)} (for {formatWeightAuto(item.weightQuantity || 0).formattedString})
                               </div>
                             ) : (
                               <div className="flex items-center gap-1">
-                                Price Inc. Tax: <CurrencySymbol />{(item.priceIncludingTax || item.price).toFixed(2)} x 
+                                Price Inc. Tax: <CurrencySymbol />{safeFormatPrice(item.priceIncludingTax || item.price)} x 
                                 <input
                                   type="number"
                                   min="1"
@@ -2691,7 +2873,7 @@ export default function AddOrder() {
                                   onChange={(e) => handleUpdateItemQuantity(index, parseInt(e.target.value) || 1)}
                                   className="w-16 mx-1 p-1 border rounded text-center"
                                 />
-                                = <CurrencySymbol />{item.totalPrice.toFixed(2)}
+                                = <CurrencySymbol />{safeFormatPrice(item.totalPrice)}
                               </div>
                             )}
                           </div>
@@ -2712,12 +2894,12 @@ export default function AddOrder() {
                             {item.addons.map((addon, addonIndex) => (
                               <div key={addon.addonId} className="flex justify-between text-sm text-gray-600">
                                 <span>• {getAddonTitle(addon, addonIndex)} (x{addon.quantity})</span>
-                                <span className="flex items-center gap-1"><CurrencySymbol />{(addon.price * addon.quantity).toFixed(2)} each</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{safeFormatPrice(addon.price * addon.quantity)} each</span>
                               </div>
                             ))}
                             <div className="flex justify-between text-sm font-medium text-gray-700 border-t pt-1 mt-2">
                               <span>Addons subtotal per product:</span>
-                              <span className="flex items-center gap-1"><CurrencySymbol />{item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0).toFixed(2)}</span>
+                              <span className="flex items-center gap-1"><CurrencySymbol />{safeFormatPrice(item.addons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0))}</span>
                             </div>
                           </div>
                         </div>
@@ -2731,37 +2913,37 @@ export default function AddOrder() {
                             {(Number(item.taxAmount) || 0) > 0 && (
                               <div className="flex justify-between">
                                 <span>Tax Amount:</span>
-                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.taxAmount || 0).toFixed(2)}</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{safeFormatPrice(item.taxAmount || 0)}</span>
                               </div>
                             )}
                             {(Number(item.taxPercentage) || 0) > 0 && (
                               <div className="flex justify-between">
                                 <span>Tax %:</span>
-                                <span>{Number(item.taxPercentage || 0).toFixed(2)}%</span>
+                                <span>{safeFormatPrice(item.taxPercentage || 0)}%</span>
                               </div>
                             )}
                             {(Number(item.priceIncludingTax) || 0) > 0 && (
                               <div className="flex justify-between">
                                 <span>Price Inc. Tax:</span>
-                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.priceIncludingTax || 0).toFixed(2)}</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{safeFormatPrice(item.priceIncludingTax || 0)}</span>
                               </div>
                             )}
                             {(Number(item.priceExcludingTax) || 0) > 0 && (
                               <div className="flex justify-between">
                                 <span>Price Ex. Tax:</span>
-                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.priceExcludingTax || 0).toFixed(2)}</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{safeFormatPrice(item.priceExcludingTax || 0)}</span>
                               </div>
                             )}
                             {(Number(item.extraTax) || 0) > 0 && (
                               <div className="flex justify-between">
                                 <span>Extra Tax:</span>
-                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.extraTax || 0).toFixed(2)}</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{safeFormatPrice(item.extraTax || 0)}</span>
                               </div>
                             )}
                             {(Number(item.furtherTax) || 0) > 0 && (
                               <div className="flex justify-between">
                                 <span>Further Tax:</span>
-                                <span className="flex items-center gap-1"><CurrencySymbol />{Number(item.furtherTax || 0).toFixed(2)}</span>
+                                <span className="flex items-center gap-1"><CurrencySymbol />{safeFormatPrice(item.furtherTax || 0)}</span>
                               </div>
                             )}
                             {(Number(item.fedPayableTax) || 0) > 0 && (
@@ -3035,6 +3217,17 @@ export default function AddOrder() {
                   <div className="text-sm text-muted-foreground">
                   <strong>{orderItems.length}</strong> item(s) in order
                 </div>
+                
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePreviewJson}
+                    disabled={orderItems.length === 0}
+                    className="w-full"
+                    size="lg"
+                  >
+                    🔍 Preview JSON Data
+                  </Button>
                 
                   <Button
                   onClick={handleSubmit}

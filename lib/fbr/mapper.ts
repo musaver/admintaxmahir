@@ -104,27 +104,45 @@ function getSellerInfo(): SellerInfo {
  * @returns Calculated tax amounts
  */
 function calculateItemTax(item: OrderItem, scenarioId: ScenarioId) {
-  const baseAmount = item.totalPrice || (item.price * item.quantity);
-  const taxRate = item.taxPercentage ? item.taxPercentage / 100 : parseRate(getDefaultRateForScenario(scenarioId));
+  // Base amount should be the price excluding tax (not totalPrice which includes tax)
+  const baseAmount = item.priceExcludingTax 
+    ? (item.priceExcludingTax * item.quantity)
+    : (item.price * item.quantity);
   
+  // Prioritize user-provided tax amounts, then calculate if not provided
   let salesTaxApplicable = 0;
   let salesTaxWithheldAtSource = 0;
   let fedPayable = 0;
   
-  // Calculate sales tax
-  if (!isExemptOrZeroRated(scenarioId)) {
-    salesTaxApplicable = baseAmount * taxRate;
+  // Use user-provided tax amount if available, otherwise calculate
+  if (item.taxAmount !== undefined && item.taxAmount !== null && item.taxAmount > 0) {
+    salesTaxApplicable = item.taxAmount;
+  } else {
+    // Calculate based on tax rate
+    const taxRate = item.taxPercentage !== undefined && item.taxPercentage !== null 
+      ? item.taxPercentage / 100 
+      : parseRate(getDefaultRateForScenario(scenarioId));
+    
+    // Only apply tax if not exempt/zero-rated, unless user explicitly provided tax amount
+    if (!isExemptOrZeroRated(scenarioId) || (item.taxPercentage !== undefined && item.taxPercentage > 0)) {
+      salesTaxApplicable = baseAmount * taxRate;
+    }
   }
   
-  // Calculate withholding tax for SN002 etc.
-  if (requiresWithholdingTax(scenarioId)) {
-    // Typically 2% withholding tax on the base amount
+  // Calculate withholding tax - only use user-provided value or 0
+  if (item.extraTax !== undefined && item.extraTax !== null && item.extraTax > 0) {
+    salesTaxWithheldAtSource = item.extraTax;
+  } else if (requiresWithholdingTax(scenarioId)) {
+    // Only auto-calculate for scenarios that specifically require it (like SN002)
+    // and only if user hasn't explicitly set it to 0
     salesTaxWithheldAtSource = baseAmount * 0.02;
+  } else {
+    salesTaxWithheldAtSource = 0;
   }
   
   // Calculate FED payable for FED-in-ST scenarios
   if (requiresFedPayable(scenarioId)) {
-    // FED calculation - this may vary by product type
+    // Use user-provided value if available, otherwise default to 0
     fedPayable = item.fedPayableTax || 0;
   }
   
@@ -140,27 +158,43 @@ function calculateItemTax(item: OrderItem, scenarioId: ScenarioId) {
  * @param item Order item
  * @param scenarioId FBR scenario ID
  * @param saleType Sale type for the scenario
+ * @param invoiceDate Invoice date for rate lookup
  * @returns FBR item
  */
-function mapOrderItemToFbrItem(item: OrderItem, scenarioId: ScenarioId, saleType: string): FbrItem {
-  const baseAmount = item.totalPrice || (item.price * item.quantity);
+async function mapOrderItemToFbrItem(item: OrderItem, scenarioId: ScenarioId, saleType: string, invoiceDate?: string): Promise<FbrItem> {
+  // Base amount should be the price excluding tax (not totalPrice which includes tax)
+  const baseAmount = item.priceExcludingTax 
+    ? (item.priceExcludingTax * item.quantity)
+    : (item.price * item.quantity);
   const taxCalc = calculateItemTax(item, scenarioId);
   
-  // Get rate label
-  let rateLabel = getDefaultRateForScenario(scenarioId);
-  if (item.taxPercentage !== undefined) {
-    rateLabel = formatRate(item.taxPercentage / 100);
+  // Get rate label - prioritize user input, then FBR API, then scenario defaults
+  let rateLabel: string;
+  
+  if (item.taxPercentage !== undefined && item.taxPercentage !== null) {
+    // User provided a specific tax percentage - use it
+    const percentage = item.taxPercentage > 1 ? item.taxPercentage : item.taxPercentage * 100;
+    if (percentage === 0) {
+      // Check if the scenario should use "Exempt" instead of "0%"
+      const defaultRate = getDefaultRateForScenario(scenarioId);
+      rateLabel = defaultRate === 'Exempt' ? 'Exempt' : '0%';
+    } else {
+      rateLabel = `${Math.round(percentage)}%`;
+    }
+  } else {
+    // No user input - use default rate (FBR API lookup can be inconsistent)
+    rateLabel = getDefaultRateForScenario(scenarioId);
   }
   
   // Build FBR item with exact field names (based on working format)
   const fbrItem: FbrItem = {
-    hsCode: item.hsCode || '2710.1991', // Default HS code that works
+    hsCode: item.hsCode || (scenarioId === 'SN018' ? '9805.9200' : '2710.1991'), // Use services HS code for SN018
     productDescription: item.productDescription || item.productName,
     rate: rateLabel,
-    uoM: item.uom || 'PCS', // Unit of Measurement
+    uoM: item.uom || (scenarioId === 'SN018' ? 'Numbers, pieces, units' : 'PCS'), // Unit of Measurement
     quantity: item.quantity,
     valueSalesExcludingST: baseAmount,
-    totalValues: baseAmount + taxCalc.salesTaxApplicable,
+    totalValues: 0, // Will be calculated after all taxes are set
     salesTaxApplicable: taxCalc.salesTaxApplicable,
     saleType,
     // Always include these numeric fields (FBR expects them)
@@ -168,7 +202,7 @@ function mapOrderItemToFbrItem(item: OrderItem, scenarioId: ScenarioId, saleType
     salesTaxWithheldAtSource: 0,
     furtherTax: 0,
     fedPayable: 0,
-    extraTax: 0,
+    extraTax: "", // Empty string as per working example
     discount: 0,
   };
   
@@ -179,8 +213,8 @@ function mapOrderItemToFbrItem(item: OrderItem, scenarioId: ScenarioId, saleType
     fbrItem.salesTaxWithheldAtSource = taxCalc.salesTaxWithheldAtSource;
   }
   
-  // Extra tax
-  if (item.extraTax && item.extraTax > 0) {
+  // Extra tax - use provided value or keep empty string
+  if (item.extraTax !== undefined && item.extraTax !== null) {
     fbrItem.extraTax = item.extraTax;
   }
   
@@ -200,8 +234,10 @@ function mapOrderItemToFbrItem(item: OrderItem, scenarioId: ScenarioId, saleType
   }
   
   // 3rd Schedule (SN008) - override the default 0
-  if (supportsThirdSchedule(scenarioId) && item.fixedNotifiedValueOrRetailPrice) {
-    fbrItem.fixedNotifiedValueOrRetailPrice = item.fixedNotifiedValueOrRetailPrice;
+  if (supportsThirdSchedule(scenarioId)) {
+    // For 3rd Schedule scenarios, fixedNotifiedValueOrRetailPrice is mandatory
+    // Use the provided value or fallback to price if not specified
+    fbrItem.fixedNotifiedValueOrRetailPrice = item.fixedNotifiedValueOrRetailPrice || item.price;
   }
   
   // SRO Schedule Number (use empty string as per working example)
@@ -210,8 +246,27 @@ function mapOrderItemToFbrItem(item: OrderItem, scenarioId: ScenarioId, saleType
   // SRO Item Serial Number (use empty string as per working example)
   fbrItem.sroItemSerialNo = item.itemSerialNumber || "";
   
-  // Apply FBR decimal precision requirements
-  return sanitizeFbrItemPrecision(fbrItem);
+  // Calculate totalValues after all taxes are set
+  fbrItem.totalValues = fbrItem.valueSalesExcludingST + 
+                        fbrItem.salesTaxApplicable + 
+                        (fbrItem.fedPayable || 0) + 
+                        (fbrItem.furtherTax || 0) + 
+                        (fbrItem.extraTax || 0) - 
+                        (fbrItem.discount || 0);
+
+  // Remove empty string fields that should be omitted
+  const sanitizedItem = sanitizeFbrItemPrecision(fbrItem);
+  
+  // Handle empty string fields - keep them as empty strings for compatibility
+  // (Some FBR setups expect empty strings rather than omitted fields)
+  Object.keys(sanitizedItem).forEach(key => {
+    const value = (sanitizedItem as any)[key];
+    if (value === null || value === undefined) {
+      delete (sanitizedItem as any)[key];
+    }
+  });
+  
+  return sanitizedItem;
 }
 
 /**
@@ -251,6 +306,50 @@ export async function getSaleTypeForScenarioWithFallback(
 }
 
 /**
+ * Get the correct rate label for a scenario from FBR's SaleTypeToRate API
+ * @param scenarioId FBR scenario ID
+ * @param saleType Sale type string
+ * @param date Invoice date (YYYY-MM-DD)
+ * @returns Rate label from FBR API or default
+ */
+export async function getRateLabelForScenario(
+  scenarioId: ScenarioId,
+  saleType: string,
+  date?: string
+): Promise<string> {
+  // Get default rate as fallback
+  const defaultRate = getDefaultRateForScenario(scenarioId);
+  
+  if (!date) {
+    return defaultRate;
+  }
+  
+  try {
+    const saleTypeData = await getSaleTypeToRate(date);
+    if (saleTypeData && Array.isArray(saleTypeData)) {
+      // Look for matching sale type in FBR's data
+      const fbrEntry = saleTypeData.find((entry: any) => {
+        const entryDesc = (entry.transactionTypeDesc || entry.saleType || '').toLowerCase();
+        const targetSaleType = saleType.toLowerCase();
+        return entryDesc.includes(targetSaleType) || targetSaleType.includes(entryDesc);
+      });
+      
+      if (fbrEntry) {
+        const rateLabel = fbrEntry.rateDesc || fbrEntry.rateText || fbrEntry.rate || fbrEntry.display;
+        if (rateLabel) {
+          console.log(`✅ Using FBR-verified rate for ${scenarioId} (${saleType}): ${rateLabel}`);
+          return rateLabel;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn(`⚠️  Failed to fetch rate from FBR for ${scenarioId}:`, error);
+  }
+  
+  return defaultRate;
+}
+
+/**
  * Map our order to FBR invoice format
  * @param order Our internal order object
  * @param sellerInfo Optional seller information (uses env vars if not provided)
@@ -284,9 +383,11 @@ export async function mapOrderToFbrInvoice(
   const saleType = await getSaleTypeForScenarioWithFallback(scenarioId, invoiceDate);
   
   // Map items to FBR format
-  const fbrItems: FbrItem[] = order.items.map(item => 
-    mapOrderItemToFbrItem(item, scenarioId, saleType)
-  );
+  const fbrItems: FbrItem[] = await Promise.all(order.items.map(async item => {
+    // Use item-specific sale type if provided, otherwise use scenario default
+    const itemSaleType = item.saleType || saleType;
+    return await mapOrderItemToFbrItem(item, scenarioId, itemSaleType, invoiceDate);
+  }));
   
   // Build FBR invoice with exact field names
   const fbrInvoice: FbrInvoice = {
@@ -381,6 +482,17 @@ export function validateOrderForFbr(order: Order): { isValid: boolean; errors: s
     if (!hasWithholdingTax) {
       console.warn(`⚠️  Scenario ${scenarioId} typically requires withholding tax at item level`);
     }
+  }
+  
+  // Check for 3rd Schedule requirements (SN008)
+  if (supportsThirdSchedule(scenarioId)) {
+    order.items?.forEach((item, index) => {
+      // For 3rd Schedule scenarios, fixedNotifiedValueOrRetailPrice is mandatory
+      // We'll allow it to be 0, but it must be explicitly set or we'll use the item price
+      if (item.fixedNotifiedValueOrRetailPrice === undefined && !item.price) {
+        errors.push(`Item ${index + 1}: Fixed/Notified Value or Retail Price is mandatory for 3rd Schedule Goods`);
+      }
+    });
   }
   
   return {

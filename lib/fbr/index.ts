@@ -50,6 +50,7 @@ export {
   parseRate,
   formatRate,
   getSaleTypeForScenarioWithFallback,
+  getRateLabelForScenario,
   mapOrderToFbrInvoice,
   validateOrderForFbr,
   createTestFbrInvoice,

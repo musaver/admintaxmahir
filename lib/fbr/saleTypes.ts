@@ -25,20 +25,20 @@ export const localSaleTypeByScenario: Record<ScenarioId, string> = {
   SN013: "Natural Gas / CNG",
   SN014: "Electric power / Electricity",
   SN015: "Telecommunication services",
-  SN016: "Processing / Conversion of Goods",
-  SN017: "Goods liable to FED in ST mode",
-  SN018: "Services with FED in ST mode",
-  SN019: "Services rendered or provided",
+  SN016: "Processing/Conversion of Goods",
+  SN017: "Goods (FED in ST Mode)",
+  SN018: "Services (FED in ST Mode)",
+  SN019: "Services",
   SN020: "Mobile phones (9th Schedule)",
   SN021: "Drugs at fixed rate (Eighth Schedule)",
   SN022: "Services (ICT Ordinance)",
-  SN023: "Services liable to FED in ST mode",
-  SN024: "Non-Adjustable Supplies",
-  SN025: "Drugs at fixed ST rate (Eighth Schedule)",
+  SN023: "Services (FED in ST Mode)",
+  SN024: "Goods as per SRO.297(|)/2023",
+  SN025: "Non-Adjustable Supplies",
   // Based on user's sandbox success:
   SN026: "Goods at standard rate (default)",
-  SN027: "Retail Supplies (Invoice Level)",
-  SN028: "Retail Supplies (Item Level)",
+  SN027: "3rd Schedule Goods",
+  SN028: "Goods at Reduced Rate",
 };
 
 // Default rates for each scenario (can be overridden by product-specific rates)
@@ -59,15 +59,15 @@ export const defaultRateByScenario: Record<ScenarioId, string> = {
   SN014: "18%",
   SN015: "18%",
   SN016: "18%",
-  SN017: "18%",    // FED in ST mode
-  SN018: "18%",    // Services with FED in ST mode
-  SN019: "18%",
+  SN017: "8%",     // FED in ST mode
+  SN018: "8%",     // Services with FED in ST mode
+  SN019: "Exempt", // Services
   SN020: "18%",
   SN021: "18%",    // Fixed rate drugs
   SN022: "18%",
-  SN023: "18%",    // Services liable to FED in ST mode
-  SN024: "18%",
-  SN025: "18%",    // Fixed ST rate drugs
+  SN023: "8%",     // Services (FED in ST Mode)
+  SN024: "25%",    // Goods as per SRO
+  SN025: "0%",     // Non-Adjustable Supplies
   SN026: "18%",
   SN027: "18%",
   SN028: "18%",
@@ -79,10 +79,10 @@ export const scenarioRequirements = {
   witholdingTaxRequired: ['SN002'] as ScenarioId[],
   
   // Scenarios that are exempt/zero-rated (force salesTaxApplicable = 0)
-  exemptOrZeroRated: ['SN006', 'SN007'] as ScenarioId[],
+  exemptOrZeroRated: ['SN006', 'SN007', 'SN019', 'SN025'] as ScenarioId[],
   
   // Scenarios that support 3rd Schedule (fixedNotifiedValueOrRetailPrice)
-  thirdSchedule: ['SN008'] as ScenarioId[],
+  thirdSchedule: ['SN008', 'SN027'] as ScenarioId[],
   
   // Scenarios that require FED payable (fedPayable field)
   fedInStMode: ['SN017', 'SN018', 'SN023', 'SN025'] as ScenarioId[],
