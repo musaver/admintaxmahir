@@ -1,6 +1,30 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+// import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Printer, 
+  FileText, 
+  CheckCircle, 
+  Building2, 
+  User, 
+  Calendar, 
+  Package, 
+  Receipt,
+  ShoppingCart,
+  CreditCard,
+  Truck,
+  Phone,
+  Mail,
+  MapPin
+} from 'lucide-react';
 import CurrencySymbol from '../../../components/CurrencySymbol';
 import { 
   formatWeightAuto, 
@@ -15,6 +39,14 @@ export default function OrderInvoice() {
   const [addons, setAddons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [debugJson, setDebugJson] = useState<{
+    orderData?: any;
+    fbrPayload?: any;
+    fbrError?: any;
+    showDebug: boolean;
+  }>({
+    showDebug: false
+  });
 
   useEffect(() => {
     fetchOrderData();
@@ -170,90 +202,249 @@ export default function OrderInvoice() {
     return null;
   };
 
-  if (loading) return <div className="p-8">Loading invoice...</div>;
-  if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
-  if (!order) return <div className="p-8">Order not found</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Header Skeleton */}
+          <Card>
+            <CardHeader className="pb-6">
+              <div className="flex justify-between items-start">
+                <div className="space-y-3">
+                  <div className="h-8 w-32 bg-gray-200 animate-pulse rounded" />
+                  <div className="h-4 w-48 bg-gray-200 animate-pulse rounded" />
+                  <div className="h-16 w-64 bg-gray-200 animate-pulse rounded" />
+                </div>
+                <div className="text-right space-y-2">
+                  <div className="h-6 w-32 ml-auto bg-gray-200 animate-pulse rounded" />
+                  <div className="h-4 w-40 ml-auto bg-gray-200 animate-pulse rounded" />
+                  <div className="h-4 w-36 ml-auto bg-gray-200 animate-pulse rounded" />
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Details Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <div className="h-6 w-24 bg-gray-200 animate-pulse rounded" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="h-4 w-full bg-gray-200 animate-pulse rounded" />
+                <div className="h-4 w-3/4 bg-gray-200 animate-pulse rounded" />
+                <div className="h-4 w-1/2 bg-gray-200 animate-pulse rounded" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="h-6 w-32 bg-gray-200 animate-pulse rounded" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="h-4 w-full bg-gray-200 animate-pulse rounded" />
+                <div className="h-4 w-2/3 bg-gray-200 animate-pulse rounded" />
+                <div className="h-4 w-1/3 bg-gray-200 animate-pulse rounded" />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Items Table Skeleton */}
+          <Card>
+            <CardHeader>
+              <div className="h-6 w-32 bg-gray-200 animate-pulse rounded" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex justify-between items-center p-4 border rounded-lg">
+                    <div className="space-y-2">
+                      <div className="h-4 w-48 bg-gray-200 animate-pulse rounded" />
+                      <div className="h-3 w-32 bg-gray-200 animate-pulse rounded" />
+                    </div>
+                    <div className="h-4 w-20 bg-gray-200 animate-pulse rounded" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+        <div className="max-w-4xl mx-auto">
+          <Alert variant="destructive">
+            <FileText className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Error loading invoice:</strong> {error}
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+        <div className="max-w-4xl mx-auto">
+          <Alert>
+            <FileText className="h-4 w-4" />
+            <AlertDescription>
+              Order not found. Please check the order ID and try again.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
 
   const orderItems = order.items || [];
 
   return (
-    <>
-      {/* Print styles */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .invoice-container, .invoice-container * {
-            visibility: visible;
-          }
-          .invoice-container {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          .print-hidden {
-            display: none !important;
-          }
-          .page-break {
-            page-break-before: always;
-          }
-        }
-      `}</style>
-
-      <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Print Button */}
-          <div className="mb-6 print-hidden">
-            <button
+          <div className="mb-6 print-hidden flex gap-4">
+            <Button
               onClick={handlePrint}
-              className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              size="lg"
+              className="shadow-md hover:shadow-lg transition-shadow"
             >
-              🖨️ Print Invoice
-            </button>
+              <Printer className="h-4 w-4 mr-2" />
+              Print Invoice
+            </Button>
+            
+            {/* Debug JSON Button */}
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="shadow-md hover:shadow-lg transition-shadow"
+                  onClick={() => setDebugJson(prev => ({ 
+                    ...prev, 
+                    orderData: order, 
+                    showDebug: true 
+                  }))}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  View JSON Data
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    🔍 Debug: Order JSON Data
+                  </DialogTitle>
+                  <DialogDescription>
+                    View the raw order data and any FBR submission details
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 overflow-auto max-h-96">
+                  {debugJson.orderData && (
+                    <div>
+                      <h4 className="font-medium text-blue-800 mb-2">📤 Order Data:</h4>
+                      <pre className="bg-muted p-3 rounded border text-xs overflow-auto max-h-64">
+                        {JSON.stringify(debugJson.orderData, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                  
+                  {debugJson.fbrPayload && (
+                    <div>
+                      <h4 className="font-medium text-blue-800 mb-2">📋 FBR JSON Payload:</h4>
+                      <pre className="bg-white p-3 rounded border text-xs overflow-auto max-h-64">
+                        {JSON.stringify(debugJson.fbrPayload, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                  
+                  {debugJson.fbrError && (
+                    <div>
+                      <h4 className="font-medium text-red-800 mb-2">❌ FBR Error Response:</h4>
+                      <pre className="bg-red-50 p-3 rounded border text-xs overflow-auto max-h-64">
+                        {JSON.stringify(debugJson.fbrError, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Invoice */}
-          <div className="invoice-container bg-white shadow-lg">
+          <Card className="invoice-container shadow-xl border-0 overflow-hidden">
             {/* Header */}
-            <div className="border-b-2 border-gray-200 p-8">
+            <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-8">
               <div className="flex justify-between items-start">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-800">INVOICE</h1>
-                  <p className="text-gray-600 mt-2">Order no: {order.orderNumber}</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Receipt className="h-8 w-8" />
+                    <h1 className="text-4xl font-bold tracking-tight">INVOICE</h1>
+                  </div>
+                  <div className="space-y-2">
+                    <Badge variant="secondary" className="text-sm font-mono bg-slate-700 text-slate-100">
+                      Order: {order.orderNumber}
+                    </Badge>
+                    {order.invoiceRefNo && (
+                      <Badge variant="outline" className="text-sm font-mono border-slate-300 text-slate-200">
+                        Ref: {order.invoiceRefNo}
+                      </Badge>
+                    )}
+                  </div>
                   {order.invoiceNumber && (
-                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-green-800 font-semibold">✅ FBR Digital Invoice Number:</p>
-                      <p className="text-green-900 font-mono text-lg">{order.invoiceNumber}</p>
-                    </div>
-                  )}
-                  {order.invoiceRefNo && (
-                    <p className="text-gray-600 mt-1">Ref No: {order.invoiceRefNo}</p>
+                    <Alert className="bg-emerald-50 border-emerald-200 mt-4">
+                      <CheckCircle className="h-4 w-4 text-emerald-600" />
+                      <AlertDescription className="text-emerald-800">
+                        <div className="font-semibold">FBR Digital Invoice Number</div>
+                        <div className="font-mono text-lg mt-1">{order.invoiceNumber}</div>
+                      </AlertDescription>
+                    </Alert>
                   )}
                 </div>
-                <div className="text-right">
-                  <h2 className="text-2xl font-bold text-blue-600"> Taxmahir </h2>
-                  <div className="text-gray-600 mt-2">
-                    <p>Alrasheed arcade second floor</p>
-                    <p> Flat no 1 mujahid street ,</p>
-                    <p> Defence road , Rawalpindi</p>
-                    <p>Phone: +92 335 5836 228</p>
-                    <p>Email: support@taxmahir.pk</p>
+                <div className="text-right space-y-3">
+                  <div className="flex items-center justify-end gap-3">
+                    <Building2 className="h-6 w-6" />
+                    <h2 className="text-3xl font-bold">TaxMahir</h2>
+                  </div>
+                  <div className="text-slate-200 space-y-1 text-sm">
+                    <div className="flex items-center justify-end gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <span>Alrasheed arcade second floor</span>
+                    </div>
+                    <div className="text-right">
+                      <p>Flat no 1 mujahid street</p>
+                      <p>Defence road, Rawalpindi</p>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                      <Phone className="h-4 w-4" />
+                      <span>+92 335 5836 228</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <Mail className="h-4 w-4" />
+                      <span>support@taxmahir.pk</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </CardHeader>
 
             {/* Invoice Details */}
-            <div className="p-8 border-b border-gray-200">
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-8">
-              
-
-
-                {/* Buyer */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">👤 Buyer:</h3>
+            <CardContent className="p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Buyer Information */}
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <User className="h-5 w-5 text-blue-600" />
+                      Buyer Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
                   <div className="text-gray-600">
                     {/* Primary: Show buyer business fields from order */}
                     {(order.buyerBusinessName || order.buyerNTNCNIC || order.buyerProvince || order.buyerAddress || order.buyerRegistrationType) ? (
@@ -368,12 +559,19 @@ export default function OrderInvoice() {
                         )}
                       </>
                     )}
-                  </div>
-                </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                {/* Invoice Info */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Invoice Information:</h3>
+                {/* Invoice Information */}
+                <Card className="border-l-4 border-l-emerald-500">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FileText className="h-5 w-5 text-emerald-600" />
+                      Invoice Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
                   <div className="text-gray-600 space-y-1">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-500">Invoice Date:</span>
@@ -419,35 +617,39 @@ export default function OrderInvoice() {
                         <span className="font-mono text-sm text-gray-500">{order.trackingNumber}</span>
                       </div>
                     )}
-                  </div>
-                </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </div>
+            </CardContent>
 
             {/* Order Items */}
-            <div className="p-8">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Order Items:</h3>
+            <CardContent className="p-8">
+              <CardTitle className="flex items-center gap-2 text-xl mb-6">
+                <ShoppingCart className="h-6 w-6 text-slate-600" />
+                Order Items
+              </CardTitle>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-gray-200">
-                      <th className="text-left py-3 px-2">Product Name</th>
-                      <th className="text-left py-3 px-2">HS Code</th>
-                      <th className="text-left py-3 px-2">Serial No.</th>
-                      <th className="text-left py-3 px-2">SRO/Schedule</th>
-                      <th className="text-center py-3 px-2">Quantity</th>
-                      <th className="text-center py-3 px-2">UOM</th>
-                      <th className="text-right py-3 px-2">Price Inc. Tax</th>
-                      <th className="text-right py-3 px-2">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-left">Product Name</TableHead>
+                      <TableHead className="text-left">HS Code</TableHead>
+                      <TableHead className="text-left">Serial No.</TableHead>
+                      <TableHead className="text-left">SRO/Schedule</TableHead>
+                      <TableHead className="text-center">Quantity</TableHead>
+                      <TableHead className="text-center">UOM</TableHead>
+                      <TableHead className="text-right">Price Inc. Tax</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {orderItems.length > 0 ? (
                       orderItems.map((item: any, index: number) => (
                         <React.Fragment key={index}>
-                          <tr className="border-b border-gray-100">
+                          <TableRow className="hover:bg-slate-50">
                             {/* Product Name */}
-                            <td className="py-3 px-2">
+                            <TableCell className="py-4">
                               <div>
                                 <div className="font-medium">{item.productName}</div>
                                 {item.variantTitle && (
@@ -470,25 +672,25 @@ export default function OrderInvoice() {
                                   );
                                 })()}
                               </div>
-                            </td>
+                            </TableCell>
                             
                             {/* HS Code */}
-                            <td className="py-3 px-2 text-gray-600 font-mono text-xs">
+                            <TableCell className="text-gray-600 font-mono text-xs">
                               {item.hsCode || '-'}
-                            </td>
+                            </TableCell>
                             
                             {/* Serial Number */}
-                            <td className="py-3 px-2 text-gray-600 font-mono text-xs">
+                            <TableCell className="text-gray-600 font-mono text-xs">
                               {item.itemSerialNumber || '-'}
-                            </td>
+                            </TableCell>
                             
                             {/* SRO/Schedule Number */}
-                            <td className="py-3 px-2 text-gray-600 font-mono text-xs">
+                            <TableCell className="text-gray-600 font-mono text-xs">
                               {item.sroScheduleNumber || '-'}
-                            </td>
+                            </TableCell>
                             
                             {/* Quantity */}
-                            <td className="py-3 px-2 text-center">
+                            <TableCell className="text-center">
                               {item.isWeightBased && item.weightQuantity ? (
                                 <div className="text-sm">
                                   <div>{formatWeightAuto(item.weightQuantity).formattedString}</div>
@@ -497,19 +699,19 @@ export default function OrderInvoice() {
                               ) : (
                                 <div className="font-medium">{item.quantity}</div>
                               )}
-                            </td>
+                            </TableCell>
                             
                             {/* UOM */}
-                            <td className="py-3 px-2 text-center text-gray-600">
+                            <TableCell className="text-center text-gray-600">
                               {item.isWeightBased ? (
                                 <span className="text-xs text-gray-500">Weight-based</span>
                               ) : (
                                 item.uom || '-'
                               )}
-                            </td>
+                            </TableCell>
                             
                             {/* Price Inc. Tax */}
-                            <td className="py-3 px-2 text-right">
+                            <TableCell className="text-right">
                               {(() => {
                                 const parsedAddons = parseAddons(item.addons);
                                 const effectivePrice = item.priceIncludingTax || item.price;
@@ -535,19 +737,19 @@ export default function OrderInvoice() {
                                   return formatAmount(effectivePrice);
                                 }
                               })()}
-                            </td>
+                            </TableCell>
                             
                             {/* Total */}
-                            <td className="py-3 px-2 text-right font-medium">
+                            <TableCell className="text-right font-medium">
                               {formatAmount(item.totalPrice)}
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                           {/* Addon details row */}
                           {(() => {
                             const parsedAddons = parseAddons(item.addons);
                             return parsedAddons.length > 0 && (
-                              <tr className="border-b border-gray-50 bg-gray-25">
-                                <td colSpan={8} className="py-3 px-2 pl-8">
+                              <TableRow className="bg-slate-25 hover:bg-slate-50">
+                                <TableCell colSpan={8} className="py-3 pl-8">
                                   <div className="text-xs text-gray-600">
                                     <div className="font-medium mb-2 text-gray-700">🧩 Addons:</div>
                                     <div className="space-y-2">
@@ -600,15 +802,15 @@ export default function OrderInvoice() {
                                         </div>
                                       </div>
                                     </div>
-                                  </td>
-                                </tr>
+                                  </TableCell>
+                                </TableRow>
                               );
                             })()}
                           
                           {/* Tax and Discount details row */}
                           {(item.taxAmount || item.taxPercentage || item.discount || item.extraTax || item.furtherTax || item.fedPayableTax || item.priceIncludingTax || item.priceExcludingTax || item.fixedNotifiedValueOrRetailPrice || item.saleType) && (
-                            <tr className="border-b border-gray-50 bg-green-25">
-                              <td colSpan={8} className="py-3 px-2 pl-8">
+                            <TableRow className="bg-emerald-25 hover:bg-emerald-50">
+                              <TableCell colSpan={8} className="py-3 pl-8">
                                 <div className="text-xs text-gray-600">
                                   <div className="font-medium mb-2 text-gray-700">💰 Tax & Discount Details:</div>
                                   <div className="grid grid-cols-2 gap-x-6 gap-y-1">
@@ -674,25 +876,169 @@ export default function OrderInvoice() {
                                     )}
                                   </div>
                                 </div>
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           )}
                         </React.Fragment>
                       ))
                     ) : (
-                      <tr>
-                        <td colSpan={8} className="py-8 text-center text-gray-500">
+                      <TableRow>
+                        <TableCell colSpan={8} className="py-8 text-center text-gray-500">
                           No items found for this order
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
-            </div>
+            </CardContent>
+
+            {/* Product Summary */}
+            <CardContent className="p-8 bg-slate-25">
+              <CardTitle className="flex items-center gap-2 text-xl mb-6">
+                <Package className="h-6 w-6 text-slate-600" />
+                Order Summary
+              </CardTitle>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Items Count */}
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <ShoppingCart className="h-4 w-4 text-blue-600" />
+                      Total Items
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-700">
+                      {orderItems.reduce((total: number, item: any) => total + (Number(item.quantity) || 0), 0)}
+                    </div>
+                    <div className="text-xs text-gray-500">{orderItems.length} unique product(s)</div>
+                  </CardContent>
+                </Card>
+
+                {/* Weight Summary */}
+                <Card className="border-l-4 border-l-orange-500">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      ⚖️ Total Weight
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-orange-700">
+                      {(() => {
+                        const totalWeight = orderItems.reduce((total: number, item: any) => {
+                          if (item.isWeightBased && item.weightQuantity) {
+                            return total + Number(item.weightQuantity);
+                          }
+                          return total;
+                        }, 0);
+                        return totalWeight > 0 ? formatWeightAuto(totalWeight).formattedString : 'N/A';
+                      })()}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {orderItems.filter((item: any) => item.isWeightBased).length} weight-based item(s)
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Addons Summary */}
+                <Card className="border-l-4 border-l-purple-500">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      🧩 Total Addons
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-700">
+                      {(() => {
+                        const totalAddons = orderItems.reduce((total: number, item: any) => {
+                          const parsedAddons = parseAddons(item.addons);
+                          return total + parsedAddons.reduce((addonTotal: number, addon: any) => 
+                            addonTotal + (Number(addon.quantity) || 1), 0
+                          );
+                        }, 0);
+                        return totalAddons;
+                      })()}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Across {orderItems.filter((item: any) => parseAddons(item.addons).length > 0).length} product(s)
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="mt-6 flex gap-3 print-hidden">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Product Details
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl max-h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle>📦 Detailed Product Information</DialogTitle>
+                      <DialogDescription>
+                        Complete breakdown of all products, variants, and addons in this order
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="overflow-auto max-h-96 space-y-4">
+                      {orderItems.map((item: any, index: number) => (
+                        <Card key={index} className="border-l-4 border-l-indigo-400">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-sm font-mono">
+                                #{index + 1}
+                              </span>
+                              {item.productName}
+                            </CardTitle>
+                            {item.variantTitle && (
+                              <div className="text-sm text-gray-600">Variant: {item.variantTitle}</div>
+                            )}
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div><span className="font-medium">SKU:</span> {item.sku || 'N/A'}</div>
+                              <div><span className="font-medium">Quantity:</span> {item.quantity}</div>
+                              <div><span className="font-medium">Price:</span> {formatAmount(item.priceIncludingTax || item.price)}</div>
+                              <div><span className="font-medium">Total:</span> {formatAmount(item.totalPrice)}</div>
+                              {item.hsCode && <div><span className="font-medium">HS Code:</span> {item.hsCode}</div>}
+                              {item.isWeightBased && item.weightQuantity && (
+                                <div><span className="font-medium">Weight:</span> {formatWeightAuto(item.weightQuantity).formattedString}</div>
+                              )}
+                            </div>
+                            
+                            {(() => {
+                              const parsedAddons = parseAddons(item.addons);
+                              return parsedAddons.length > 0 && (
+                                <div className="mt-3 pt-3 border-t">
+                                  <div className="text-sm font-medium text-gray-700 mb-2">
+                                    🧩 Addons ({parsedAddons.length}):
+                                  </div>
+                                  <div className="space-y-2">
+                                    {parsedAddons.map((addon: any, addonIndex: number) => (
+                                      <div key={addonIndex} className="flex justify-between text-xs bg-purple-50 p-2 rounded">
+                                        <span>{getAddonTitle(addon, addonIndex)} (x{addon.quantity || 1})</span>
+                                        <span>{formatAmount((Number(addon.price) || 0) * (Number(addon.quantity) || 1))}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardContent>
 
             {/* Totals */}
-            <div className="p-8 bg-gray-50">
+            <CardContent className="p-8">
               <div className="flex justify-between items-start">
                 {/* FBR Logos - Left Side - Only show if invoice has FBR invoice number */}
                 {order.invoiceNumber && (
@@ -711,8 +1057,14 @@ export default function OrderInvoice() {
                 )}
                 
                 {/* Totals - Right Side */}
-                <div className="max-w-md">
-                  <div className="space-y-2">
+                <Card className="min-w-80 shadow-lg border-2">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5 text-emerald-600" />
+                      Order Summary
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     <div className="flex justify-between py-2">
                       <span>Subtotal:</span>
                       <span>{formatAmount(order.subtotal)}</span>
@@ -739,27 +1091,36 @@ export default function OrderInvoice() {
                       </div>
                     )}
                     
-                    <div className="border-t-2 border-gray-300 pt-2">
-                      <div className="flex justify-between py-2 text-xl font-bold">
-                        <span>Total:</span>
-                        <span>{formatAmount(order.totalAmount)}</span>
-                      </div>
+                    <Separator className="my-3" />
+                    <div className="flex justify-between py-2 text-xl font-bold text-emerald-700">
+                      <span>Total:</span>
+                      <span>{formatAmount(order.totalAmount)}</span>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </div>
-            </div>
+            </CardContent>
 
             {/* Footer */}
-            <div className="p-8 border-t border-gray-200 text-center text-gray-600">
-              <p className="text-sm">Thank you for your business!</p>
-              <p className="text-xs mt-2">
-                For questions about this invoice, please contact us at support@taxmahir.pk
-              </p>
-            </div>
-          </div>
+            <CardContent className="p-8 text-center border-t">
+              <div className="space-y-3">
+                <div className="flex items-center justify-center gap-2 text-emerald-700">
+                  <CheckCircle className="h-5 w-5" />
+                  <p className="text-lg font-semibold">Thank you for your business!</p>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-gray-600">
+                  <Mail className="h-4 w-4" />
+                  <p className="text-sm">
+                    For questions about this invoice, please contact us at{' '}
+                    <a href="mailto:support@taxmahir.pk" className="text-blue-600 hover:underline">
+                      support@taxmahir.pk
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-    </>
+    </div>
   );
 } 

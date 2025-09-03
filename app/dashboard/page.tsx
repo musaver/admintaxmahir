@@ -374,111 +374,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
-      
-      {/* Main Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <StatCard
-          title="Customers"
-          value={loading ? 0 : stats.customers}
-          icon={UsersIcon}
-          description="Total customers"
-          trend="up"
-          onClick={() => router.push('/users')}
-          loading={loading}
-        />
-        <StatCard
-          title="Services"
-          value={loading ? 0 : stats.products}
-          icon={PackageIcon}
-          description="Total services"
-          trend="up"
-          onClick={() => router.push('/products')}
-          loading={loading}
-        />
-        <StatCard
-          title="Categories"
-          value={loading ? 0 : stats.categories}
-          icon={FolderIcon}
-          description="Product categories"
-          trend="neutral"
-          onClick={() => router.push('/categories')}
-          loading={loading}
-        />
-        <StatCard
-          title="Orders"
-          value={loading ? 0 : stats.orders}
-          icon={ShoppingCartIcon}
-          description="Total orders"
-          trend="up"
-          onClick={() => router.push('/orders')}
-          loading={loading}
-        />
-        <StatCard
-          title="Admin Users"
-          value={loading ? 0 : stats.adminUsers}
-          icon={UserCheckIcon}
-          description="System administrators"
-          trend="neutral"
-          onClick={() => router.push('/admins')}
-          loading={loading}
-        />
-      </div>
-
-      {/* Financial Dashboard Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <FinancialCard
-          title="Revenue"
-          value={loading ? <Skeleton className="h-9 w-24" /> : (
-            <div className="flex items-center gap-1">
-              <CurrencySymbol />
-              {stats.totalRevenue.toFixed(2)}
-            </div>
-          )}
-          icon={DollarSignIcon}
-          description="Total revenue"
-          color="green"
-          onClick={() => router.push('/reports/sales')}
-          loading={loading}
-        />
-
-        <FinancialCard
-          title="Profit/Loss"
-          value={loading ? <Skeleton className="h-9 w-24" /> : (
-            <div className="flex items-center gap-1">
-              <CurrencySymbol />
-              {stats.totalProfit.toFixed(2)}
-            </div>
-          )}
-          icon={stats.totalProfit >= 0 ? TrendingUpIcon : TrendingDownIcon}
-          description={stats.totalProfit >= 0 ? 'Net profit' : 'Net loss'}
-          color={stats.totalProfit >= 0 ? "green" : "red"}
-          onClick={() => router.push('/reports/profits')}
-          loading={loading}
-        />
-
-        <FinancialCard
-          title="Margin"
-          value={loading ? <Skeleton className="h-9 w-20" /> : `${stats.profitMargin.toFixed(1)}%`}
-          icon={BarChart3Icon}
-          description="Profit margin"
-          color={stats.profitMargin >= 0 ? "blue" : "red"}
-          loading={loading}
-        />
-
-        <FinancialCard
-          title="Avg Order"
-          value={loading ? <Skeleton className="h-9 w-24" /> : (
-            <div className="flex items-center gap-1">
-              <CurrencySymbol />
-              {stats.averageOrderValue.toFixed(2)}
-            </div>
-          )}
-          icon={ShoppingCartIcon}
-          description="Average order value"
-          color="purple"
-          loading={loading}
-        />
-      </div>
 
       {/* New Attraction Sections */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -605,6 +500,113 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Main Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <StatCard
+          title="Customers"
+          value={loading ? 0 : stats.customers}
+          icon={UsersIcon}
+          description="Total customers"
+          trend="up"
+          onClick={() => router.push('/users')}
+          loading={loading}
+        />
+        <StatCard
+          title="Services"
+          value={loading ? 0 : stats.products}
+          icon={PackageIcon}
+          description="Total services"
+          trend="up"
+          onClick={() => router.push('/products')}
+          loading={loading}
+        />
+        <StatCard
+          title="Categories"
+          value={loading ? 0 : stats.categories}
+          icon={FolderIcon}
+          description="Product categories"
+          trend="neutral"
+          onClick={() => router.push('/categories')}
+          loading={loading}
+        />
+        <StatCard
+          title="Orders"
+          value={loading ? 0 : stats.orders}
+          icon={ShoppingCartIcon}
+          description="Total orders"
+          trend="up"
+          onClick={() => router.push('/orders')}
+          loading={loading}
+        />
+        <StatCard
+          title="Admin Users"
+          value={loading ? 0 : stats.adminUsers}
+          icon={UserCheckIcon}
+          description="System administrators"
+          trend="neutral"
+          onClick={() => router.push('/admins')}
+          loading={loading}
+        />
+      </div>
+
+      {/* Financial Dashboard Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <FinancialCard
+          title="Revenue"
+          value={loading ? <Skeleton className="h-9 w-24" /> : (
+            <div className="flex items-center gap-1">
+              <CurrencySymbol />
+              {stats.totalRevenue.toFixed(2)}
+            </div>
+          )}
+          icon={DollarSignIcon}
+          description="Total revenue"
+          color="green"
+          onClick={() => router.push('/reports/sales')}
+          loading={loading}
+        />
+
+        <FinancialCard
+          title="Profit/Loss"
+          value={loading ? <Skeleton className="h-9 w-24" /> : (
+            <div className="flex items-center gap-1">
+              <CurrencySymbol />
+              {stats.totalProfit.toFixed(2)}
+            </div>
+          )}
+          icon={stats.totalProfit >= 0 ? TrendingUpIcon : TrendingDownIcon}
+          description={stats.totalProfit >= 0 ? 'Net profit' : 'Net loss'}
+          color={stats.totalProfit >= 0 ? "green" : "red"}
+          onClick={() => router.push('/reports/profits')}
+          loading={loading}
+        />
+
+        <FinancialCard
+          title="Margin"
+          value={loading ? <Skeleton className="h-9 w-20" /> : `${stats.profitMargin.toFixed(1)}%`}
+          icon={BarChart3Icon}
+          description="Profit margin"
+          color={stats.profitMargin >= 0 ? "blue" : "red"}
+          loading={loading}
+        />
+
+        <FinancialCard
+          title="Avg Order"
+          value={loading ? <Skeleton className="h-9 w-24" /> : (
+            <div className="flex items-center gap-1">
+              <CurrencySymbol />
+              {stats.averageOrderValue.toFixed(2)}
+            </div>
+          )}
+          icon={ShoppingCartIcon}
+          description="Average order value"
+          color="purple"
+          loading={loading}
+        />
+      </div>
+
+      
 
       {/* Additional Dashboard Content */}
       <div className="grid gap-6 lg:grid-cols-2 hidden">

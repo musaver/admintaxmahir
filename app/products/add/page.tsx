@@ -152,18 +152,6 @@ interface SelectedTag {
 
 export default function AddProduct() {
   const router = useRouter();
-  
-  return (
-    <div>
-      <h1>Add New Product</h1>
-      <p>This is a test</p>
-    </div>
-  );
-}
-
-// ORIGINAL COMPONENT TEMPORARILY DISABLED
-function OriginalAddProduct() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
