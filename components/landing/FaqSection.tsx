@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 
 const faqs = [
   {
-    question: "How quickly can I get started with Hisaab360?",
+    question: "How quickly can I get started with Taxmahir?",
     answer: "You can set up your account and start managing inventory within 30 minutes. Our guided onboarding process helps you import existing data and configure the system to match your business needs."
   },
   {
@@ -14,7 +14,7 @@ const faqs = [
   },
   {
     question: "Do you offer mobile apps?",
-    answer: "Hisaab360 is fully responsive and works perfectly on all devices. We also offer dedicated mobile apps for iOS and Android with barcode scanning and offline capabilities."
+    answer: "Taxmahir is fully responsive and works perfectly on all devices. We also offer dedicated mobile apps for iOS and Android with barcode scanning and offline capabilities."
   },
   {
     question: "What kind of support do you provide?",
@@ -50,7 +50,7 @@ export function FaqSection() {
             Frequently Asked Questions
           </h2>
           <p className="text-xl text-muted-foreground">
-            Everything you need to know about Hisaab360
+            Everything you need to know about Taxmahir
           </p>
         </div>
 

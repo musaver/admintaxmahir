@@ -9,7 +9,7 @@ const testimonials = [
     name: "Sarah Johnson",
     position: "Store Manager",
     company: "Fashion Forward Boutique",
-    content: "Hisaab360 reduced our stock management time by 75%. The automated alerts have prevented stockouts completely.",
+    content: "Taxmahir reduced our stock management time by 75%. The automated alerts have prevented stockouts completely.",
     rating: 5,
     improvement: "75% time savings"
   },
@@ -39,7 +39,7 @@ export function TestimonialsSection() {
           Client Success Stories
         </h2>
         <p className="text-xl text-white/80 max-w-2xl mx-auto">
-          See how businesses have transformed their operations with Hisaab360
+          See how businesses have transformed their operations with Taxmahir
         </p>
       </div>
 

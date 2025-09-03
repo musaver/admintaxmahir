@@ -62,7 +62,7 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
   try {
     // In production, we need to use the database API endpoint
     // because Edge Runtime can't directly connect to MySQL
-    const baseUrl = process.env.NEXTAUTH_URL || 'https://hisaab360.com';
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://taxmahir.pk';
     
     const response = await fetch(`${baseUrl}/api/tenants/lookup?slug=${slug}`, {
       headers: {

@@ -1441,7 +1441,7 @@ export default function AddOrder() {
 
       {/* 🔍 DEBUG: JSON Display */}
       {debugJson.showDebug && (
-        <Card className="mb-6 border-blue-200 bg-blue-50">
+        <Card className="mb-6 border-muted bg-muted/30">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-blue-900">🔍 Debug: FBR Submission Data</h3>
@@ -1476,7 +1476,7 @@ export default function AddOrder() {
               {debugJson.fbrError && (
                 <div>
                   <h4 className="font-medium text-red-800 mb-2">❌ FBR Error Response:</h4>
-                  <pre className="bg-red-50 p-3 rounded border border-red-200 text-xs overflow-auto max-h-96">
+                  <pre className="bg-muted p-3 rounded border text-xs overflow-auto max-h-96">
                     {JSON.stringify(debugJson.fbrError, null, 2)}
                   </pre>
                 </div>
@@ -1503,10 +1503,10 @@ export default function AddOrder() {
       )}
 */}
       {stockManagementEnabled ? (
-        <Card className="mb-6 border-blue-200 bg-blue-50">
+        <Card className="mb-6 border-muted bg-muted/30">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
-              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+              <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
             <div>
               <h3 className="font-medium text-blue-800">Stock Management Enabled</h3>
                 <p className="text-sm text-blue-700 mt-1">
@@ -1764,7 +1764,7 @@ export default function AddOrder() {
               </div>
               
               {(!sellerInfo.sellerNTNCNIC || !sellerInfo.sellerBusinessName || !sellerInfo.fbrSandboxToken || !sellerInfo.fbrBaseUrl) && (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="p-4 bg-muted/50 border rounded-lg">
                   <div className="flex items-center gap-2 text-yellow-800">
                     <span>⚠️</span>
                     <span className="font-medium">Missing Seller Information</span>
@@ -1959,7 +1959,7 @@ export default function AddOrder() {
 
                 {/* Points Summary */}
                 {orderData.pointsToRedeem > 0 && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="bg-muted/50 border rounded-lg p-3">
                     <div className="text-sm text-green-800">
                       <div className="flex justify-between">
                         <span>Points to redeem:</span>
@@ -2797,7 +2797,7 @@ export default function AddOrder() {
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-medium">Order Items</h4>
                   {orderData.supplierId && (
-                    <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded">
+                    <div className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded">
                       🏢 Supplier Products
                     </div>
                   )}
@@ -3102,7 +3102,7 @@ export default function AddOrder() {
               )}
 
               {orderData.assignmentType === 'automatic' && (
-                <div className="bg-blue-50 p-3 rounded">
+                <div className="bg-muted/50 p-3 rounded">
                   <p className="text-sm text-blue-700">
                     📍 The system will automatically assign the nearest available driver based on the delivery address.
                   </p>
@@ -3140,8 +3140,8 @@ export default function AddOrder() {
           >
             <Card className={`border-2 transition-all duration-300 ${
               isSticky 
-                ? 'shadow-2xl bg-white/95 backdrop-blur-sm border-blue-200/50 scale-105' 
-                : 'shadow-lg bg-white border-gray-200'
+                ? 'shadow-2xl bg-background/95 backdrop-blur-sm border-primary/20 scale-105' 
+                : 'shadow-lg bg-background border-border'
             }`}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -3179,31 +3179,31 @@ export default function AddOrder() {
               {loyaltySettings.enabled && (
                   <>
                     <Separator />
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                      <div className="text-sm font-medium text-purple-800 mb-1 flex items-center gap-2">
+                    <div className="bg-muted/50 border rounded-lg p-3">
+                      <div className="text-sm font-medium mb-1 flex items-center gap-2">
                         🎁 Loyalty Points
                       </div>
-                    <div className="text-sm text-purple-700">
+                    <div className="text-sm text-muted-foreground">
                       {orderData.customerId ? (
-                          <>Customer will earn: <Badge variant="secondary" className="ml-1 bg-purple-100 text-purple-800">{calculatePointsToEarn()} points</Badge></>
+                          <>Customer will earn: <Badge variant="secondary" className="ml-1">{calculatePointsToEarn()} points</Badge></>
                       ) : (
-                          <>This order will earn: <Badge variant="secondary" className="ml-1 bg-purple-100 text-purple-800">{calculatePointsToEarn()} points</Badge> (requires customer)</>
+                          <>This order will earn: <Badge variant="secondary" className="ml-1">{calculatePointsToEarn()} points</Badge> (requires customer)</>
                       )}
                       {calculatePointsToEarn() === 0 && loyaltySettings.minimumOrder > 0 && (
-                        <div className="text-xs text-purple-600 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           (Minimum order: <CurrencySymbol />{loyaltySettings.minimumOrder})
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-purple-600 mt-2">
+                    <div className="text-xs text-muted-foreground mt-2">
                       {orderData.status === 'completed' ? (
-                        <span className="text-green-600">✅ Points will be available immediately</span>
+                        <span className="text-green-600 dark:text-green-400">✅ Points will be available immediately</span>
                       ) : (
-                        <span className="text-yellow-600">⏳ Points will be pending until completed</span>
+                        <span className="text-yellow-600 dark:text-yellow-400">⏳ Points will be pending until completed</span>
                       )}
                     </div>
                     {!orderData.customerId && (
-                      <div className="text-xs text-orange-600 mt-1">
+                      <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
                         ⚠️ Select a customer above to award points for this order
                       </div>
                     )}

@@ -15,7 +15,7 @@ echo "- user-bulk-import (in lib/inngest/functions/bulk-user-import.ts)"
 echo ""
 
 # Get domain from user
-read -p "Enter your domain (e.g., hisaab360.com): " domain
+read -p "Enter your domain (e.g., taxmahir.pk): " domain
 if [ -z "$domain" ]; then
     echo "❌ Domain is required"
     exit 1

@@ -233,13 +233,13 @@ export default function OrderInvoice() {
                   )}
                 </div>
                 <div className="text-right">
-                  <h2 className="text-2xl font-bold text-blue-600"> Hisaab360 </h2>
+                  <h2 className="text-2xl font-bold text-blue-600"> Taxmahir </h2>
                   <div className="text-gray-600 mt-2">
                     <p>Alrasheed arcade second floor</p>
                     <p> Flat no 1 mujahid street ,</p>
                     <p> Defence road , Rawalpindi</p>
                     <p>Phone: +92 335 5836 228</p>
-                    <p>Email: support@hisaab360.com</p>
+                    <p>Email: support@taxmahir.pk</p>
                   </div>
                 </div>
               </div>
@@ -754,7 +754,7 @@ export default function OrderInvoice() {
             <div className="p-8 border-t border-gray-200 text-center text-gray-600">
               <p className="text-sm">Thank you for your business!</p>
               <p className="text-xs mt-2">
-                For questions about this invoice, please contact us at support@hisaab360.com
+                For questions about this invoice, please contact us at support@taxmahir.pk
               </p>
             </div>
           </div>

@@ -6,11 +6,11 @@ echo "🔍 Verifying Inngest Function Status..."
 
 echo "📊 Current Application Status:"
 echo "Main domain endpoint:"
-curl -s "https://hisaab360.com/api/inngest" | jq '{function_count, mode, has_event_key, has_signing_key}'
+curl -s "https://taxmahir.pk/api/inngest" | jq '{function_count, mode, has_event_key, has_signing_key}'
 
 echo ""
 echo "Subdomain endpoint:"
-curl -s "https://swd.hisaab360.com/api/inngest" | jq '{function_count, mode, has_event_key, has_signing_key}'
+curl -s "https://swd.taxmahir.pk/api/inngest" | jq '{function_count, mode, has_event_key, has_signing_key}'
 
 echo ""
 echo "✅ Analysis:"
@@ -28,7 +28,7 @@ echo "5. Or it may already show as 'Inactive' since it's not in your current dep
 
 echo ""
 echo "🧪 Test Current Setup:"
-echo "1. Go to https://swd.hisaab360.com/users/bulk-upload"
+echo "1. Go to https://swd.taxmahir.pk/users/bulk-upload"
 echo "2. Upload a small CSV file"
 echo "3. Monitor Inngest dashboard - you should see only ONE function execution"
 echo "4. Check function name: should be 'fbr-inventory-admin-user-bulk-import'"

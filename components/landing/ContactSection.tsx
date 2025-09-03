@@ -45,7 +45,7 @@ export function ContactSection() {
               Ready to Get Started?
             </h2>
             <p className="text-xl text-white/80">
-              Request a demo and see how Hisaab360 can transform your business
+              Request a demo and see how Taxmahir can transform your business
             </p>
           </div>
           

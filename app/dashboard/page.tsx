@@ -192,25 +192,44 @@ export default function Dashboard() {
     onClick?: () => void;
     loading?: boolean;
   }) => {
-    const colorClasses = {
-      default: "border-gray-200 hover:border-gray-300",
-      green: "border-green-200 hover:border-green-300 bg-green-50/30",
-      red: "border-red-200 hover:border-red-300 bg-red-50/30",
-      blue: "border-blue-200 hover:border-blue-300 bg-blue-50/30",
-      purple: "border-purple-200 hover:border-purple-300 bg-purple-50/30"
+    const colorVariants = {
+      default: {
+        border: "border-border hover:border-border/80",
+        bg: "bg-background",
+        icon: "text-muted-foreground",
+        text: "text-foreground"
+      },
+      green: {
+        border: "border-green-200 hover:border-green-300 dark:border-green-800 dark:hover:border-green-700",
+        bg: "",
+        icon: "text-green-600 dark:text-green-400",
+        text: "text-green-600 dark:text-green-400"
+      },
+      red: {
+        border: "border-red-200 hover:border-red-300 dark:border-red-800 dark:hover:border-red-700",
+        bg: "",
+        icon: "text-red-600 dark:text-red-400",
+        text: "text-red-600 dark:text-red-400"
+      },
+      blue: {
+        border: "border-blue-200 hover:border-blue-300 dark:border-blue-800 dark:hover:border-blue-700",
+        bg: "",
+        icon: "text-blue-600 dark:text-blue-400",
+        text: "text-blue-600 dark:text-blue-400"
+      },
+      purple: {
+        border: "border-purple-200 hover:border-purple-300 dark:border-purple-800 dark:hover:border-purple-700",
+        bg: "",
+        icon: "text-purple-600 dark:text-purple-400",
+        text: "text-purple-600 dark:text-purple-400"
+      }
     };
 
-    const iconColorClasses = {
-      default: "text-gray-600",
-      green: "text-green-600",
-      red: "text-red-600",
-      blue: "text-blue-600",
-      purple: "text-purple-600"
-    };
+    const variant = colorVariants[color];
 
     return (
       <Card 
-        className={`transition-all duration-200 hover:shadow-lg ${colorClasses[color]} ${
+        className={`transition-all duration-200 hover:shadow-lg ${variant.border} ${variant.bg} ${
           onClick ? 'cursor-pointer hover:scale-105' : ''
         }`}
         onClick={onClick}
@@ -219,10 +238,10 @@ export default function Dashboard() {
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {title}
           </CardTitle>
-          <Icon className={`h-5 w-5 ${iconColorClasses[color]}`} />
+          <Icon className={`h-5 w-5 ${variant.icon}`} />
         </CardHeader>
         <CardContent>
-          <div className={`text-3xl font-bold ${iconColorClasses[color]}`}>
+          <div className={`text-3xl font-bold ${variant.text}`}>
             {cardLoading ? <Skeleton className="h-9 w-24" /> : value}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
@@ -238,9 +257,9 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Good Morning!</h1>
           <p className="text-muted-foreground">
-            Welcome back! Here's what's happening with your business.
+            Welcome to Taxmahir Dashboard
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -356,15 +375,15 @@ export default function Dashboard() {
         </Card>
       )}
       
-      {/* Main Stats Cards classnameL grid*/}
-      <div className="gap-4 md:grid-cols-2 lg:grid-cols-5 hidden">
+      {/* Main Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
           title="Customers"
           value={loading ? 0 : stats.customers}
           icon={UsersIcon}
           description="Total customers"
           trend="up"
-          onClick={() => router.push('/customers')}
+          onClick={() => router.push('/users')}
           loading={loading}
         />
         <StatCard
@@ -406,7 +425,7 @@ export default function Dashboard() {
       </div>
 
       {/* Financial Dashboard Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 hidden">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <FinancialCard
           title="Revenue"
           value={loading ? <Skeleton className="h-9 w-24" /> : (
@@ -459,6 +478,132 @@ export default function Dashboard() {
           color="purple"
           loading={loading}
         />
+      </div>
+
+      {/* New Attraction Sections */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Recent Activity */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3Icon className="h-5 w-5" />
+              Recent Activity
+            </CardTitle>
+            <CardDescription>
+              Latest transactions and system activities
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                    <ShoppingCartIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">New order received</p>
+                    <p className="text-xs text-muted-foreground">Order #1234 - $299.99</p>
+                  </div>
+                </div>
+                <span className="text-xs text-muted-foreground">2 min ago</span>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                    <UsersIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">New customer registered</p>
+                    <p className="text-xs text-muted-foreground">john.doe@example.com</p>
+                  </div>
+                </div>
+                <span className="text-xs text-muted-foreground">5 min ago</span>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                    <PackageIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Product updated</p>
+                    <p className="text-xs text-muted-foreground">Premium Service Plan</p>
+                  </div>
+                </div>
+                <span className="text-xs text-muted-foreground">1 hour ago</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Performance Metrics */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUpIcon className="h-5 w-5" />
+              Performance Metrics
+            </CardTitle>
+            <CardDescription>
+              Key performance indicators for your business
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                    <TrendingUpIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Customer Satisfaction</p>
+                    <p className="text-xs text-muted-foreground">Based on recent feedback</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">94%</p>
+                  <p className="text-xs text-green-600 dark:text-green-400">+2.1% from last month</p>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                    <TargetIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Order Completion Rate</p>
+                    <p className="text-xs text-muted-foreground">Successfully processed orders</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">98.7%</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400">+0.5% from last month</p>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                    <DollarSignIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Revenue Growth</p>
+                    <p className="text-xs text-muted-foreground">Month over month growth</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">+12.3%</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400">Above target</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Additional Dashboard Content */}

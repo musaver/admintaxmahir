@@ -13,7 +13,7 @@ export function CtaSection() {
               Ready to Transform Your Inventory Management?
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Join thousands of businesses already using Hisaab360 to streamline operations, 
+              Join thousands of businesses already using Tamahir to streamline operations, 
               reduce costs, and boost efficiency.
             </p>
           </div>
