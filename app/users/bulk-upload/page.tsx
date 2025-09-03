@@ -1,12 +1,35 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { 
+  Upload, 
+  Download, 
+  Users, 
+  Package, 
+  FileText, 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  AlertCircle,
+  ArrowLeft,
+  Loader2,
+  BarChart3
+} from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ImportJob {
   id: string;
   fileName: string;
   status: string;
-  type: string; // 'users' or 'products'
+  type: string;
   totalRecords: number;
   processedRecords: number;
   successfulRecords: number;
@@ -42,7 +65,6 @@ export default function BulkUserUpload() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // Check if we should default to products tab
   const defaultTab = searchParams.get('tab') === 'products' ? 'products' : 'users';
   const [activeTab, setActiveTab] = useState<'users' | 'products'>(defaultTab);
   const [file, setFile] = useState<File | null>(null);
@@ -104,8 +126,8 @@ export default function BulkUserUpload() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('uploadedBy', 'current-user'); // TODO: Get from auth context
-      formData.append('type', activeTab); // Add import type
+      formData.append('uploadedBy', 'current-user');
+      formData.append('type', activeTab);
 
       const response = await fetch('/api/users/bulk-upload', {
         method: 'POST',
@@ -118,7 +140,6 @@ export default function BulkUserUpload() {
         throw new Error(data.error || 'Upload failed');
       }
 
-      // Start polling for status
       startStatusPolling(data.jobId);
 
     } catch (err: any) {
@@ -137,10 +158,9 @@ export default function BulkUserUpload() {
 
         if (job.status === 'completed' || job.status === 'failed') {
           setUploading(false);
-          return; // Stop polling
+          return;
         }
 
-        // Continue polling if still processing
         setTimeout(pollStatus, 2000);
       } catch (error) {
         console.error('Error polling status:', error);
@@ -172,281 +192,440 @@ export default function BulkUserUpload() {
     return `${remainingSeconds}s`;
   };
 
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'completed': return 'default';
+      case 'failed': return 'destructive';
+      case 'processing': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return <CheckCircle className="h-4 w-4" />;
+      case 'failed': return <XCircle className="h-4 w-4" />;
+      case 'processing': return <Clock className="h-4 w-4" />;
+      default: return <AlertCircle className="h-4 w-4" />;
+    }
+  };
+
   return (
-    <div className="p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Bulk Import</h1>
-          <button
-            onClick={() => router.push(activeTab === 'users' ? '/users' : '/products')}
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-          >
-            Back to {activeTab === 'users' ? 'Users' : 'Products'}
-          </button>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => {
-                  setActiveTab('users');
-                  resetForm();
-                }}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'users'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                👥 Import Users
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('products');
-                  resetForm();
-                }}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'products'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                📦 Import Products
-              </button>
-            </nav>
-          </div>
-        </div>
-
-        {/* Instructions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold text-blue-800 mb-3">📋 Instructions</h2>
-          <ul className="space-y-2 text-blue-700">
-            <li>• Download the CSV template below to see the required format</li>
-            {activeTab === 'users' ? (
-              <>
-                <li>• Required fields: <strong>Name, Email</strong></li>
-                <li>• Optional fields: Buyer NTN/CNIC, Business Name, Province, Address, Registration Type</li>
-                <li>• Supports up to 100MB files (~200,000 users)</li>
-                <li>• Duplicate emails within your tenant will be skipped</li>
-              </>
-            ) : (
-              <>
-                <li>• Required fields: <strong>Product SKU, Product Title, Product Price</strong></li>
-                <li>• Optional fields: Product Description</li>
-                <li>• Supports up to 100MB files (~300,000 products)</li>
-                <li>• Duplicate SKUs within your tenant will be skipped</li>
-              </>
-            )}
-            <li>• Processing happens in background - you'll see real-time progress</li>
-            <li>• Save your file as CSV format</li>
-          </ul>
-        </div>
-
-        {/* Download Template */}
-        <div className="bg-white border rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-3">📥 Download Template</h2>
-          <p className="text-gray-600 mb-4">
-            Download the {activeTab === 'users' ? 'user' : 'product'} CSV template with the correct format and sample data.
+    <div className="container mx-auto px-4 py-6 max-w-6xl">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">Bulk Import</h1>
+          <p className="text-muted-foreground">
+            Import multiple users or products from CSV files
           </p>
-          <button
-            onClick={downloadTemplate}
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-          >
-            📄 Download {activeTab === 'users' ? 'User' : 'Product'} CSV Template
-          </button>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => router.push(activeTab === 'users' ? '/users' : '/products')}
+          className="gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to {activeTab === 'users' ? 'Users' : 'Products'}
+        </Button>
+      </div>
 
-        {/* Upload Form */}
-        <div className="bg-white border rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">📤 Upload {activeTab === 'users' ? 'Users' : 'Products'}</h2>
-          
+      {/* Tab Navigation */}
+      <Tabs 
+        value={activeTab} 
+        onValueChange={(value) => {
+          setActiveTab(value as 'users' | 'products');
+          resetForm();
+        }}
+        className="space-y-6"
+      >
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="users" className="gap-2">
+            <Users className="h-4 w-4" />
+            Import Users
+          </TabsTrigger>
+          <TabsTrigger value="products" className="gap-2">
+            <Package className="h-4 w-4" />
+            Import Products
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="users" className="space-y-6">
+          {/* Instructions Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Instructions
+              </CardTitle>
+              <CardDescription>
+                Follow these guidelines for successful user import
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="space-y-2">
+                  <div>Download the CSV template below to see the required format</div>
+                  <ul className="list-disc list-inside space-y-1 mt-2">
+                    <li><strong>Required fields:</strong> Name, Email</li>
+                    <li><strong>Optional fields:</strong> Buyer NTN/CNIC, Business Name, Province, Address, Registration Type</li>
+                    <li>Supports up to 100MB files (~200,000 users)</li>
+                    <li>Duplicate emails within your tenant will be skipped</li>
+                    <li>Processing happens in background with real-time progress</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+
+          {/* Template Download */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                Download Template
+              </CardTitle>
+              <CardDescription>
+                Get the CSV template with correct format and sample data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={downloadTemplate} variant="outline" className="gap-2">
+                <FileText className="h-4 w-4" />
+                Download User CSV Template
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="products" className="space-y-6">
+          {/* Instructions Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Instructions
+              </CardTitle>
+              <CardDescription>
+                Follow these guidelines for successful product import
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="space-y-2">
+                  <div>Download the CSV template below to see the required format</div>
+                  <ul className="list-disc list-inside space-y-1 mt-2">
+                    <li><strong>Required fields:</strong> Product SKU, Product Title, Product Price</li>
+                    <li><strong>Optional fields:</strong> Product Description</li>
+                    <li>Supports up to 100MB files (~300,000 products)</li>
+                    <li>Duplicate SKUs within your tenant will be skipped</li>
+                    <li>Processing happens in background with real-time progress</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+
+          {/* Template Download */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                Download Template
+              </CardTitle>
+              <CardDescription>
+                Get the CSV template with correct format and sample data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={downloadTemplate} variant="outline" className="gap-2">
+                <FileText className="h-4 w-4" />
+                Download Product CSV Template
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Upload Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Upload {activeTab === 'users' ? 'Users' : 'Products'}
+          </CardTitle>
+          <CardDescription>
+            Select your CSV file to begin the import process
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
           {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-200 text-red-700 rounded">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
           <div className="space-y-4">
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="csvFile">
-                Select CSV File
-              </label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="csvFile">Select CSV File</Label>
+              <Input
                 type="file"
                 id="csvFile"
                 accept=".csv"
                 onChange={handleFileChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                 disabled={uploading}
+                className="file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground"
               />
               {file && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                </p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <FileText className="h-4 w-4" />
+                  <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                </div>
               )}
             </div>
 
-            <div className="flex gap-4">
-              <button
+            <div className="flex gap-3">
+              <Button
                 onClick={handleUpload}
                 disabled={!file || uploading}
-                className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="gap-2"
               >
-                {uploading ? 'Processing...' : 'Start Import'}
-              </button>
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Start Import
+                  </>
+                )}
+              </Button>
               
               {(file || currentJob) && (
-                <button
+                <Button
+                  variant="outline"
                   onClick={resetForm}
                   disabled={uploading}
-                  className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+                  className="gap-2"
                 >
                   Reset
-                </button>
+                </Button>
               )}
             </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Progress & Status */}
-        {currentJob && (
-          <div className="bg-white border rounded-lg p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">📊 Import Progress</h2>
-            
+      {/* Progress & Status */}
+      {currentJob && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Import Progress
+            </CardTitle>
+            <CardDescription>
+              Real-time status of your import job
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
             {/* Status Badge */}
-            <div className="mb-4">
-              <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                currentJob.status === 'completed' ? 'bg-green-100 text-green-800' :
-                currentJob.status === 'failed' ? 'bg-red-100 text-red-800' :
-                currentJob.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                'bg-yellow-100 text-yellow-800'
-              }`}>
+            <div className="flex items-center gap-2">
+              {getStatusIcon(currentJob.status)}
+              <Badge variant={getStatusVariant(currentJob.status)}>
                 {currentJob.status.charAt(0).toUpperCase() + currentJob.status.slice(1)}
-              </span>
+              </Badge>
+              {currentJob.status === 'processing' && currentJob.estimatedTimeRemaining && (
+                <span className="text-sm text-muted-foreground">
+                  Est. {formatTimeRemaining(currentJob.estimatedTimeRemaining)} remaining
+                </span>
+              )}
             </div>
 
             {/* Progress Bar */}
             {currentJob.totalRecords > 0 && (
-              <div className="mb-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
                   <span>Progress: {currentJob.processedRecords} / {currentJob.totalRecords}</span>
-                  <span>{currentJob.progressPercent}%</span>
+                  <span className="font-medium">{currentJob.progressPercent}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${currentJob.progressPercent}%` }}
-                  ></div>
-                </div>
-                {currentJob.status === 'processing' && currentJob.estimatedTimeRemaining && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Estimated time remaining: {formatTimeRemaining(currentJob.estimatedTimeRemaining)}
-                  </p>
-                )}
+                <Progress value={currentJob.progressPercent} className="h-2" />
               </div>
             )}
 
-            {/* Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="text-2xl font-bold text-green-800">
-                  {currentJob.successfulRecords}
-                </div>
-                <div className="text-green-600">Successful</div>
-              </div>
+            {/* Statistics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <div>
+                      <div className="text-2xl font-bold text-green-800 dark:text-green-200">
+                        {currentJob.successfulRecords}
+                      </div>
+                      <div className="text-sm text-green-600 dark:text-green-400">Successful</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
               
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="text-2xl font-bold text-red-800">
-                  {currentJob.failedRecords}
-                </div>
-                <div className="text-red-600">Failed</div>
-              </div>
+              <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <XCircle className="h-5 w-5 text-red-600" />
+                    <div>
+                      <div className="text-2xl font-bold text-red-800 dark:text-red-200">
+                        {currentJob.failedRecords}
+                      </div>
+                      <div className="text-sm text-red-600 dark:text-red-400">Failed</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
               
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="text-2xl font-bold text-blue-800">
-                  {currentJob.processedRecords}
-                </div>
-                <div className="text-blue-600">Total Processed</div>
-              </div>
+              <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <div className="text-2xl font-bold text-blue-800 dark:text-blue-200">
+                        {currentJob.processedRecords}
+                      </div>
+                      <div className="text-sm text-blue-600 dark:text-blue-400">Processed</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Success Details */}
             {currentJob.type === 'users' && currentJob.results?.successfulUsers && Array.isArray(currentJob.results.successfulUsers) && currentJob.results.successfulUsers.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-md font-semibold text-green-800 mb-2">✅ Successfully Created Users (showing first 20)</h3>
-                <div className="bg-green-50 border border-green-200 rounded p-3 max-h-60 overflow-y-auto">
-                  {currentJob.results.successfulUsers.slice(0, 20).map((user, index) => (
-                    <div key={index} className="text-sm text-green-700 mb-1">
-                      {user.name} ({user.email})
-                    </div>
-                  ))}
-                  {currentJob.results.successfulUsers.length > 20 && (
-                    <div className="text-sm text-green-600 italic">
-                      ... and {currentJob.results.successfulUsers.length - 20} more
-                    </div>
-                  )}
-                </div>
-              </div>
+              <Card className="border-green-200">
+                <CardHeader>
+                  <CardTitle className="text-green-800 flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5" />
+                    Successfully Created Users
+                  </CardTitle>
+                  <CardDescription>Showing first 20 users</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {currentJob.results.successfulUsers.slice(0, 20).map((user, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950">
+                        <Users className="h-4 w-4 text-green-600" />
+                        <div className="text-sm">
+                          <span className="font-medium">{user.name}</span>
+                          <span className="text-muted-foreground"> ({user.email})</span>
+                        </div>
+                      </div>
+                    ))}
+                    {currentJob.results.successfulUsers.length > 20 && (
+                      <div className="text-sm text-muted-foreground italic text-center py-2">
+                        ... and {currentJob.results.successfulUsers.length - 20} more users
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {currentJob.type === 'products' && currentJob.results?.successfulProducts && Array.isArray(currentJob.results.successfulProducts) && currentJob.results.successfulProducts.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-md font-semibold text-green-800 mb-2">✅ Successfully Created Products (showing first 20)</h3>
-                <div className="bg-green-50 border border-green-200 rounded p-3 max-h-60 overflow-y-auto">
-                  {currentJob.results.successfulProducts.slice(0, 20).map((product, index) => (
-                    <div key={index} className="text-sm text-green-700 mb-1">
-                      {product.name} (SKU: {product.sku})
-                    </div>
-                  ))}
-                  {currentJob.results.successfulProducts.length > 20 && (
-                    <div className="text-sm text-green-600 italic">
-                      ... and {currentJob.results.successfulProducts.length - 20} more
-                    </div>
-                  )}
-                </div>
-              </div>
+              <Card className="border-green-200">
+                <CardHeader>
+                  <CardTitle className="text-green-800 flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5" />
+                    Successfully Created Products
+                  </CardTitle>
+                  <CardDescription>Showing first 20 products</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {currentJob.results.successfulProducts.slice(0, 20).map((product, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950">
+                        <Package className="h-4 w-4 text-green-600" />
+                        <div className="text-sm">
+                          <span className="font-medium">{product.name}</span>
+                          <span className="text-muted-foreground"> (SKU: {product.sku})</span>
+                        </div>
+                      </div>
+                    ))}
+                    {currentJob.results.successfulProducts.length > 20 && (
+                      <div className="text-sm text-muted-foreground italic text-center py-2">
+                        ... and {currentJob.results.successfulProducts.length - 20} more products
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Error Details */}
             {currentJob.errors && Array.isArray(currentJob.errors) && currentJob.errors.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-md font-semibold text-red-800 mb-2">❌ Errors (showing first 20)</h3>
-                <div className="bg-red-50 border border-red-200 rounded p-3 max-h-60 overflow-y-auto">
-                  {currentJob.errors.slice(0, 20).map((error, index) => (
-                    <div key={index} className="text-sm text-red-700 mb-2">
-                      <strong>Row {error.row}:</strong> {error.message}
-                      <div className="ml-4 text-red-600">
-                        {currentJob.type === 'users' 
-                          ? `Email: ${error.email || 'N/A'}`
-                          : `SKU: ${error.identifier || 'N/A'}`
-                        }
+              <Card className="border-red-200">
+                <CardHeader>
+                  <CardTitle className="text-red-800 flex items-center gap-2">
+                    <XCircle className="h-5 w-5" />
+                    Import Errors
+                  </CardTitle>
+                  <CardDescription>Showing first 20 errors</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {currentJob.errors.slice(0, 20).map((error, index) => (
+                      <div key={index} className="p-3 rounded-md bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+                        <div className="font-medium text-red-800 dark:text-red-200">
+                          Row {error.row}
+                        </div>
+                        <div className="text-sm text-red-700 dark:text-red-300">
+                          {error.message}
+                        </div>
+                        <div className="text-sm text-red-600 dark:text-red-400">
+                          {currentJob.type === 'users' 
+                            ? `Email: ${error.email || 'N/A'}`
+                            : `SKU: ${error.identifier || 'N/A'}`
+                          }
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {currentJob.errors.length > 20 && (
-                    <div className="text-sm text-red-600 italic">
-                      ... and {currentJob.errors.length - 20} more errors
-                    </div>
-                  )}
-                </div>
-              </div>
+                    ))}
+                    {currentJob.errors.length > 20 && (
+                      <div className="text-sm text-muted-foreground italic text-center py-2">
+                        ... and {currentJob.errors.length - 20} more errors
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
+            {/* Completion Actions */}
             {currentJob.status === 'completed' && (
-              <div className="pt-4 border-t">
-                <button
-                  onClick={() => router.push(currentJob.type === 'users' ? '/users' : '/products')}
-                  className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  View All {currentJob.type === 'users' ? 'Users' : 'Products'}
-                </button>
-              </div>
+              <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="font-medium text-green-800 dark:text-green-200">
+                        Import completed successfully!
+                      </span>
+                    </div>
+                    <Button
+                      onClick={() => router.push(currentJob.type === 'users' ? '/users' : '/products')}
+                      className="gap-2"
+                    >
+                      View All {currentJob.type === 'users' ? 'Users' : 'Products'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             )}
-          </div>
-        )}
-      </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
@@ -13,14 +14,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from '@/components/ui/navigation-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -33,15 +26,16 @@ import {
   Users,
   Package,
   Folder,
-  Tag,
-  FileText,
   BarChart3,
   ShoppingCart,
   Settings,
   LogOut,
   User,
+  ChevronDown,
+  PanelLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLayout } from '@/app/contexts/LayoutContext';
 
 interface HeaderProps {
   className?: string;
@@ -51,7 +45,8 @@ export function Header({ className }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { theme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
+  const { toggleLayout } = useLayout();
 
   const navigation = [
     {
@@ -75,7 +70,7 @@ export function Header({ className }: HeaderProps) {
       children: [
         { name: 'All Products', href: '/products' },
         { name: 'Add Product', href: '/products/add' },
-        { name: 'Bulk Upload', href: '/products/bulk-upload' },
+        { name: 'Bulk Upload', href: '/users/bulk-upload?tab=products' },
       ],
     },
     {
@@ -114,64 +109,36 @@ export function Header({ className }: HeaderProps) {
   const currentUser = session?.user as any;
 
   return (
-    <header className={cn('fixed top-0 left-0 right-0 z-50 bg-background border-b', className)}>
+    <header className={cn('fixed top-0 left-0 right-0 z-50 bg-background border-b shadow-sm', className)}>
       <div className="flex h-16 items-center justify-between px-4 lg:px-6">
         {/* Logo and Brand */}
         <div className="flex items-center space-x-4">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <LayoutDashboard className="h-4 w-4" />
+          <Link href="/dashboard" className="flex items-center space-x-3">
+            <div className="bg-black border rounded-lg p-2 shadow-sm">
+              <Image
+                src="/taxmahirlogo.png"
+                alt="TaxMahir"
+                width={120}
+                height={32}
+                className="h-6 w-6"
+                priority
+              />
             </div>
-            <span className="text-xl font-bold">Admin Panel</span>
+            <span className="text-xl font-bold hidden sm:block">Tax Mahir</span>
           </Link>
         </div>
 
         {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center space-x-6">
-          <NavigationMenu>
-            <NavigationMenuList>
-              {navigation.map((item) => (
-                <NavigationMenuItem key={item.name}>
-                  {item.children ? (
-                    <>
-                      <NavigationMenuTrigger
-                        className={cn(
-                          'flex items-center space-x-1 px-3 py-2 text-sm font-medium rounded-md',
-                          isActive(item.href)
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                        )}
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.name}</span>
-                      </NavigationMenuTrigger>
-                      <NavigationMenuContent className="left-0 top-0 w-full data-[motion^=from-]:animate-in data-[motion^=to-]:animate-out data-[motion^=from-]:fade-in data-[motion^=to-]:fade-out data-[motion=from-end]:slide-in-from-right-52 data-[motion=from-start]:slide-in-from-left-52 data-[motion=to-end]:slide-out-to-right-52 data-[motion=to-start]:slide-out-to-left-52 md:absolute md:w-auto">
-                        <ul className="grid w-48 gap-3 p-4">
-                          {item.children.map((child) => (
-                            <li key={child.name}>
-                              <NavigationMenuLink asChild>
-                                <Link
-                                  href={child.href}
-                                  className={cn(
-                                    'block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
-                                    isActive(child.href) && 'bg-accent text-accent-foreground'
-                                  )}
-                                >
-                                  <div className="text-sm font-medium leading-none">
-                                    {child.name}
-                                  </div>
-                                </Link>
-                              </NavigationMenuLink>
-                            </li>
-                          ))}
-                        </ul>
-                      </NavigationMenuContent>
-                    </>
-                  ) : (
-                    <Link
-                      href={item.href}
+        <nav className="hidden lg:flex items-center space-x-1">
+          {navigation.map((item) => (
+            <div key={item.name}>
+              {item.children ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
                       className={cn(
-                        'flex items-center space-x-1 px-3 py-2 text-sm font-medium rounded-md',
+                        'group flex items-center space-x-1 px-3 py-2 text-sm font-medium rounded-md h-9',
                         isActive(item.href)
                           ? 'bg-primary text-primary-foreground'
                           : 'text-muted-foreground hover:text-foreground hover:bg-accent'
@@ -179,16 +146,59 @@ export function Header({ className }: HeaderProps) {
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.name}</span>
-                    </Link>
+                      <ChevronDown className="h-3 w-3 ml-1 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    {item.children.map((child) => (
+                      <DropdownMenuItem key={child.name} asChild>
+                        <Link
+                          href={child.href}
+                          className={cn(
+                            'flex items-center w-full cursor-pointer',
+                            isActive(child.href) && 'bg-accent text-accent-foreground'
+                          )}
+                        >
+                          {child.name}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  variant="ghost"
+                  asChild
+                  className={cn(
+                    'flex items-center space-x-1 px-3 py-2 text-sm font-medium rounded-md h-9',
+                    isActive(item.href)
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                   )}
-                </NavigationMenuItem>
-              ))}
-            </NavigationMenuList>
-          </NavigationMenu>
-        </div>
+                >
+                  <Link href={item.href}>
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.name}</span>
+                  </Link>
+                </Button>
+              )}
+            </div>
+          ))}
+        </nav>
 
-        {/* Right side - Theme toggle and user menu */}
+        {/* Right side - Layout toggle, Theme toggle and user menu */}
         <div className="flex items-center space-x-4">
+          {/* Layout Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleLayout}
+            className="h-8 w-8"
+          >
+            <PanelLeft className="h-4 w-4" />
+            <span className="sr-only">Switch to sidebar layout</span>
+          </Button>
+          
           {/* Theme Toggle */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -293,15 +303,20 @@ export function Header({ className }: HeaderProps) {
                 <Link
                   href={item.href}
                   className={cn(
-                    'flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-md',
+                    'flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md',
                     isActive(item.href)
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                   )}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.name}</span>
+                  <div className="flex items-center space-x-2">
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.name}</span>
+                  </div>
+                  {item.children && (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
                 </Link>
                 {item.children && (
                   <div className="ml-6 space-y-1">

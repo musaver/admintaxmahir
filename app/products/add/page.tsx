@@ -1,7 +1,18 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import ImageUploader from '../../components/ImageUploader';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PackagePlus, ArrowLeft, AlertCircle, Settings, Image as ImageIcon } from 'lucide-react';
 import CurrencySymbol from '../../components/CurrencySymbol';
 import RichTextEditor from '../../components/RichTextEditor';
 import TagSelector from '../../components/TagSelector';
@@ -140,6 +151,18 @@ interface SelectedTag {
 }
 
 export default function AddProduct() {
+  const router = useRouter();
+  
+  return (
+    <div>
+      <h1>Add New Product</h1>
+      <p>This is a test</p>
+    </div>
+  );
+}
+
+// ORIGINAL COMPONENT TEMPORARILY DISABLED
+function OriginalAddProduct() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
@@ -602,15 +625,12 @@ export default function AddProduct() {
         comparePrice: formData.comparePrice ? parseFloat(formData.comparePrice) : null,
         costPrice: formData.costPrice ? parseFloat(formData.costPrice) : null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
-        // Weight-based stock management fields
         pricePerUnit: formData.pricePerUnit ? parseFloat(formData.pricePerUnit) : null,
-        // Cannabis-specific fields
         thc: formData.thc ? parseFloat(formData.thc) : null,
         cbd: formData.cbd ? parseFloat(formData.cbd) : null,
         difficulty: formData.difficulty || null,
         floweringTime: formData.floweringTime || null,
         yieldAmount: formData.yieldAmount || null,
-        // Tax and discount fields
         taxAmount: formData.taxAmount ? parseFloat(formData.taxAmount) : null,
         taxPercentage: formData.taxPercentage ? parseFloat(formData.taxPercentage) : null,
         priceIncludingTax: formData.priceIncludingTax ? parseFloat(formData.priceIncludingTax) : null,
@@ -621,12 +641,10 @@ export default function AddProduct() {
         discount: formData.discount ? parseFloat(formData.discount) : null,
         images: images.length > 0 ? images : null,
         selectedTags: selectedTags.length > 0 ? selectedTags : null,
-        // Enhanced variation data structure
         variationMatrix: formData.productType === 'variable' ? generateVariationMatrix() : null,
-        // Keep legacy format for backwards compatibility
         variationAttributes: formData.productType === 'variable' ? selectedAttributes : null,
         variants: formData.productType === 'variable' ? generatedVariants : null,
-        addons: selectedAddons.length > 0 ? selectedAddons : null,
+        addons: selectedAddons.length > 0 ? selectedAddons : null
       };
 
       const response = await fetch('/api/products', {
@@ -650,87 +668,98 @@ export default function AddProduct() {
     }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-6">Add New Product</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">Add New Product</h1>
+          <p className="text-muted-foreground">Create a new product with all the details</p>
+        </div>
+        <button onClick={() => router.push('/products')}>
+          Back to Products
+        </button>
+      </div>
       
       {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+        <div style={{color: 'red', padding: '10px', border: '1px solid red'}}>
           {error}
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="max-w-6xl">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Product Type Selection */}
-        <div className="mb-6 p-4 border rounded-lg bg-gray-50 ">
-          <h3 className="text-lg font-semibold mb-4">Product Type</h3>
-          <div className="flex gap-4">
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="productType"
-                value="simple"
-                checked={formData.productType === 'simple'}
-                onChange={handleChange}
-                className="mr-2"
-              />
-              Simple Product
-            </label>
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="productType"
-                value="variable"
-                checked={formData.productType === 'variable'}
-                onChange={handleChange}
-                className="mr-2"
-              />
-              Variable Product (with variations)
-            </label>
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="productType"
-                value="group"
-                checked={formData.productType === 'group'}
-                onChange={handleChange}
-                className="mr-2"
-              />
-              Group Product (with addons)
-            </label>
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Product Type
+            </CardTitle>
+            <CardDescription>Choose the type of product you want to create</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RadioGroup
+              value={formData.productType}
+              onValueChange={(value) => setFormData({...formData, productType: value})}
+              className="grid grid-cols-1 md:grid-cols-3 gap-4"
+            >
+              <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent/50">
+                <RadioGroupItem value="simple" id="simple" />
+                <Label htmlFor="simple" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Simple Product</div>
+                  <div className="text-sm text-muted-foreground">Single product with fixed pricing</div>
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent/50">
+                <RadioGroupItem value="variable" id="variable" />
+                <Label htmlFor="variable" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Variable Product</div>
+                  <div className="text-sm text-muted-foreground">Product with variations (size, color, etc.)</div>
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent/50">
+                <RadioGroupItem value="group" id="group" />
+                <Label htmlFor="group" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Group Product</div>
+                  <div className="text-sm text-muted-foreground">Product with customizable addons</div>
+                </Label>
+              </div>
+            </RadioGroup>
+          </CardContent>
+        </Card>
 
         {/* Stock Management Type Selection */}
-        <div className="mb-6 p-4 border rounded-lg bg-blue-50 ">
-          <h3 className="text-lg font-semibold mb-4">⚖️ Stock Management Type</h3>
-          <div className="space-y-4">
-            <div className="flex gap-6">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="stockManagementType"
-                  value="quantity"
-                  checked={formData.stockManagementType === 'quantity'}
-                  onChange={handleChange}
-                  className="mr-2"
-                />
-                <span className="font-medium">📦 Quantity-Based</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="stockManagementType"
-                  value="weight"
-                  checked={formData.stockManagementType === 'weight'}
-                  onChange={handleChange}
-                  className="mr-2"
-                />
-                <span className="font-medium">⚖️ Weight-Based</span>
-              </label>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              ⚖️ Stock Management Type
+            </CardTitle>
+            <CardDescription>Choose how inventory will be tracked for this product</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <RadioGroup
+              value={formData.stockManagementType}
+              onValueChange={(value) => setFormData({...formData, stockManagementType: value})}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
+              <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent/50">
+                <RadioGroupItem value="quantity" id="quantity" />
+                <Label htmlFor="quantity" className="flex-1 cursor-pointer">
+                  <div className="font-medium">📦 Quantity-Based</div>
+                  <div className="text-sm text-muted-foreground">Track inventory by individual units/pieces</div>
+                </Label>
             </div>
+              <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent/50">
+                <RadioGroupItem value="weight" id="weight" />
+                <Label htmlFor="weight" className="flex-1 cursor-pointer">
+                  <div className="font-medium">⚖️ Weight-Based</div>
+                  <div className="text-sm text-muted-foreground">Track inventory by weight (kg, grams)</div>
+                </Label>
+              </div>
+            </RadioGroup>
             
             <div className="text-sm text-gray-600">
               {formData.stockManagementType === 'quantity' ? (
@@ -742,72 +771,76 @@ export default function AddProduct() {
 
             {/* Weight-based specific fields */}
             {formData.stockManagementType === 'weight' && (
-              <div className="mt-4 p-4 bg-white border rounded-lg">
-                <h4 className="font-medium mb-3">Weight-Based Pricing Configuration</h4>
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Weight-Based Pricing Configuration</CardTitle>
+                  <CardDescription>Configure pricing per weight unit</CardDescription>
+                </CardHeader>
+                <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-gray-700 mb-2" htmlFor="pricePerUnit">
-                      Price per {formData.baseWeightUnit === 'kg' ? 'Kilogram' : 'Gram'} <span className="text-red-500">*</span>
-                      <span className="text-sm text-gray-500 block">
-                        {formData.baseWeightUnit === 'kg' 
-                          ? '(e.g., $50 per kg)' 
-                          : '(e.g., $0.05 per gram = $50 per kg)'
-                        }
-                      </span>
-                    </label>
-                    <input
+                    <div className="space-y-2">
+                      <Label htmlFor="pricePerUnit">
+                        Price per {formData.baseWeightUnit === 'kg' ? 'Kilogram' : 'Gram'} <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
                       type="number"
                       id="pricePerUnit"
                       name="pricePerUnit"
                       value={formData.pricePerUnit}
                       onChange={handleChange}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                       step={formData.baseWeightUnit === 'kg' ? '0.01' : '0.0001'}
                       min="0"
                       placeholder={formData.baseWeightUnit === 'kg' ? '50.00' : '0.0500'}
                       required={formData.stockManagementType === 'weight'}
                     />
+                      <p className="text-sm text-muted-foreground">
+                        {formData.baseWeightUnit === 'kg' 
+                          ? '(e.g., $50 per kg)' 
+                          : '(e.g., $0.05 per gram = $50 per kg)'
+                        }
+                      </p>
                   </div>
-                  <div>
-                    <label className="block text-gray-700 mb-2" htmlFor="costPrice">
-                      Cost per {formData.baseWeightUnit === 'kg' ? 'Kilogram' : 'Gram'} <span className="text-sm text-gray-500">(For profit tracking)</span>
-                    </label>
-                    <input
+                    <div className="space-y-2">
+                      <Label htmlFor="costPrice">
+                        Cost per {formData.baseWeightUnit === 'kg' ? 'Kilogram' : 'Gram'}
+                      </Label>
+                      <Input
                       type="number"
                       id="costPrice"
                       name="costPrice"
                       value={formData.costPrice}
                       onChange={handleChange}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                       step={formData.baseWeightUnit === 'kg' ? '0.01' : '0.0001'}
                       min="0"
                       placeholder={formData.baseWeightUnit === 'kg' ? '30.00' : '0.0300'}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-sm text-muted-foreground">
                       Used to calculate profit margins for weight-based products
                     </p>
                   </div>
-                  <div>
-                    <label className="block text-gray-700 mb-2" htmlFor="baseWeightUnit">
-                      Base Weight Unit
-                    </label>
-                    <select
-                      id="baseWeightUnit"
-                      name="baseWeightUnit"
+                    <div className="space-y-2">
+                      <Label htmlFor="baseWeightUnit">Base Weight Unit</Label>
+                      <Select
                       value={formData.baseWeightUnit}
-                      onChange={handleChange}
-                      className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    >
-                      <option value="grams">Grams (g)</option>
-                      <option value="kg">Kilograms (kg)</option>
-                    </select>
+                        onValueChange={(value) => setFormData({...formData, baseWeightUnit: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="grams">Grams (g)</SelectItem>
+                          <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                        </SelectContent>
+                      </Select>
                   </div>
                 </div>
                 
                 {formData.pricePerUnit && (
-                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
-                    <p className="text-sm text-green-700">
-                      <strong>Price Preview:</strong> 
+                  <Alert className="mt-4">
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">Price Preview:</p>
+                        <p>
                       {formData.baseWeightUnit === 'kg' ? (
                         <>
                           <CurrencySymbol />{parseFloat(formData.pricePerUnit || '0').toFixed(2)} per kg = 
@@ -844,63 +877,82 @@ export default function AddProduct() {
                           const cost = parseFloat(formData.costPrice || '0');
                           const profit = price - cost;
                           const margin = price > 0 ? (profit / price) * 100 : 0;
-                          return `${margin.toFixed(1)}% (${profit >= 0 ? '+' : ''}<CurrencySymbol />${profit.toFixed(formData.baseWeightUnit === 'kg' ? 2 : 4)} per ${formData.baseWeightUnit === 'kg' ? 'kg' : 'gram'})`;
+                          return (
+                            <>
+                              {margin.toFixed(1)}% ({profit >= 0 ? '+' : ''}
+                              <CurrencySymbol />
+                              {profit.toFixed(formData.baseWeightUnit === 'kg' ? 2 : 4)} per {formData.baseWeightUnit === 'kg' ? 'kg' : 'gram'})
+                            </>
+                          );
                         })()}
                       </p>
                     )}
                   </div>
+                    </AlertDescription>
+                  </Alert>
                 )}
-              </div>
+                </CardContent>
+              </Card>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column - Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Basic Information</h3>
-            
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="name">
-                Product Name <span className="text-red-500">*</span>
-              </label>
-              <input
+        {/* Main Product Information */}
+        <Tabs defaultValue="basic" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="basic">Basic Info</TabsTrigger>
+            <TabsTrigger value="pricing">Pricing</TabsTrigger>
+            <TabsTrigger value="media">Media</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="basic" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <PackagePlus className="h-5 w-5" />
+                  Basic Information
+                </CardTitle>
+                <CardDescription>Enter the basic product details</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Product Name <span className="text-destructive">*</span></Label>
+                  <Input
                 type="text"
                 id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                    placeholder="Enter product name"
                 required
               />
             </div>
 
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="slug">
-                Slug <span className="text-sm text-gray-500">(SEO-friendly URL)</span>
-              </label>
-              <input
+                <div className="space-y-2">
+                  <Label htmlFor="slug">Slug <span className="text-muted-foreground">(SEO-friendly URL)</span></Label>
+                  <Input
                 type="text"
                 id="slug"
                 name="slug"
                 value={formData.slug}
                 onChange={handleChange}
-                className={`w-full p-2 border rounded focus:outline-none transition-colors ${
+                    className={
                   formData.slug && !isValidSlug(formData.slug) 
-                    ? 'border-red-500 focus:border-red-500' 
-                    : 'border-gray-300 focus:border-blue-500'
-                }`}
+                        ? 'border-destructive focus:border-destructive' 
+                        : ''
+                    }
                 placeholder="auto-generated-from-product-name"
               />
               {formData.slug && (
-                <div className="mt-1">
+                    <div className="text-sm">
                   {isValidSlug(formData.slug) ? (
-                    <p className="text-sm text-green-600 flex items-center">
+                        <p className="text-green-600 flex items-center">
                       <span className="mr-1">✓</span>
                       Preview URL: /products/{formData.slug}
                     </p>
                   ) : (
-                    <p className="text-sm text-red-600 flex items-center">
+                        <p className="text-destructive flex items-center">
                       <span className="mr-1">✗</span>
                       Invalid slug. Only lowercase letters, numbers, and hyphens allowed.
                     </p>
@@ -908,16 +960,14 @@ export default function AddProduct() {
                 </div>
               )}
               {!isSlugManuallyEdited && (
-                <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground">
                   Auto-generated from product name. You can edit it manually.
                 </p>
               )}
             </div>
 
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="description">
-                Description
-              </label>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
               <RichTextEditor
                 value={formData.description}
                 onChange={(value) => setFormData({ ...formData, description: value })}
@@ -926,19 +976,190 @@ export default function AddProduct() {
               />
             </div>
 
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="shortDescription">
-                Short Description
-              </label>
-              <textarea
+                <div className="space-y-2">
+                  <Label htmlFor="shortDescription">Short Description</Label>
+                  <Textarea
                 id="shortDescription"
                 name="shortDescription"
                 value={formData.shortDescription}
                 onChange={handleChange}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                rows={2}
+                    placeholder="Enter a brief description"
+                    rows={3}
               />
             </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="categoryId">Category</Label>
+                    <Select
+                      value={formData.categoryId}
+                      onValueChange={(value) => setFormData({...formData, categoryId: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category: any) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="supplierId">Preferred Supplier</Label>
+                    <Select
+                      value={formData.supplierId}
+                      onValueChange={(value) => setFormData({...formData, supplierId: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a supplier (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suppliers.map((supplier: any) => (
+                          <SelectItem key={supplier.id} value={supplier.id}>
+                            {supplier.name} {supplier.companyName && `(${supplier.companyName})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      This will be used as the default supplier when restocking this product
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="hsCode">Product HS Code</Label>
+                  <Input
+                    type="text"
+                    id="hsCode"
+                    name="hsCode"
+                    value={formData.hsCode}
+                    onChange={handleChange}
+                    placeholder="e.g., 1234.56.78"
+                    maxLength={20}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Harmonized System Code for customs and tax classification
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="pricing" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pricing Information</CardTitle>
+                <CardDescription>Set up product pricing and costs</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Only show pricing fields for simple products and quantity-based */}
+                {formData.productType === 'simple' && formData.stockManagementType === 'quantity' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Price <span className="text-destructive">*</span></Label>
+                      <Input
+                        type="number"
+                        id="price"
+                        name="price"
+                        value={formData.price}
+                        onChange={handleChange}
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="comparePrice">Compare Price</Label>
+                      <Input
+                        type="number"
+                        id="comparePrice"
+                        name="comparePrice"
+                        value={formData.comparePrice}
+                        onChange={handleChange}
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-muted-foreground">Optional - for showing discounts</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="costPrice">Cost Price</Label>
+                      <Input
+                        type="number"
+                        id="costPrice"
+                        name="costPrice"
+                        value={formData.costPrice}
+                        onChange={handleChange}
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-muted-foreground">For profit tracking</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Weight-based pricing info */}
+                {formData.productType === 'simple' && formData.stockManagementType === 'weight' && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">⚖️ Weight-Based Product Pricing</p>
+                        <p>This product uses weight-based pricing. The price per gram is configured in the Stock Management section above.</p>
+                        {formData.pricePerUnit && (
+                          <p>Current Rate: <CurrencySymbol />{parseFloat(formData.pricePerUnit).toFixed(4)} per gram</p>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Variable product pricing info */}
+                {formData.productType === 'variable' && (
+                  <Alert>
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">Variable Product Pricing</p>
+                        <p>Prices will be set individually for each variant in the variations section.</p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Group product pricing info */}
+                {formData.productType === 'group' && (
+                  <Alert>
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">Group Product Pricing</p>
+                        <p>Product pricing will come from the selected addons. Customers will choose which addons they want.</p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="media" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Product Media
+                </CardTitle>
+                <CardDescription>Upload product images and banners</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
 
             {/* Cannabis-specific fields */}
             <div className="mt-6 p-4 border rounded-lg bg-green-50 hidden">
@@ -1026,9 +1247,15 @@ export default function AddProduct() {
                 </div>
               </div>
             </div>
+              </CardContent>
+            </Card>
 
-          </div>
-
+            <Card>
+              <CardHeader>
+                <CardTitle>Product Images</CardTitle>
+                <CardDescription>Upload and manage product images</CardDescription>
+              </CardHeader>
+              <CardContent>
           {/* Right Column - Pricing & Details */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Pricing, Category & Images</h3>
@@ -1334,6 +1561,7 @@ export default function AddProduct() {
                 Harmonized System Code for customs and tax classification
               </p>
             </div>
+          </div>
 
             {/* Product Gallery Manager */}
         <div className="mt-6 bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl shadow-sm">
@@ -1524,12 +1752,6 @@ export default function AddProduct() {
           </div>
         </div>
 
-
-          </div>
-        </div>
-
-        
-
         {/* Variable Product Variation Attributes */}
         {formData.productType === 'variable' && (
           <div className="mt-6 mb-6 bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl shadow-sm">
@@ -1636,7 +1858,7 @@ export default function AddProduct() {
             </div>
 
             {generatedVariants.length > 0 && (
-              <div className="mt-6 mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl shadow-sm">
+              <div className="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-semibold">Generated Variants ({generatedVariants.length})</h4>
                   <button
@@ -2013,22 +2235,114 @@ export default function AddProduct() {
             </div>
           </div>
         </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <Tabs defaultValue="settings" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-1">
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="settings" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Product Settings
+                </CardTitle>
+                <CardDescription>Configure product visibility and features</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="isFeatured"
+                      checked={formData.isFeatured}
+                      onCheckedChange={(checked) => setFormData({...formData, isFeatured: checked})}
+                    />
+                    <Label htmlFor="isFeatured">Featured Product</Label>
+          </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="isActive"
+                      checked={formData.isActive}
+                      onCheckedChange={(checked) => setFormData({...formData, isActive: checked})}
+                    />
+                    <Label htmlFor="isActive">Active</Label>
+        </div>
         
-        <div className="flex gap-4 mt-8">
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-            disabled={submitting}
-          >
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="taxable"
+                      checked={formData.taxable}
+                      onCheckedChange={(checked) => setFormData({...formData, taxable: checked})}
+                    />
+                    <Label htmlFor="taxable">Taxable</Label>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="metaTitle">Meta Title</Label>
+                      <Input
+                        type="text"
+                        id="metaTitle"
+                        name="metaTitle"
+                        value={formData.metaTitle}
+                        onChange={handleChange}
+                        placeholder="SEO meta title"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="metaDescription">Meta Description</Label>
+                      <Textarea
+                        id="metaDescription"
+                        name="metaDescription"
+                        value={formData.metaDescription}
+                        onChange={handleChange}
+                        placeholder="SEO meta description"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Product Tags */}
+                <div className="space-y-4">
+                  <Label>Product Tags</Label>
+                  <div className="p-4 border rounded-lg bg-muted/50">
+                    <TagSelector
+                      selectedTags={selectedTags}
+                      onTagsChange={setSelectedTags}
+                      disabled={submitting}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex gap-4 pt-6 border-t">
+          <Button type="submit" disabled={submitting} className="min-w-[120px]">
+            <PackagePlus className="h-4 w-4 mr-2" />
             {submitting ? 'Creating...' : 'Create Product'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             onClick={() => router.push('/products')}
-            className="px-6 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
           >
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>

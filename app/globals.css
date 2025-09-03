@@ -47,6 +47,27 @@
   overflow: hidden;
 }
 
+/* Sidebar layout fixes */
+.sidebar-fixed-width {
+  width: var(--sidebar-width) !important;
+  min-width: var(--sidebar-width) !important;
+  max-width: var(--sidebar-width) !important;
+  flex-shrink: 0;
+}
+
+/* Header consistency fixes */
+.header-fixed {
+  height: 4rem; /* 64px - matches h-16 */
+  min-height: 4rem;
+  max-height: 4rem;
+}
+
+/* Ensure headers are perfectly aligned */
+.layout-header {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 
 /* Currency Symbol Styles */
 .currency-symbol {
@@ -117,6 +138,8 @@
   --sidebar-accent-foreground: 240 5.9% 10%;
   --sidebar-border: 220 13% 91%;
   --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar-width: 16rem;
+  --sidebar-width-mobile: 18rem;
   
   /* Chart colors for admin */
   --chart-1: oklch(0.646 0.222 41.116);

@@ -262,7 +262,7 @@ export default function Dashboard() {
             Welcome to Taxmahir Dashboard
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 hidden">
           <Button
             onClick={fetchStats}
             disabled={loading}
@@ -277,7 +277,7 @@ export default function Dashboard() {
       </div>
 
       {/* Date Filters */}
-      <Card>
+      <Card className='hidden'>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FilterIcon className="h-5 w-5" />
@@ -607,7 +607,7 @@ export default function Dashboard() {
       </div>
 
       {/* Additional Dashboard Content */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 hidden">
         {/* Quick Actions */}
         <Card>
           <CardHeader>

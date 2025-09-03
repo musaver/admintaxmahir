@@ -1,17 +1,28 @@
-// ✅ 2. app/auth/page.tsx
 "use client";
+
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTheme } from "next-themes";
+import { Moon, Sun, Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const message = searchParams.get('message');
+  const { setTheme, theme } = useTheme();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,12 +36,10 @@ export default function LoginPage() {
       callbackUrl: "/",
     });
 
-   
-
     setLoading(false);
 
     if (res?.error) {
-      console.log("Login error:", res.error); // 🔍 Add this line for debug
+      console.log("Login error:", res.error);
       try {
         const parsed = JSON.parse(res.error);
         switch (parsed.code) {
@@ -54,61 +63,201 @@ export default function LoginPage() {
     }
   };
 
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white p-6 rounded-lg shadow">
-        <h1 className="text-2xl font-bold mb-4 text-center">Login</h1>
-
-        {message === 'tenant_suspended' && (
-          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 border border-red-200 rounded">
-            Your tenant account has been suspended. Please contact support for assistance.
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-card border rounded-lg p-2 shadow-sm">
+              <Image
+                src="/taxmahirlogo.png"
+                alt="TaxMahir"
+                width={120}
+                height={32}
+                className="h-8 w-auto"
+                priority
+              />
+            </div>
           </div>
-        )}
-
-        {message === 'role_deactivated' && (
-          <div className="mb-4 p-3 text-sm text-orange-700 bg-orange-100 border border-orange-200 rounded">
-            Your admin role has been deactivated. Please contact your tenant administrator.
-          </div>
-        )}
-
-        {errorMsg && (
-          <div className="mb-4 text-sm text-red-600 text-center">
-            {errorMsg}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email"
-              className="w-full border px-3 py-2 rounded"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
-            <input
-              type="password"
-              className="w-full border px-3 py-2 rounded"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition disabled:opacity-50"
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="h-9 w-9"
           >
-            {loading ? "Logging in..." : "Login"}
-          </button>
-        </form>
+            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="container relative h-[calc(100vh-4rem)] flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+        <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800" />
+          <div className="relative z-20 flex items-center text-lg font-medium">
+            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-2 mr-3">
+              <Image
+                src="/taxmahirlogo.png"
+                alt="TaxMahir"
+                width={100}
+                height={28}
+                className="h-7 w-auto"
+              />
+            </div>
+            TaxMahir Admin
+          </div>
+          <div className="relative z-20 mt-auto">
+            <blockquote className="space-y-2">
+              <p className="text-lg">
+                "Complete inventory management solution for modern businesses. 
+                Streamline your operations with powerful analytics and reporting."
+              </p>
+            </blockquote>
+          </div>
+        </div>
+        
+        <div className="flex h-full items-center p-4 lg:p-8">
+          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
+            <div className="flex flex-col space-y-2 text-center">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                Welcome back
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Enter your credentials to access your account
+              </p>
+            </div>
+
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="space-y-1 pb-4">
+                <CardTitle className="text-xl text-center">Sign in</CardTitle>
+                <CardDescription className="text-center">
+                  Use your email and password to continue
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                {/* Status Messages */}
+                {message === 'tenant_suspended' && (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      Your tenant account has been suspended. Please contact support for assistance.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {message === 'role_deactivated' && (
+                  <Alert className="border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200">
+                    <AlertDescription>
+                      Your admin role has been deactivated. Please contact your tenant administrator.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {errorMsg && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{errorMsg}</AlertDescription>
+                  </Alert>
+                )}
+
+                <form onSubmit={handleLogin} className="space-y-4">
+                  {/* Email Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Email address
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email address"
+                        className={cn(
+                          "pl-10 h-11",
+                          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        )}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Password
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        className={cn(
+                          "pl-10 pr-10 h-11",
+                          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        )}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        disabled={loading}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={loading}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="sr-only">
+                          {showPassword ? "Hide password" : "Show password"}
+                        </span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className={cn(
+                      "w-full h-11 text-sm font-medium",
+                      "bg-primary text-primary-foreground hover:bg-primary/90",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      "disabled:pointer-events-none disabled:opacity-50"
+                    )}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      "Sign in"
+                    )}
+                  </Button>
+                </form>
+
+                <div className="text-center">
+                  <p className="px-8 text-center text-sm text-muted-foreground">
+                    Need help? Contact your system administrator
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

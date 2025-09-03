@@ -4,6 +4,7 @@ import { SessionProvider, useSession } from 'next-auth/react';
 import { ThemeProvider } from 'next-themes';
 import ClientLayout from './ClientLayout';
 import { CurrencyProvider } from '@/app/contexts/CurrencyContext';
+import { LayoutProvider } from '@/app/contexts/LayoutContext';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { useState, useEffect } from 'react';
@@ -40,11 +41,13 @@ export default function ClientLayoutWrapper({ children }: { children: React.Reac
     >
       <SessionProvider>
         <CurrencyProvider>
-          <ClientLayoutDecider isSubdomain={isSubdomain}>
-            {children}
-          </ClientLayoutDecider>
-          <Toaster />
-          <Sonner />
+          <LayoutProvider>
+            <ClientLayoutDecider isSubdomain={isSubdomain}>
+              {children}
+            </ClientLayoutDecider>
+            <Toaster />
+            <Sonner />
+          </LayoutProvider>
         </CurrencyProvider>
       </SessionProvider>
     </ThemeProvider>

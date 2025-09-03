@@ -44,7 +44,7 @@ export default function AdminLayout({
           <span className="sr-only">Open sidebar</span>
           {sidebarOpen ? '✕' : '☰'}
         </button>
-        <h1 className="ml-4 text-lg font-medium">Admin Panel</h1>
+        <h1 className="ml-4 text-lg font-medium">Tax Mahir</h1>
       </div>
       
       {/* Sidebar for mobile */}
@@ -52,7 +52,7 @@ export default function AdminLayout({
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)}></div>
         <div className="fixed inset-y-0 left-0 w-64 flex flex-col bg-white">
           <div className="p-4 flex items-center justify-between border-b">
-            <h2 className="text-xl font-semibold">Admin Panel</h2>
+            <h2 className="text-xl font-semibold">Tax Mahir</h2>
             <button type="button" className="lg:hidden" onClick={() => setSidebarOpen(false)}>✕</button>
           </div>
           <nav className="flex-1 overflow-y-auto p-4" style={{ overflowY: 'auto' }}>
@@ -79,7 +79,7 @@ export default function AdminLayout({
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex-1 flex flex-col min-h-0 bg-white border-r">
           <div className="p-4 flex items-center border-b">
-            <h2 className="text-xl font-semibold">Admin Panel</h2>
+            <h2 className="text-xl font-semibold">Tax Mahir</h2>
           </div>
           <nav className="flex-1 p-4" style={{ overflowY: 'auto' }}>
             {navigation.map((item) => (

@@ -1,17 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { user, products, categories, orders, adminUsers, orderItems } from '@/lib/schema';
-import { count, and, gte, lte, sum, sql } from 'drizzle-orm';
+import { count, and, gte, lte, sum, sql, eq } from 'drizzle-orm';
+import { getTenantContext } from '@/lib/api-helpers';
 
 export async function GET(request: NextRequest) {
   try {
+    // Get tenant context to ensure data isolation
+    const tenantContext = await getTenantContext(request);
+    
+    if (!tenantContext) {
+      return NextResponse.json(
+        { error: 'Tenant context not found' }, 
+        { status: 400 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    // Build date filters
-    const buildDateFilter = (dateField: any) => {
+    // Build date and tenant filters
+    const buildFilters = (dateField: any, tenantField: any) => {
       const filters = [];
+      
+      // Always filter by tenant ID
+      filters.push(eq(tenantField, tenantContext.tenantId));
+      
+      // Add date filters if provided
       if (startDate) {
         filters.push(gte(dateField, new Date(startDate)));
       }
@@ -21,10 +37,11 @@ export async function GET(request: NextRequest) {
         endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
         filters.push(lte(dateField, endDatePlusOne));
       }
-      return filters.length > 0 ? and(...filters) : undefined;
+      
+      return and(...filters);
     };
 
-    // Get counts for all entities with date filters
+    // Get counts for all entities with tenant and date filters
     const [
       customersCount,
       productsCount,
@@ -34,28 +51,28 @@ export async function GET(request: NextRequest) {
       revenueStats,
       profitStats
     ] = await Promise.all([
-      // Customers (users) - filter by createdAt if it exists, otherwise get all
-      db.select({ count: count() }).from(user).where(buildDateFilter(user.createdAt)),
+      // Customers (users) - filter by tenant and createdAt
+      db.select({ count: count() }).from(user).where(buildFilters(user.createdAt, user.tenantId)),
       
-      // Products - filter by createdAt
-      db.select({ count: count() }).from(products).where(buildDateFilter(products.createdAt)),
+      // Products - filter by tenant and createdAt
+      db.select({ count: count() }).from(products).where(buildFilters(products.createdAt, products.tenantId)),
       
-      // Categories - filter by createdAt
-      db.select({ count: count() }).from(categories).where(buildDateFilter(categories.createdAt)),
+      // Categories - filter by tenant and createdAt
+      db.select({ count: count() }).from(categories).where(buildFilters(categories.createdAt, categories.tenantId)),
       
-      // Orders - filter by createdAt
-      db.select({ count: count() }).from(orders).where(buildDateFilter(orders.createdAt)),
+      // Orders - filter by tenant and createdAt
+      db.select({ count: count() }).from(orders).where(buildFilters(orders.createdAt, orders.tenantId)),
       
-      // Admin Users - filter by createdAt
-      db.select({ count: count() }).from(adminUsers).where(buildDateFilter(adminUsers.createdAt)),
+      // Admin Users - filter by tenant and createdAt
+      db.select({ count: count() }).from(adminUsers).where(buildFilters(adminUsers.createdAt, adminUsers.tenantId)),
       
-      // Revenue stats from orders
+      // Revenue stats from orders - filter by tenant
       db.select({ 
         totalRevenue: sum(orders.totalAmount),
         averageOrderValue: sql<number>`AVG(${orders.totalAmount})`
-      }).from(orders).where(buildDateFilter(orders.createdAt)),
+      }).from(orders).where(buildFilters(orders.createdAt, orders.tenantId)),
       
-      // Profit stats from order items
+      // Profit stats from order items - filter by tenant through orders join
       db.select({
         totalCost: sum(orderItems.totalCost),
         totalRevenue: sum(orderItems.totalPrice),
@@ -64,7 +81,7 @@ export async function GET(request: NextRequest) {
       })
       .from(orderItems)
       .innerJoin(orders, sql`${orderItems.orderId} = ${orders.id}`)
-      .where(buildDateFilter(orders.createdAt))
+      .where(buildFilters(orders.createdAt, orders.tenantId))
     ]);
 
     // Calculate profit metrics
