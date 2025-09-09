@@ -125,7 +125,7 @@ export default function EditAdmin() {
           />
         </div>
         
-        <div className="mb-4">
+        <div className="mb-4 hidden">
           <label className="block text-gray-700 mb-2" htmlFor="password">
             New Password (leave empty to keep current password)
           </label>

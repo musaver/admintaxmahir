@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Link } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
-import logo from "@/public/landing-assets/logo.png";
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -18,7 +17,7 @@ export function Header() {
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-2">
-            <Image className="rounded-lg" src={logo} alt="Taxmahir" width={170} height={100} />
+            <Image className="rounded-lg" src="/landing-assets/logo.png" alt="Hisaab360" width={170} height={100} />
           </div>
           
           <nav className="hidden md:flex items-center space-x-8">
@@ -33,7 +32,7 @@ export function Header() {
           <div className="hidden md:flex items-center space-x-4">
       
             {/*<Button variant="ghost" size="sm" className="rounded-full">Sign In</Button>*/}
-            <a href="https://app.taxmahir.pk/" target="_blank" className="bg-primary hover:bg-primary/90 transition-smooth rounded-full text-white px-3 py-2 ">
+            <a href="https://app.hisaab360.com/" target="_blank" className="bg-primary hover:bg-primary/90 transition-smooth rounded-full text-white px-3 py-2 ">
               Login
             </a>
           </div>
@@ -56,7 +55,7 @@ export function Header() {
               <a href="#industries" className="hover:text-foreground transition-smooth py-2">Industries</a>
               <a href="#pricing" className="hover:text-foreground transition-smooth py-2">Pricing</a>
               <div className="flex flex-col space-y-3 pt-4 border-t border-border">
-                <a href="https://app.taxmahir.pk/" target="_blank" className="rounded-full">Sign In</a>
+                <a href="https://app.hisaab360.com/" target="_blank" className="rounded-full">Sign In</a>
               </div>
             </nav>
           </div>

@@ -29,7 +29,7 @@ export function IndustriesSection() {
         <h2 className="text-3xl md:text-5xl font-bold text-foreground">
           Industries We Serve
         </h2>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto sdty">
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Tailored solutions for businesses across various industries
         </p>
       </div>
@@ -38,7 +38,7 @@ export function IndustriesSection() {
         {industries.map((industry, index) => (
           <Card key={index} className="border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-medium group rounded-3xl">
             <CardContent className="p-6 text-center space-y-4">
-              <div className="w-12 h-12 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center mx-auto group-hover:bg-primary transition-smooth">
+              <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center mx-auto group-hover:bg-primary transition-smooth">
                 <industry.icon className="w-6 h-6 text-accent-foreground group-hover:text-primary-foreground transition-smooth" />
               </div>
               <h3 className="text-lg font-semibold text-foreground">{industry.title}</h3>

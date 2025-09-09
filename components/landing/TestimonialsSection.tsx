@@ -2,14 +2,13 @@ import { Section } from "@/components/ui/section";
 import { Card, CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import Image from "next/image";
-import teamImage from "@/public/landing-assets/team-collaboration.jpg";
 
 const testimonials = [
   {
     name: "Sarah Johnson",
     position: "Store Manager",
     company: "Fashion Forward Boutique",
-    content: "Taxmahir reduced our stock management time by 75%. The automated alerts have prevented stockouts completely.",
+    content: "Hisaab360 reduced our stock management time by 75%. The automated alerts have prevented stockouts completely.",
     rating: 5,
     improvement: "75% time savings"
   },
@@ -39,15 +38,17 @@ export function TestimonialsSection() {
           Client Success Stories
         </h2>
         <p className="text-xl text-white/80 max-w-2xl mx-auto">
-          See how businesses have transformed their operations with Taxmahir
+          See how businesses have transformed their operations with Hisaab360
         </p>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-16 items-center mb-16">
         <div className="relative">
           <Image 
-            src={teamImage} 
+            src="/landing-assets/team-collaboration.jpg" 
             alt="Business team collaboration" 
+            width={600}
+            height={400}
             className="w-full h-auto rounded-3xl shadow-strong"
           />
           <div className="absolute inset-0 bg-black/20 rounded-3xl"></div>

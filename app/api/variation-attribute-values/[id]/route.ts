@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { variationAttributeValues } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { withTenant, TenantContext } from '@/lib/api-helpers';
 
-export async function GET(
+export const GET = withTenant(async (
   req: NextRequest,
+  context: TenantContext,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const { id } = await params;
     const value = await db.query.variationAttributeValues.findFirst({
-      where: eq(variationAttributeValues.id, id),
+      where: and(
+        eq(variationAttributeValues.id, id),
+        eq(variationAttributeValues.tenantId, context.tenantId)
+      ),
     });
 
     if (!value) {
@@ -22,12 +27,13 @@ export async function GET(
     console.error(error);
     return NextResponse.json({ error: 'Failed to get variation attribute value' }, { status: 500 });
   }
-}
+});
 
-export async function PUT(
+export const PUT = withTenant(async (
   req: NextRequest,
+  context: TenantContext,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const { id } = await params;
     const data = await req.json();
@@ -35,10 +41,16 @@ export async function PUT(
     await db
       .update(variationAttributeValues)
       .set(data)
-      .where(eq(variationAttributeValues.id, id));
+      .where(and(
+        eq(variationAttributeValues.id, id),
+        eq(variationAttributeValues.tenantId, context.tenantId)
+      ));
 
     const updatedValue = await db.query.variationAttributeValues.findFirst({
-      where: eq(variationAttributeValues.id, id),
+      where: and(
+        eq(variationAttributeValues.id, id),
+        eq(variationAttributeValues.tenantId, context.tenantId)
+      ),
     });
 
     if (!updatedValue) {
@@ -53,18 +65,22 @@ export async function PUT(
     }
     return NextResponse.json({ error: 'Failed to update variation attribute value' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
+export const DELETE = withTenant(async (
   req: NextRequest,
+  context: TenantContext,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const { id } = await params;
     
-    // Check if value exists
+    // Check if value exists and belongs to the same tenant
     const value = await db.query.variationAttributeValues.findFirst({
-      where: eq(variationAttributeValues.id, id),
+      where: and(
+        eq(variationAttributeValues.id, id),
+        eq(variationAttributeValues.tenantId, context.tenantId)
+      ),
     });
 
     if (!value) {
@@ -73,11 +89,14 @@ export async function DELETE(
 
     await db
       .delete(variationAttributeValues)
-      .where(eq(variationAttributeValues.id, id));
+      .where(and(
+        eq(variationAttributeValues.id, id),
+        eq(variationAttributeValues.tenantId, context.tenantId)
+      ));
 
     return NextResponse.json({ message: 'Variation attribute value deleted successfully' });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Failed to delete variation attribute value' }, { status: 500 });
   }
-} 
+}); 

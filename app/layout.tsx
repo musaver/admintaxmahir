@@ -4,7 +4,7 @@ import "./globals.css";
 import ClientLayoutWrapper from "./components/ClientLayoutWrapper"; // NEW wrapper
 
 export const metadata: Metadata = {
-  title: "TaxMahir - Inventory Management",
+  title: "Hisaab360 - Inventory Management",
   description: "Complete inventory management solution for businesses",
   icons: {
     icon: [

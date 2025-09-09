@@ -22,6 +22,9 @@ import {
   ChevronDown,
   Menu,
   PanelLeft,
+  Shield,
+  UserCog,
+  FileText,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -106,6 +109,37 @@ export function AppSidebar() {
         { name: 'Reports', href: '/inventory/reports' },
       ],
     },
+    {
+      name: 'Admin Users',
+      href: '/admins',
+      icon: UserCog,
+      children: [
+        { name: 'All Admin Users', href: '/admins' },
+        { name: 'Add Admin User', href: '/admins/add' },
+      ],
+    },
+    {
+      name: 'Admin Roles',
+      href: '/roles',
+      icon: Shield,
+      children: [
+        { name: 'All Roles', href: '/roles' },
+        { name: 'Add Role', href: '/roles/add' },
+      ],
+    },
+    {
+      name: 'Reports',
+      href: '/reports',
+      icon: FileText,
+      children: [
+        { name: 'Sales Reports', href: '/reports/sales' },
+        { name: 'Revenue Reports', href: '/reports/revenue' },
+        { name: 'Product Reports', href: '/reports/products' },
+        { name: 'Customer Reports', href: '/reports/customers' },
+        { name: 'Order Reports', href: '/reports/orders' },
+        { name: 'Profit Reports', href: '/reports/profits' },
+      ],
+    },
   ];
 
   const isActive = (href: string) => {
@@ -122,18 +156,9 @@ export function AppSidebar() {
       <SidebarHeader className="sticky top-0 z-50 bg-sidebar border-b shadow-sm">
         <div className="flex h-12 items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <div className="bg-black border rounded-lg p-2 shadow-sm dark:bg-sidebar-accent">
-              <Image
-                src="/taxmahirlogo.png"
-                alt="TaxMahir"
-                width={120}
-                height={28}
-                className="h-5 w-5"
-                priority
-              />
-            </div>
-            <h2 className='text-2xl font-bold tracking-tight'>
-              Tax Mahir
+            
+            <h2 className='text-xl font-bold tracking-tight'>
+              Hisaab360 Admin
             </h2>
           </div>
           <div className="flex items-center gap-2">
@@ -277,6 +302,25 @@ export function AppSidebar() {
                   <Link href="/settings" className="flex items-center">
                     <Settings className="h-4 w-4 mr-2" />
                     Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/admins" className="flex items-center">
+                    <UserCog className="h-4 w-4 mr-2" />
+                    Admin Users
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/roles" className="flex items-center">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Admin Roles
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/reports" className="flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Reports
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

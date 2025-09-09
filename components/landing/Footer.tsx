@@ -1,5 +1,4 @@
 import Image from "next/image";
-import logo from "@/public/landing-assets/logo.png";
 import { Facebook, Twitter, Linkedin, Instagram, Mail, Phone, MapPin } from "lucide-react";
 
 export function Footer() {
@@ -10,7 +9,7 @@ export function Footer() {
           {/* Company Info */}
           <div className="space-y-6">
             <div className="flex items-center space-x-2">
-            <Image className="rounded-lg" src={logo} alt="Taxmahir" width={150} height={100} />
+            <Image className="rounded-lg" src="/landing-assets/logo.png" alt="Hisaab360" width={150} height={100} />
          
             </div>
             <p className="text-background/70 leading-relaxed">
@@ -49,8 +48,8 @@ export function Footer() {
             <ul className="space-y-3">
             <li><a href="#faq" className="text-background/70 hover:text-background transition-smooth">FAQ</a></li>
             <li><a href="#contact" className="text-background/70 hover:text-background transition-smooth">Contact Us</a></li>
-            <li><a href="mailto:support@taxmahir.pk" className="flex items-center space-x-2 text-background/70 hover:text-background transition-smooth"><Mail className="w-5 h-5 text-background/70" />
-            <span className="text-background/70">support@taxmahir.pk</span></a></li>
+            <li><a href="mailto:support@hisaab360.com" className="flex items-center space-x-2 text-background/70 hover:text-background transition-smooth"><Mail className="w-5 h-5 text-background/70" />
+            <span className="text-background/70">support@hisaab360.com</span></a></li>
             </ul>
           </div>
 
@@ -79,7 +78,7 @@ export function Footer() {
 
         <div className="border-t border-background/20 mt-12 pt-8 text-center">
           <p className="text-background/70">
-            © 2025 Taxmahir. All rights reserved.
+            © 2025 Hisaab360. All rights reserved.
           </p>
         </div>
       </div>

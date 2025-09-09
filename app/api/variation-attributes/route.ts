@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { variationAttributes, variationAttributeValues } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { withTenant, TenantContext } from '@/lib/api-helpers';
 
-export async function GET(req: NextRequest) {
+export const GET = withTenant(async (req: NextRequest, context: TenantContext) => {
   try {
     const { searchParams } = new URL(req.url);
     const includeValues = searchParams.get('includeValues') === 'true';
@@ -18,7 +19,10 @@ export async function GET(req: NextRequest) {
         })
         .from(variationAttributes)
         .leftJoin(variationAttributeValues, eq(variationAttributes.id, variationAttributeValues.attributeId))
-        .where(eq(variationAttributes.isActive, true))
+        .where(and(
+          eq(variationAttributes.isActive, true),
+          eq(variationAttributes.tenantId, context.tenantId)
+        ))
         .orderBy(variationAttributes.sortOrder, variationAttributeValues.sortOrder);
 
       // Group the results by attribute
@@ -42,7 +46,10 @@ export async function GET(req: NextRequest) {
       const allAttributes = await db
         .select()
         .from(variationAttributes)
-        .where(eq(variationAttributes.isActive, true))
+        .where(and(
+          eq(variationAttributes.isActive, true),
+          eq(variationAttributes.tenantId, context.tenantId)
+        ))
         .orderBy(variationAttributes.sortOrder);
         
       return NextResponse.json(allAttributes);
@@ -51,9 +58,9 @@ export async function GET(req: NextRequest) {
     console.error('Error fetching variation attributes:', error);
     return NextResponse.json({ error: 'Failed to fetch variation attributes' }, { status: 500 });
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withTenant(async (req: NextRequest, context: TenantContext) => {
   try {
     const { name, slug, description, type, sortOrder, isActive } = await req.json();
     
@@ -64,6 +71,7 @@ export async function POST(req: NextRequest) {
     
     const newAttribute = {
       id: uuidv4(),
+      tenantId: context.tenantId,
       name,
       slug: slug || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
       description: description || null,
@@ -82,4 +90,4 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: 'Failed to create variation attribute' }, { status: 500 });
   }
-} 
+}); 

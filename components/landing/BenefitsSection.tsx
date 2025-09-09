@@ -3,7 +3,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle } from "lucide-react";
 import Image from "next/image";
-import warehouseImage from "@/public/landing-assets/warehouse-management.jpg";
 
 const benefits = [
   "Reduce inventory costs by up to 40%",
@@ -24,7 +23,7 @@ export function BenefitsSection() {
         <div className="space-y-8">
           <div className="space-y-4">
             <Badge variant="secondary" className="rounded-full px-4 py-2 bg-white/10 text-white border-white/20">
-              Why Choose Taxmahir
+              Why Choose Hisaab360
             </Badge>
             <h2 className="text-3xl md:text-5xl font-bold text-white">
               Transform Your Business Operations
@@ -36,8 +35,10 @@ export function BenefitsSection() {
           </div>
           <div className="relative">
           <Image 
-            src={warehouseImage} 
+            src="/landing-assets/warehouse-management.jpg" 
             alt="Modern warehouse inventory management" 
+            width={600}
+            height={400}
             className="w-full h-auto rounded-3xl shadow-strong"
           />
           <div className="absolute inset-0 bg-black/20 rounded-3xl"></div>

@@ -90,15 +90,14 @@ export default function BulkUserUpload() {
     
     if (activeTab === 'users') {
       csvContent = `Name,Email,Buyer NTN Or CNIC,Buyer Business Name,Buyer Province,Buyer Address,Buyer Registration Type
-"John Doe","john.doe@example.com","1234567890123","Doe Industries","Punjab","123 Business Street, Lahore","Individual"
-"Jane Smith","jane.smith@example.com","9876543210987","Smith Trading Co","Sindh","456 Commerce Avenue, Karachi","Company"
-"Ahmed Khan","ahmed.khan@example.com","1122334455667","Khan Enterprises","KPK","789 Market Road, Peshawar","Partnership"`;
+"John Doe","john.doe@example.com","1234567890123","Doe Industries","Punjab","123 Business Street, Lahore","Registered"
+"Jane Smith","jane.smith@example.com","9876543210987","Smith Trading Co","Sindh","456 Commerce Avenue, Karachi","Registered"
+"Ahmed Khan","ahmed.khan@example.com","1122334455667","Khan Enterprises","KPK","789 Market Road, Peshawar","Unregistered"`;
       fileName = 'bulk_user_import_template.csv';
     } else {
-      csvContent = `Product SKU,Product Title,Product Price,Product Description
-"PROD-001","Sample Product","29.99","A great product description"
-"PROD-002","Another Product","49.99","Another excellent product"
-"PROD-003","Third Product","19.99","Third amazing product description"`;
+      csvContent = `Name,Price,SKU,Description,Short Description,Compare Price,Cost Price,Category ID,Subcategory ID,Supplier ID,Tags,Weight,Is Featured,Is Active,Is Digital,Requires Shipping,Taxable,Meta Title,Meta Description,Tax Amount,Tax Percentage,HS Code,Product Type,Stock Management Type,Stock Quantity,Status,Location,Serial Number,List Number,BC Number,Lot Number,Expiry Date,Fixed Notified Value/Retail Price,Sale Type,UOM
+"Premium Product 1","29.99","PROD-001","High quality premium product with detailed description","Premium quality product","39.99","20.00","cat-123","subcat-456","sup-789","electronics,premium,new","0.5","true","true","false","true","true","Premium Product - Best Quality","Premium product with amazing features","2.50","8.5","1234567890","simple","quantity","100","Initial Stock","Warehouse A","SN123456789","LIST-001","BC123456","LOT-2024-001","2024-12-31","35.00","Goods at standard rate","Pcs"
+"Digital Service","19.99","DIG-001","Digital download service","Instant download","","15.00","cat-456","","","digital,service,download","","false","true","true","false","true","Digital Service - Instant Access","Download digital service instantly","","","","simple","quantity","0","","","","","","","","","",""`;
       fileName = 'bulk_product_import_template.csv';
     }
     

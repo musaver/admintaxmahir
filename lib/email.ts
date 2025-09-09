@@ -8,7 +8,7 @@ export async function sendTextEmail(to: string, subject: string, text: string) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      sender: { name: 'Taxmahir Inventory Support', email: 'Support@taxmahir.pk' },
+      sender: { name: 'Hisaab360 Inventory Support', email: 'Support@hisaab360.com' },
       to: [{ email: to }],
       subject,
       textContent: text,
@@ -32,7 +32,7 @@ export async function sendHtmlEmail(to: string, subject: string, htmlContent: st
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      sender: { name: 'Taxmahir Inventory Support', email: 'Support@taxmahir.pk' },
+      sender: { name: 'Hisaab360 Inventory Support', email: 'Support@hisaab360.com' },
       to: [{ email: to }],
       subject,
       htmlContent,
@@ -57,10 +57,10 @@ export async function sendWelcomeEmail(to: string, name?: string) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      sender: { name: 'Taxmahir Inventory Support', email: 'support@taxmahir.pk' },
+      sender: { name: 'Hisaab360 Inventory Support', email: 'support@hisaab360.com' },
       to: [{ email: to }],
-      subject: 'Welcome to Taxmahir.pk Inventory Management!',
-      textContent: `Hello${name ? ` ${name}` : ''}, welcome to Taxmahir.pk Inventory Management System!`,
+      subject: 'Welcome to Hisaab360 Inventory Management!',
+      textContent: `Hello${name ? ` ${name}` : ''}, welcome to Hisaab360 Inventory Management System!`,
     }),
   });
 
@@ -275,10 +275,12 @@ export function generateInvoiceHtml(order: Order, isForSupplier: boolean = false
         <div class="content">
             <!-- Company Header -->
             <div class="company-header">
-                <h2>Taxmahir</h2>
-                <p>Office #152, WBC, Ferozpur Road, Lahore</p>
+                <h2>Hisaab360</h2>
+                <p>Alrasheed arcade second floor
+Flat no 1 mujahid street ,
+Defence road , Rawalpindi</p>
                 <p>Phone: 0321-4250013</p>
-                <p>Email: support@taxmahir.pk</p>
+                <p>Email: support@hisaab360.com</p>
             </div>
 
             <!-- Invoice Details Grid -->
@@ -471,9 +473,9 @@ export function generateInvoiceHtml(order: Order, isForSupplier: boolean = false
         </div>
         
         <div class="footer">
-            <p><strong>Taxmahir Inventory Management System</strong></p>
+            <p><strong>Hisaab360 Inventory Management System</strong></p>
             <p>Thank you for your business!</p>
-            <p>For support, contact us at Support@taxmahir.pk</p>
+            <p>For support, contact us at Support@hisaab360.com</p>
         </div>
     </div>
 </body>

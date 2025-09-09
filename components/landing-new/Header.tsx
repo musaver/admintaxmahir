@@ -28,9 +28,9 @@ export default function Header() {
             className="flex items-center gap-3"
           >
             <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-              <Image src="/taxmahirlogo.png" alt="Tax Mahir" width={20} height={20} />
+              <Image src="/logo.png" alt="Hisaab360" width={20} height={20} />
             </div>
-            <span className="text-xl font-bold text-white">Tax Mahir</span>
+            <span className="text-xl font-bold text-white">Hisaab360</span>
           </motion.div>
 
           {/* Desktop Navigation */}

@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import Image from "next/image";
-import retailImage from "@/public/landing-assets/retail-pos.jpg";
 
 export function ContactSection() {
   const { toast } = useToast();
@@ -45,14 +44,16 @@ export function ContactSection() {
               Ready to Get Started?
             </h2>
             <p className="text-xl text-white/80">
-              Request a demo and see how Taxmahir can transform your business
+              Request a demo and see how Hisaab360 can transform your business
             </p>
           </div>
           
           <div className="relative">
             <Image 
-              src={retailImage} 
+              src="/landing-assets/retail-pos.jpg" 
               alt="Retail point of sale system" 
+              width={600}
+              height={400}
               className="w-full h-auto rounded-3xl shadow-strong"
             />
             <div className="absolute inset-0 bg-black/20 rounded-3xl"></div>

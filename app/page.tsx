@@ -3,19 +3,20 @@ import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { isSubdomainRequest } from '@/lib/subdomain-utils';
-import Header from "@/components/landing-new/Header";
-import Hero from "@/components/landing-new/Hero";
-import Features from "@/components/landing-new/Features";
-import WhyChooseUs from "@/components/landing-new/WhyChooseUs";
-import HowItWorks from "@/components/landing-new/HowItWorks";
-import ClientLogos from "@/components/landing-new/ClientLogos";
-import Industries from "@/components/landing-new/Industries";
-import AdditionalServices from "@/components/landing-new/AdditionalServices";
-import Testimonials from "@/components/landing-new/Testimonials";
-import Pricing from "@/components/landing-new/Pricing";
-import FAQ from "@/components/landing-new/FAQ";
-import Contact from "@/components/landing-new/Contact";
-import Footer from "@/components/landing-new/Footer";
+import { Header } from "@/components/landing/Header";
+import { HeroSection } from "@/components/landing/HeroSection";
+import { FeaturesSection } from "@/components/landing/FeaturesSection";
+import { IndustriesSection } from "@/components/landing/IndustriesSection";
+import { ServicesSection } from "@/components/landing/ServicesSection";
+import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
+import { PricingSection } from "@/components/landing/PricingSection";
+import { BenefitsSection } from "@/components/landing/BenefitsSection";
+import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
+import { StatsAndIntegrationsSection } from "@/components/landing/StatsAndIntegrationsSection";
+import { FaqSection } from "@/components/landing/FaqSection";
+import { ContactSection } from "@/components/landing/ContactSection";
+import { CtaSection } from "@/components/landing/CtaSection";
+import { Footer } from "@/components/landing/Footer";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -75,19 +76,17 @@ export default function HomePage() {
   // This is the main domain - show landing page
   if (showLanding) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white overflow-x-hidden">
+      <div className="min-h-screen bg-background">
         <Header />
-        <Hero />
-        <Features />
-        <WhyChooseUs />
-        <HowItWorks />
-        <ClientLogos />
-        <Industries />
-        {/*<AdditionalServices />*/}
-        <Testimonials />
-        <Pricing />
-        <FAQ />
-        <Contact />
+        <HeroSection />
+        <FeaturesSection />
+        <BenefitsSection />
+        <IndustriesSection />
+        <ServicesSection />
+        <HowItWorksSection />
+        <FaqSection />
+        <ContactSection />
+        <CtaSection />
         <Footer />
       </div>
     );

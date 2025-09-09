@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -15,25 +15,21 @@ import {
   CheckCircle, 
   Building2, 
   User, 
-  Calendar, 
-  Package, 
   Receipt,
   ShoppingCart,
   CreditCard,
-  Truck,
   Phone,
   Mail,
   MapPin
 } from 'lucide-react';
 import CurrencySymbol from '../../../components/CurrencySymbol';
-import { 
-  formatWeightAuto, 
-  isWeightBasedProduct 
-} from '@/utils/weightUtils';
+import { formatWeightAuto } from '@/utils/weightUtils';
+import { useCurrency } from '@/app/contexts/CurrencyContext';
 
 export default function OrderInvoice() {
   const params = useParams();
   const orderId = params.id as string;
+  const { currencySettings } = useCurrency();
   
   const [order, setOrder] = useState<any>(null);
   const [addons, setAddons] = useState<any[]>([]);
@@ -98,8 +94,510 @@ export default function OrderInvoice() {
     }
   };
 
+  // Format amount for print (returns plain string, not React component)
+  const formatAmountForPrint = (amount: string | number) => {
+    const numAmount = Number(amount);
+    
+    if (isNaN(numAmount) || amount === null || amount === undefined || typeof numAmount !== 'number') {
+      return `${currencySettings?.symbol || '₨'}0.00`;
+    }
+    
+    return `${currencySettings?.symbol || '₨'}${numAmount.toFixed(2)}`;
+  };
+
   const handlePrint = () => {
-    window.print();
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    if (!printWindow) {
+      alert('Please allow popups for printing functionality');
+      return;
+    }
+
+    // Build the print content
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Invoice - ${order.orderNumber}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              line-height: 1.5;
+              color: #1a1a1a;
+              background: white;
+              padding: 20px;
+            }
+            
+            .invoice-header {
+              background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+              color: white;
+              padding: 30px;
+              margin: -20px -20px 30px -20px;
+              border-radius: 0 0 15px 15px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+            }
+            
+            .invoice-title h1 {
+              font-size: 42px;
+              font-weight: 700;
+              margin-bottom: 12px;
+              letter-spacing: 2px;
+              text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            }
+            
+            .order-info {
+              background: rgba(255,255,255,0.1);
+              padding: 15px;
+              border-radius: 8px;
+              margin-top: 10px;
+            }
+            
+            .order-info p {
+              margin: 5px 0;
+              font-size: 15px;
+              font-weight: 500;
+            }
+            
+            .company-info {
+              text-align: right;
+            }
+            
+            .company-info h2 {
+              font-size: 32px;
+              margin-bottom: 15px;
+              font-weight: 700;
+              text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            }
+            
+            .company-info p {
+              margin: 8px 0;
+              font-size: 14px;
+              opacity: 0.9;
+            }
+            
+            .fbr-notice {
+              margin: 30px 0;
+              padding: 20px;
+              background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+              border: 2px solid #10b981;
+              border-radius: 10px;
+              box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+            }
+            
+            .fbr-notice strong {
+              font-size: 16px;
+              color: #047857;
+              display: block;
+              text-align: center;
+            }
+            
+            .info-section {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 40px;
+              margin-bottom: 40px;
+            }
+            
+            .info-box {
+              background: #f8fafc;
+              border: 2px solid #e2e8f0;
+              border-radius: 12px;
+              padding: 25px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            }
+            
+            .info-box h3 {
+              font-size: 20px;
+              margin-bottom: 20px;
+              color: #1e293b;
+              border-bottom: 2px solid #3b82f6;
+              padding-bottom: 8px;
+              font-weight: 600;
+            }
+            
+            .info-box p {
+              margin: 8px 0;
+              font-size: 14px;
+              color: #374151;
+              line-height: 1.6;
+            }
+            
+            .contact-info {
+              margin-top: 20px;
+              padding-top: 15px;
+              border-top: 1px solid #d1d5db;
+            }
+            
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 40px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+              border-radius: 12px;
+              overflow: hidden;
+            }
+            
+            .items-table th {
+              background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+              color: white;
+              padding: 18px 12px;
+              text-align: center;
+              font-weight: 600;
+              font-size: 14px;
+              letter-spacing: 0.5px;
+              text-transform: uppercase;
+            }
+            
+            .items-table td {
+              padding: 16px 12px;
+              border-bottom: 1px solid #e5e7eb;
+              font-size: 14px;
+              background: white;
+            }
+            
+            .items-table tr:nth-child(even) td {
+              background: #f9fafb;
+            }
+            
+            .items-table tr:hover td {
+              background: #f3f4f6;
+            }
+            
+            .items-table .text-right {
+              text-align: right;
+              font-weight: 600;
+            }
+            
+            .items-table .text-center {
+              text-align: center;
+            }
+            
+            .product-name {
+              font-weight: 700;
+              margin-bottom: 6px;
+              color: #1f2937;
+              font-size: 15px;
+            }
+            
+            .product-details {
+              font-size: 12px;
+              color: #6b7280;
+              line-height: 1.4;
+              margin-top: 4px;
+            }
+            
+            .price-highlight {
+              color: #059669;
+              font-weight: 700;
+              font-size: 15px;
+            }
+            
+            .totals-section {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 40px;
+            }
+            
+            .fbr-logos {
+              display: flex;
+              gap: 25px;
+              align-items: center;
+              background: #f8fafc;
+              padding: 20px;
+              border-radius: 12px;
+              border: 2px solid #e2e8f0;
+            }
+            
+            .fbr-logos img {
+              height: 80px;
+              width: auto;
+              filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            }
+            
+            .totals-box {
+              background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+              color: white;
+              border-radius: 15px;
+              padding: 30px;
+              min-width: 380px;
+              box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            }
+            
+            .totals-box h3 {
+              font-size: 24px;
+              margin-bottom: 25px;
+              text-align: center;
+              font-weight: 700;
+              letter-spacing: 1px;
+              text-transform: uppercase;
+            }
+            
+            .total-row {
+              display: flex;
+              justify-content: space-between;
+              margin: 12px 0;
+              font-size: 16px;
+              padding: 8px 0;
+              border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+            
+            .total-row:last-child {
+              border-bottom: none;
+            }
+            
+            .total-row.final {
+              border-top: 3px solid #10b981;
+              padding-top: 20px;
+              margin-top: 20px;
+              font-size: 22px;
+              font-weight: 700;
+              color: #10b981;
+              text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+            }
+            
+            .footer {
+              text-align: center;
+              margin-top: 50px;
+              padding-top: 30px;
+              border-top: 3px solid #e5e7eb;
+              background: #f8fafc;
+              margin-left: -20px;
+              margin-right: -20px;
+              padding-left: 20px;
+              padding-right: 20px;
+              border-radius: 15px 15px 0 0;
+            }
+            
+            .footer .thank-you {
+              font-size: 26px;
+              font-weight: 700;
+              color: #059669;
+              margin-bottom: 15px;
+              text-shadow: 1px 1px 2px rgba(5, 150, 105, 0.2);
+            }
+            
+            .footer .contact {
+              font-size: 16px;
+              color: #374151;
+              line-height: 1.6;
+            }
+            
+            .footer a {
+              color: #2563eb;
+              text-decoration: none;
+              font-weight: 600;
+            }
+            
+            .footer a:hover {
+              text-decoration: underline;
+            }
+            
+            @media print {
+              body {
+                padding: 0;
+              }
+              
+              .invoice-header {
+                margin: 0;
+                border-radius: 0;
+              }
+              
+              .footer {
+                margin-left: 0;
+                margin-right: 0;
+                border-radius: 0;
+              }
+              
+              @page {
+                margin: 0.5in;
+                size: A4;
+              }
+              
+              * {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <!-- Invoice Header -->
+          <div class="invoice-header">
+            <div class="invoice-title">
+              <h1>INVOICE</h1>
+              <div class="order-info">
+                <p><strong>Order: ${order.orderNumber}</strong></p>
+                ${order.invoiceRefNo ? `<p>Ref: ${order.invoiceRefNo}</p>` : ''}
+              </div>
+            </div>
+            <div class="company-info">
+              <h2>Hisaab360</h2>
+              <p>Office #152, WBC, Ferozpur Road, Lahore</p>
+              <p>Phone: 0321-4250013</p>
+              <p>Email: support@hisaab360.com</p>
+            </div>
+          </div>
+          
+          ${order.invoiceNumber ? `
+          <div class="fbr-notice">
+            <strong>FBR Digital Invoice Number: ${order.invoiceNumber}</strong>
+          </div>
+          ` : ''}
+          
+          <!-- Information Section -->
+          <div class="info-section">
+            <!-- Buyer Information -->
+            <div class="info-box">
+              <h3>Buyer Information</h3>
+              ${(order.buyerBusinessName || order.buyerNTNCNIC || order.buyerProvince || order.buyerAddress || order.buyerRegistrationType) ? `
+                ${order.buyerBusinessName ? `<p><strong>${order.buyerBusinessName}</strong></p>` : ''}
+                ${order.buyerNTNCNIC ? `<p>NTN/CNIC: ${order.buyerNTNCNIC}</p>` : ''}
+                ${order.buyerRegistrationType ? `<p>Registration Type: ${order.buyerRegistrationType}</p>` : ''}
+                ${order.buyerAddress ? `<p>${order.buyerAddress}</p>` : ''}
+                ${order.buyerProvince ? `<p>${order.buyerProvince} Province</p>` : ''}
+                ${(order.email || order.phone) ? `
+                <div class="contact-info hidden">
+                  ${order.email ? `<p>${order.email}</p>` : ''}
+                  ${order.phone ? `<p>Phone: ${order.phone}</p>` : ''}
+                </div>
+                ` : ''}
+              ` : order.user ? `
+                ${(order.user.name || order.user.firstName || order.user.lastName) ? `
+                <p><strong>${order.user.name || `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim()}</strong></p>
+                ` : ''}
+                ${order.user.email ? `<p>${order.user.email}</p>` : ''}
+                ${order.user.phone ? `<p>Phone: ${order.user.phone}</p>` : ''}
+                ${order.user.buyerNTNCNIC ? `<p>NTN/CNIC: ${order.user.buyerNTNCNIC}</p>` : ''}
+                ${order.user.buyerAddress ? `<p>Address: ${order.user.buyerAddress}</p>` : ''}
+              ` : `
+                <p><strong>${order.billingFirstName} ${order.billingLastName}</strong></p>
+                ${order.email ? `<p>${order.email}</p>` : ''}
+                ${order.phone ? `<p>Phone: ${order.phone}</p>` : ''}
+              `}
+            </div>
+            
+            <!-- Invoice Information -->
+            <div class="info-box">
+              <h3>Invoice Information</h3>
+              <p>Invoice Date: ${formatDateTime(order.createdAt)}</p>
+              <p>Order Status: ${order.status}</p>
+              <p>Payment Status: ${order.paymentStatus}</p>
+              ${order.invoiceType ? `<p>Invoice Type: ${order.invoiceType}</p>` : ''}
+              ${order.scenarioId ? `<p>Scenario ID: ${order.scenarioId}</p>` : ''}
+              ${order.trackingNumber ? `<p>Tracking: ${order.trackingNumber}</p>` : ''}
+            </div>
+          </div>
+          
+          <!-- Items Table -->
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Product Name</th>
+                <th style="width: 12%;">HS Code</th>
+                <th style="width: 10%;">Quantity</th>
+                <th style="width: 10%;">UOM</th>
+                <th style="width: 15%;">Price Inc. Tax</th>
+                <th style="width: 18%;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orderItems.map((item: any) => `
+                <tr>
+                  <td>
+                    <div class="product-name">${item.productName}</div>
+                    ${item.variantTitle ? `<div class="product-details">Variant: ${item.variantTitle}</div>` : ''}
+                    ${item.sku ? `<div class="product-details">SKU: ${item.sku}</div>` : ''}
+                    ${item.isWeightBased && item.weightQuantity ? `<div class="product-details">Weight: ${formatWeightAuto(item.weightQuantity).formattedString}</div>` : ''}
+                  </td>
+                  <td class="text-center">${item.hsCode || '-'}</td>
+                  <td class="text-center">
+                    ${item.isWeightBased && item.weightQuantity ? 
+                      formatWeightAuto(item.weightQuantity).formattedString : 
+                      item.quantity
+                    }
+                  </td>
+                  <td class="text-center">${item.isWeightBased ? 'Weight-based' : (item.uom || '-')}</td>
+                  <td class="text-right"><span class="price-highlight">${formatAmountForPrint(item.priceIncludingTax || item.price)}</span></td>
+                  <td class="text-right"><strong class="price-highlight">${formatAmountForPrint(item.totalPrice)}</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <!-- Totals Section -->
+          <div class="totals-section">
+            ${order.invoiceNumber ? `
+            <div class="fbr-logos">
+              <img src="/digital-invoicing-logo.webp" alt="FBR Digital Invoicing" />
+              <img src="/fbr-pakistan-logo.png" alt="FBR Pakistan" />
+            </div>
+            ` : '<div></div>'}
+            
+            <div class="totals-box">
+              <h3>Order Summary</h3>
+              <div class="total-row">
+                <span>Subtotal:</span>
+                <span>${formatAmountForPrint(order.subtotal)}</span>
+              </div>
+              ${parseFloat(order.taxAmount) > 0 ? `
+              <div class="total-row">
+                <span>Tax:</span>
+                <span>${formatAmountForPrint(order.taxAmount)}</span>
+              </div>
+              ` : ''}
+              ${parseFloat(order.shippingAmount) > 0 ? `
+              <div class="total-row">
+                <span>Shipping:</span>
+                <span>${formatAmountForPrint(order.shippingAmount)}</span>
+              </div>
+              ` : ''}
+              ${parseFloat(order.discountAmount) > 0 ? `
+              <div class="total-row" style="color: #10b981;">
+                <span>Discount:</span>
+                <span>-${formatAmountForPrint(order.discountAmount)}</span>
+              </div>
+              ` : ''}
+              <div class="total-row final">
+                <span>Total:</span>
+                <span>${formatAmountForPrint(order.totalAmount)}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="footer">
+            <div class="thank-you">Thank you for your business!</div>
+            <div class="contact">
+              For questions about this invoice, please contact us at 
+              <a href="mailto:support@hisaab360.com">support@hisaab360.com</a>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Write content to print window
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    // Wait for content to load, then print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    };
   };
 
   // Format date and time to "Aug 5, 2025 at 5:57 PM" format
@@ -162,23 +660,6 @@ export default function OrderInvoice() {
     }
   };
 
-  const getAddonTitle = (addon: any, index: number) => {
-    // First try to get the title from the stored addon data
-    if (addon.addonTitle) return addon.addonTitle;
-    if (addon.title) return addon.title;
-    if (addon.name) return addon.name;
-    
-    // If no title in stored data, try to find it in the addons table
-    if (addon.addonId && addons.length > 0) {
-      const addonFromTable = addons.find(a => a.id === addon.addonId);
-      if (addonFromTable) {
-        return addonFromTable.title;
-      }
-    }
-    
-    // Fallback to generic name
-    return `Addon ${index + 1}`;
-  };
 
   const getAddonDescription = (addon: any) => {
     // Try to get description from addons table
@@ -306,9 +787,9 @@ export default function OrderInvoice() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Print Button */}
-          <div className="mb-6 print-hidden flex gap-4">
+          <div className="max-w-4xl mx-auto">
+            {/* Print Button */}
+            <div className="mb-6 print-hidden flex gap-4">
             <Button
               onClick={handlePrint}
               size="lg"
@@ -324,7 +805,7 @@ export default function OrderInvoice() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="shadow-md hover:shadow-lg transition-shadow"
+                  className="shadow-md hover:shadow-lg transition-shadow hidden"
                   onClick={() => setDebugJson(prev => ({ 
                     ...prev, 
                     orderData: order, 
@@ -376,7 +857,7 @@ export default function OrderInvoice() {
             </Dialog>
           </div>
 
-          {/* Invoice */}
+          {/* Screen Invoice */}
           <Card className="invoice-container shadow-xl border-0 overflow-hidden">
             {/* Header */}
             <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-8">
@@ -409,7 +890,7 @@ export default function OrderInvoice() {
                 <div className="text-right space-y-3">
                   <div className="flex items-center justify-end gap-3">
                     <Building2 className="h-6 w-6" />
-                    <h2 className="text-3xl font-bold">TaxMahir</h2>
+                    <h2 className="text-3xl font-bold">Hisaab360</h2>
                   </div>
                   <div className="text-slate-200 space-y-1 text-sm">
                     <div className="flex items-center justify-end gap-2">
@@ -422,7 +903,7 @@ export default function OrderInvoice() {
                     </div>
                     <div className="flex items-center justify-end gap-2">
                       <Mail className="h-4 w-4" />
-                      <span>support@taxmahir.pk</span>
+                      <span>support@hisaab360.com</span>
                     </div>
                   </div>
                 </div>
@@ -591,20 +1072,6 @@ export default function OrderInvoice() {
                       <div className="flex justify-between">
                         <span className='text-sm text-gray-500'>Scenario ID:</span>
                         <span className="text-sm text-gray-500 font-mono">{order.scenarioId}</span>
-                      </div>
-                    )}
-                    {order.validationResponse && (
-                      <div className="mt-2">
-                        <span className='text-sm text-gray-500'>FBR Validation:</span>
-                        <div className="text-xs mt-1 p-2 bg-green-50 border border-green-200 rounded max-h-20 overflow-y-auto">
-                          <div className="text-green-700 font-medium">✅ Successfully validated with FBR</div>
-                          <details className="mt-1">
-                            <summary className="text-xs text-green-600 cursor-pointer">View validation details</summary>
-                            <div className="text-xs text-gray-600 mt-1 font-mono">
-                              {order.validationResponse}
-                            </div>
-                          </details>
-                        </div>
                       </div>
                     )}
                     {order.trackingNumber && (
@@ -889,149 +1356,6 @@ export default function OrderInvoice() {
               </div>
             </CardContent>
 
-            {/* Product Summary */}
-            <CardContent className="p-8 bg-slate-25">
-              <CardTitle className="flex items-center gap-2 text-xl mb-6">
-                <Package className="h-6 w-6 text-slate-600" />
-                Order Summary
-              </CardTitle>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Items Count */}
-                <Card className="border-l-4 border-l-blue-500">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      <ShoppingCart className="h-4 w-4 text-blue-600" />
-                      Total Items
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-blue-700">
-                      {orderItems.reduce((total: number, item: any) => total + (Number(item.quantity) || 0), 0)}
-                    </div>
-                    <div className="text-xs text-gray-500">{orderItems.length} unique product(s)</div>
-                  </CardContent>
-                </Card>
-
-                {/* Weight Summary */}
-                <Card className="border-l-4 border-l-orange-500">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      ⚖️ Total Weight
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-orange-700">
-                      {(() => {
-                        const totalWeight = orderItems.reduce((total: number, item: any) => {
-                          if (item.isWeightBased && item.weightQuantity) {
-                            return total + Number(item.weightQuantity);
-                          }
-                          return total;
-                        }, 0);
-                        return totalWeight > 0 ? formatWeightAuto(totalWeight).formattedString : 'N/A';
-                      })()}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {orderItems.filter((item: any) => item.isWeightBased).length} weight-based item(s)
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Addons Summary */}
-                <Card className="border-l-4 border-l-purple-500">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      🧩 Total Addons
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-purple-700">
-                      {(() => {
-                        const totalAddons = orderItems.reduce((total: number, item: any) => {
-                          const parsedAddons = parseAddons(item.addons);
-                          return total + parsedAddons.reduce((addonTotal: number, addon: any) => 
-                            addonTotal + (Number(addon.quantity) || 1), 0
-                          );
-                        }, 0);
-                        return totalAddons;
-                      })()}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Across {orderItems.filter((item: any) => parseAddons(item.addons).length > 0).length} product(s)
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="mt-6 flex gap-3 print-hidden">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Product Details
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl max-h-[80vh]">
-                    <DialogHeader>
-                      <DialogTitle>📦 Detailed Product Information</DialogTitle>
-                      <DialogDescription>
-                        Complete breakdown of all products, variants, and addons in this order
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="overflow-auto max-h-96 space-y-4">
-                      {orderItems.map((item: any, index: number) => (
-                        <Card key={index} className="border-l-4 border-l-indigo-400">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-sm font-mono">
-                                #{index + 1}
-                              </span>
-                              {item.productName}
-                            </CardTitle>
-                            {item.variantTitle && (
-                              <div className="text-sm text-gray-600">Variant: {item.variantTitle}</div>
-                            )}
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div><span className="font-medium">SKU:</span> {item.sku || 'N/A'}</div>
-                              <div><span className="font-medium">Quantity:</span> {item.quantity}</div>
-                              <div><span className="font-medium">Price:</span> {formatAmount(item.priceIncludingTax || item.price)}</div>
-                              <div><span className="font-medium">Total:</span> {formatAmount(item.totalPrice)}</div>
-                              {item.hsCode && <div><span className="font-medium">HS Code:</span> {item.hsCode}</div>}
-                              {item.isWeightBased && item.weightQuantity && (
-                                <div><span className="font-medium">Weight:</span> {formatWeightAuto(item.weightQuantity).formattedString}</div>
-                              )}
-                            </div>
-                            
-                            {(() => {
-                              const parsedAddons = parseAddons(item.addons);
-                              return parsedAddons.length > 0 && (
-                                <div className="mt-3 pt-3 border-t">
-                                  <div className="text-sm font-medium text-gray-700 mb-2">
-                                    🧩 Addons ({parsedAddons.length}):
-                                  </div>
-                                  <div className="space-y-2">
-                                    {parsedAddons.map((addon: any, addonIndex: number) => (
-                                      <div key={addonIndex} className="flex justify-between text-xs bg-purple-50 p-2 rounded">
-                                        <span>{getAddonTitle(addon, addonIndex)} (x{addon.quantity || 1})</span>
-                                        <span>{formatAmount((Number(addon.price) || 0) * (Number(addon.quantity) || 1))}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
 
             {/* Totals */}
             <CardContent className="p-8">
@@ -1108,8 +1432,8 @@ export default function OrderInvoice() {
                   <Mail className="h-4 w-4" />
                   <p className="text-sm">
                     For questions about this invoice, please contact us at{' '}
-                    <a href="mailto:support@taxmahir.pk" className="text-blue-600 hover:underline">
-                      support@taxmahir.pk
+                    <a href="mailto:support@hisaab360.com" className="text-blue-600 hover:underline">
+                      support@hisaab360.com
                     </a>
                   </p>
                 </div>

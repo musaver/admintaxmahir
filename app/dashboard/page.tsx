@@ -259,10 +259,10 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Good Morning!</h1>
           <p className="text-muted-foreground">
-            Welcome to Taxmahir Dashboard
+            Welcome to Hisaab360
           </p>
         </div>
-        <div className="flex items-center space-x-2 hidden">
+        <div className="flex items-center space-x-2">
           <Button
             onClick={fetchStats}
             disabled={loading}
@@ -277,7 +277,7 @@ export default function Dashboard() {
       </div>
 
       {/* Date Filters */}
-      <Card className='hidden'>
+      <Card className=''>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FilterIcon className="h-5 w-5" />
@@ -609,7 +609,7 @@ export default function Dashboard() {
       
 
       {/* Additional Dashboard Content */}
-      <div className="grid gap-6 lg:grid-cols-2 hidden">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Quick Actions */}
         <Card>
           <CardHeader>

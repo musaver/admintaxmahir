@@ -48,12 +48,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 variant="ghost"
                 size="icon"
                 onClick={toggleLayout}
-                className="h-8 w-8"
+                className="h-8 w-8 hidden"
               >
                 <PanelLeft className="h-4 w-4" />
                 <span className="sr-only">Switch to header layout</span>
               </Button>
-              <h1 className="text-lg font-semibold">Tax Mahir Admin</h1>
+              <h1 className="text-lg font-semibold">Hisaab360 Admin</h1>
             </div>
             <div className="flex items-center gap-2">
               {/* Additional header actions can go here */}

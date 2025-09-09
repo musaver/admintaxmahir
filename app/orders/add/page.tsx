@@ -91,6 +91,7 @@ interface SelectedAddon {
 }
 
 interface OrderItem {
+  id?: string; // Unique identifier for tracking updates
   productId: string;
   variantId?: string;
   productName: string;
@@ -202,8 +203,8 @@ export default function AddOrder() {
   });
 
   // Email and FBR submission control checkboxes
-  const [skipCustomerEmail, setSkipCustomerEmail] = useState(false);
-  const [skipSellerEmail, setSkipSellerEmail] = useState(false);
+  const [skipCustomerEmail, setSkipCustomerEmail] = useState(true);
+  const [skipSellerEmail, setSkipSellerEmail] = useState(true);
   const [skipFbrSubmission, setSkipFbrSubmission] = useState(false);
   
   const [orderData, setOrderData] = useState({
@@ -229,7 +230,7 @@ export default function AddOrder() {
     // Supplier field
     supplierId: '' as string,
     // Invoice and validation fields
-    invoiceType: '',
+    invoiceType: 'Sale Invoice',
     invoiceRefNo: '',
     scenarioId: '',
     invoiceNumber: '',
@@ -301,6 +302,17 @@ export default function AddOrder() {
 
   // Driver selection
   const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
+  
+  // Flag to prevent auto-population when editing an item
+  const [isEditingItem, setIsEditingItem] = useState(false);
+  
+  // Loading state for adding products
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  
+  // State for updating product data in database
+  const [updateProductData, setUpdateProductData] = useState(false);
+  const [isUpdatingProduct, setIsUpdatingProduct] = useState(false);
+  const [updatingItemIds, setUpdatingItemIds] = useState<Set<string>>(new Set());
 
   // Dialog states for adding new items
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
@@ -309,6 +321,7 @@ export default function AddOrder() {
   // Combobox states
   const [customerComboboxOpen, setCustomerComboboxOpen] = useState(false);
   const [productComboboxOpen, setProductComboboxOpen] = useState(false);
+  const [uomComboboxOpen, setUomComboboxOpen] = useState(false);
   
   // New user/product form data
   const [newUserData, setNewUserData] = useState({
@@ -331,6 +344,12 @@ export default function AddOrder() {
 
   // Clear selected addons when product changes and populate editable fields
   useEffect(() => {
+    // Skip auto-population if we're editing an item (data should already be loaded)
+    if (isEditingItem) {
+      setIsEditingItem(false); // Reset flag after skipping
+      return;
+    }
+    
     setSelectedAddons([]);
     
     // Populate editable fields when product is selected
@@ -342,6 +361,7 @@ export default function AddOrder() {
           // Populate additional fields from product
           hsCode: product.hsCode || '',
           productName: product.name || '',
+          productDescription: product.description || product.name || '', // Use description if available, fallback to name
           // Keep existing values for fields that should be manually entered
           itemSerialNumber: prev.itemSerialNumber,
           sroScheduleNumber: prev.sroScheduleNumber,
@@ -382,7 +402,7 @@ export default function AddOrder() {
         saleType: 'Goods at standard rate'
       }));
     }
-  }, [productSelection.selectedProductId, products]);
+  }, [productSelection.selectedProductId, products, isEditingItem]);
 
   // Scroll detection for sticky sidebar
   useEffect(() => {
@@ -522,6 +542,77 @@ export default function AddOrder() {
     setSelectedAddons([]);
   };
 
+  // Helper function to clean numeric values (avoid 0.00 for empty fields)
+  const cleanNumericValue = (value: any) => {
+    if (value === undefined || value === null || value === '' || value === 0) {
+      return null;
+    }
+    return value;
+  };
+
+  // Function to update product data in database
+  const updateProductInDatabase = async (productId: string, itemId?: string) => {
+    if (itemId) {
+      setUpdatingItemIds(prev => new Set(prev).add(itemId));
+    } else {
+      setIsUpdatingProduct(true);
+    }
+    
+    try {
+      const updateData = {
+        hsCode: productSelection.hsCode || null,
+        description: productSelection.productDescription || null,
+        taxAmount: cleanNumericValue(productSelection.taxAmount),
+        taxPercentage: cleanNumericValue(productSelection.taxPercentage),
+        priceIncludingTax: cleanNumericValue(productSelection.priceIncludingTax),
+        priceExcludingTax: cleanNumericValue(productSelection.priceExcludingTax),
+        extraTax: cleanNumericValue(productSelection.extraTax),
+        furtherTax: cleanNumericValue(productSelection.furtherTax),
+        fedPayableTax: cleanNumericValue(productSelection.fedPayableTax),
+        fixedNotifiedValueOrRetailPrice: cleanNumericValue(productSelection.fixedNotifiedValueOrRetailPrice),
+        saleType: productSelection.saleType || 'Goods at standard rate',
+        uom: productSelection.uom || null
+      };
+
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update product');
+      }
+
+      // Update the local products array to reflect the changes
+      setProducts(prevProducts => 
+        prevProducts.map(product => 
+          product.id === productId 
+            ? { ...product, ...updateData }
+            : product
+        )
+      );
+
+      console.log('Product updated successfully in database');
+    } catch (error) {
+      console.error('Error updating product:', error);
+      alert('Failed to update product data in database. Please try again.');
+      throw error; // Re-throw to handle in calling function
+    } finally {
+      if (itemId) {
+        setUpdatingItemIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(itemId);
+          return newSet;
+        });
+      } else {
+        setIsUpdatingProduct(false);
+      }
+    }
+  };
+
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const customerId = e.target.value;
     setOrderData({ ...orderData, customerId });
@@ -638,7 +729,7 @@ export default function AddOrder() {
     }
   };
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     const { selectedProductId, selectedVariantId, quantity, customPrice, weightInput, weightUnit } = productSelection;
     
     if (!selectedProductId) {
@@ -646,8 +737,14 @@ export default function AddOrder() {
       return;
     }
 
+    setIsAddingProduct(true);
+    
+    try {
     const product = products.find(p => p.id === selectedProductId);
-    if (!product) return;
+    if (!product) {
+      setIsAddingProduct(false);
+      return;
+    }
 
     const isWeightBased = isWeightBasedProduct(product.stockManagementType || 'quantity');
 
@@ -655,11 +752,13 @@ export default function AddOrder() {
     if (isWeightBased) {
       if (!weightInput || parseFloat(weightInput) <= 0) {
         alert('Please enter a valid weight');
+        setIsAddingProduct(false);
         return;
       }
     } else {
       if (quantity <= 0) {
         alert('Please enter a valid quantity');
+        setIsAddingProduct(false);
         return;
       }
     }
@@ -669,6 +768,7 @@ export default function AddOrder() {
       const basePrice = Number(product.price) || 0;
       if (basePrice === 0 && selectedAddons.length === 0) {
         alert('Please select at least one addon for this group product');
+        setIsAddingProduct(false);
         return;
       }
     }
@@ -713,6 +813,7 @@ export default function AddOrder() {
       if (variant && variant.inventoryQuantity !== undefined) {
         if (variant.inventoryQuantity < quantity) {
           if (!confirm(`Warning: Requested quantity (${quantity}) exceeds available stock (${variant.inventoryQuantity}). Do you want to continue? This may fail when creating the order.`)) {
+            setIsAddingProduct(false);
             return;
           }
         }
@@ -728,7 +829,11 @@ export default function AddOrder() {
       totalPrice = (effectivePrice + addonsPrice) * finalQuantity;
     }
 
+    // Generate a unique ID for this item to track updates
+    const itemId = `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     const newItem: OrderItem = {
+      id: itemId, // Add unique ID for tracking
       productId: selectedProductId,
       variantId: selectedVariantId || undefined,
       productName: productSelection.productName || productName,
@@ -763,6 +868,7 @@ export default function AddOrder() {
       saleType: productSelection.saleType || 'Goods at standard rate'
     };
 
+    // Add item to the list immediately
     setOrderItems([...orderItems, newItem]);
     
     // Set supplier_id from the product if not already set
@@ -770,7 +876,7 @@ export default function AddOrder() {
       setOrderData(prev => ({...prev, supplierId: product.supplierId || ''}));
     }
     
-    // Reset selection
+    // Reset selection immediately so user can continue adding products
     setProductSelection({
       selectedProductId: '',
       selectedVariantId: '',
@@ -797,6 +903,31 @@ export default function AddOrder() {
       saleType: 'Goods at standard rate'
     });
     clearSelectedAddons();
+    
+    // Reset the update checkbox after successful add
+    const shouldUpdateDatabase = updateProductData;
+    setUpdateProductData(false);
+    
+    // Update product data in database in the background if checkbox was checked
+    if (shouldUpdateDatabase && selectedProductId) {
+      // Don't await this - let it run in background
+      updateProductInDatabase(selectedProductId, itemId).catch(error => {
+        console.error('Background database update failed:', error);
+        // Remove the item from updating state on error
+        setUpdatingItemIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(itemId);
+          return newSet;
+        });
+      });
+    }
+    
+    } catch (error) {
+      console.error('Error adding product:', error);
+      alert('Failed to add product. Please try again.');
+    } finally {
+      setIsAddingProduct(false);
+    }
   };
 
   const handleRemoveItem = (index: number) => {
@@ -822,6 +953,61 @@ export default function AddOrder() {
     
     updatedItems[index].totalPrice = totalPrice;
     setOrderItems(updatedItems);
+  };
+
+  const handleEditItem = (index: number) => {
+    const item = orderItems[index];
+    
+    // Set flag to prevent auto-population from product data
+    setIsEditingItem(true);
+    
+    // Load the item's data into the form for editing
+    setProductSelection(prevSelection => {
+      return {
+        // Start with current form state to preserve any unsaved manual entries
+        ...prevSelection,
+        
+        // Core item identification - always load from item
+        selectedProductId: item.productId,
+        selectedVariantId: item.variantId || '',
+        quantity: item.quantity,
+        
+        // Weight data - load from item if available
+        weightInput: item.isWeightBased && item.weightQuantity ? String(item.weightQuantity) : prevSelection.weightInput,
+        weightUnit: (item.weightUnit as 'grams' | 'kg') || prevSelection.weightUnit,
+        
+        // UOM - load from item if available
+        uom: item.uom || prevSelection.uom,
+        
+        // Product-specific fields - load from item, but keep manual entries if they exist and are different
+        hsCode: item.hsCode || prevSelection.hsCode,
+        itemSerialNumber: item.itemSerialNumber || prevSelection.itemSerialNumber,
+        sroScheduleNumber: item.sroScheduleNumber || prevSelection.sroScheduleNumber,
+        productName: item.productName || prevSelection.productName,
+        productDescription: item.productDescription || prevSelection.productDescription,
+        
+        // Tax and pricing data - load from item
+        taxAmount: item.taxAmount !== undefined ? item.taxAmount : prevSelection.taxAmount,
+        taxPercentage: item.taxPercentage !== undefined ? item.taxPercentage : prevSelection.taxPercentage,
+        priceIncludingTax: item.priceIncludingTax !== undefined ? item.priceIncludingTax : prevSelection.priceIncludingTax,
+        priceExcludingTax: item.priceExcludingTax !== undefined ? item.priceExcludingTax : prevSelection.priceExcludingTax,
+        extraTax: item.extraTax !== undefined ? item.extraTax : prevSelection.extraTax,
+        furtherTax: item.furtherTax !== undefined ? item.furtherTax : prevSelection.furtherTax,
+        fedPayableTax: item.fedPayableTax !== undefined ? item.fedPayableTax : prevSelection.fedPayableTax,
+        discountAmount: item.discount !== undefined ? item.discount : prevSelection.discountAmount,
+        fixedNotifiedValueOrRetailPrice: item.fixedNotifiedValueOrRetailPrice !== undefined ? item.fixedNotifiedValueOrRetailPrice : prevSelection.fixedNotifiedValueOrRetailPrice,
+        saleType: item.saleType || prevSelection.saleType,
+      };
+    });
+    
+    // Handle addons - only replace if item has addons, otherwise preserve existing
+    if (item.addons && Array.isArray(item.addons) && item.addons.length > 0) {
+      setSelectedAddons([...item.addons]);
+    }
+    // Note: Don't clear selectedAddons if item has no addons - preserve existing selection
+    
+    // Remove the item from the list so it can be re-added after editing
+    handleRemoveItem(index);
   };
 
   const getAddonTitle = (addon: any, index: number) => {
@@ -2525,18 +2711,81 @@ export default function AddOrder() {
               </div>
 
               {/* UOM field for non-weight based products */}
-              {selectedProduct && !isWeightBasedProduct(selectedProduct.stockManagementType || 'quantity') && (
-                <div className="space-y-2">
-                  <Label htmlFor="uom">Unit of Measurement (UOM)</Label>
-                  <Input
-                    id="uom"
-                    type="text"
-                    value={productSelection.uom}
-                    onChange={(e) => setProductSelection({...productSelection, uom: e.target.value})}
-                    placeholder="e.g., pieces, boxes, units"
-                  />
-                </div>
-              )}
+              {selectedProduct && !isWeightBasedProduct(selectedProduct.stockManagementType || 'quantity') && (() => {
+                const uomOptions = ["MT", "Bill of lading", "SET", "KWH", "40KG", "Liter", "SqY", "Bag", "KG", "MMBTU", "Meter", "Pcs", "Carat", "Cubic Metre", "Dozen", "Gram", "Gallon", "Kilogram", "Pound", "Timber Logs", "Numbers, pieces, units", "Packs", "Pair", "Square Foot", "Square Metre", "Thousand Unit", "Mega Watt", "Foot", "Barrels", "NO", "1000 kWh"];
+                const isCustomUom = productSelection.uom && !uomOptions.includes(productSelection.uom);
+                
+                return (
+                  <div className="space-y-2">
+                    <Label htmlFor="uom">Unit of Measurement (UOM)</Label>
+                    <div className="flex gap-2">
+                      <Popover open={uomComboboxOpen} onOpenChange={setUomComboboxOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={uomComboboxOpen}
+                            className="justify-between"
+                          >
+                            {productSelection.uom && uomOptions.includes(productSelection.uom)
+                              ? productSelection.uom
+                              : isCustomUom 
+                                ? "Others"
+                                : "Select UOM..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)' }}>
+                          <Command>
+                            <CommandInput placeholder="Search UOM..." />
+                            <CommandList className="h-[200px]">
+                              <CommandEmpty>No UOM found.</CommandEmpty>
+                              <CommandGroup>
+                                {uomOptions.map((uom) => (
+                                  <CommandItem
+                                    key={uom}
+                                    value={uom}
+                                    onSelect={() => {
+                                      setProductSelection({...productSelection, uom: uom});
+                                      setUomComboboxOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={`mr-2 h-4 w-4 ${productSelection.uom === uom ? "opacity-100" : "opacity-0"}`}
+                                    />
+                                    {uom}
+                                  </CommandItem>
+                                ))}
+                                <CommandItem
+                                  value="Others"
+                                  onSelect={() => {
+                                    setProductSelection({...productSelection, uom: ""});
+                                    setUomComboboxOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${isCustomUom ? "opacity-100" : "opacity-0"}`}
+                                  />
+                                  Others (Custom)
+                                </CommandItem>
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {(productSelection.uom === "" || isCustomUom) && (
+                        <Input
+                          className="flex-1"
+                          type="text"
+                          value={isCustomUom ? productSelection.uom : ""}
+                          onChange={(e) => setProductSelection({...productSelection, uom: e.target.value})}
+                          placeholder="Enter custom UOM"
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Editable Product and Tax Fields */}
@@ -2619,7 +2868,21 @@ export default function AddOrder() {
 
                 {/* Tax and Price Section */}
                 <div>
-                    <h5 className="text-sm font-medium mb-3 text-muted-foreground">Tax & Pricing Information</h5>
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="text-sm font-medium text-muted-foreground">Tax & Pricing Information</h5>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="update-product-data"
+                          checked={updateProductData}
+                          onChange={(e) => setUpdateProductData(e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        />
+                        <Label htmlFor="update-product-data" className="text-xs text-muted-foreground cursor-pointer">
+                          Update data into database of this product
+                        </Label>
+                      </div>
+                    </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="tax-amount-edit" className="text-sm">Tax Amount</Label>
@@ -2659,7 +2922,22 @@ export default function AddOrder() {
                       value={productSelection.priceIncludingTax === 0 ? '' : productSelection.priceIncludingTax}
                       onChange={(e) => {
                         const value = e.target.value;
-                        setProductSelection({...productSelection, priceIncludingTax: value === '' ? 0 : parseFloat(value) || 0});
+                        const priceIncludingTax = value === '' ? 0 : parseFloat(value) || 0;
+                        
+                        let updatedState = {...productSelection, priceIncludingTax};
+                        
+                        // Auto-calculate tax amount and percentage if both prices are available
+                        if (priceIncludingTax > 0 && productSelection.priceExcludingTax > 0) {
+                          const taxAmount = priceIncludingTax - productSelection.priceExcludingTax;
+                          const taxPercentage = (taxAmount / productSelection.priceExcludingTax) * 100;
+                          updatedState = {
+                            ...updatedState,
+                            taxAmount: Math.round(taxAmount * 100) / 100, // Round to 2 decimal places
+                            taxPercentage: Math.round(taxPercentage * 100) / 100 // Round to 2 decimal places
+                          };
+                        }
+                        
+                        setProductSelection(updatedState);
                       }}
                       placeholder="Enter price"
                           className="text-sm"
@@ -2674,7 +2952,22 @@ export default function AddOrder() {
                       value={productSelection.priceExcludingTax === 0 ? '' : productSelection.priceExcludingTax}
                       onChange={(e) => {
                         const value = e.target.value;
-                        setProductSelection({...productSelection, priceExcludingTax: value === '' ? 0 : parseFloat(value) || 0});
+                        const priceExcludingTax = value === '' ? 0 : parseFloat(value) || 0;
+                        
+                        let updatedState = {...productSelection, priceExcludingTax};
+                        
+                        // Auto-calculate tax amount and percentage if both prices are available
+                        if (priceExcludingTax > 0 && productSelection.priceIncludingTax > 0) {
+                          const taxAmount = productSelection.priceIncludingTax - priceExcludingTax;
+                          const taxPercentage = (taxAmount / priceExcludingTax) * 100;
+                          updatedState = {
+                            ...updatedState,
+                            taxAmount: Math.round(taxAmount * 100) / 100, // Round to 2 decimal places
+                            taxPercentage: Math.round(taxPercentage * 100) / 100 // Round to 2 decimal places
+                          };
+                        }
+                        
+                        setProductSelection(updatedState);
                       }}
                       placeholder="Enter price"
                           className="text-sm"
@@ -2787,8 +3080,19 @@ export default function AddOrder() {
               onClick={handleAddProduct}
               className="mt-4"
               size="lg"
+              disabled={isAddingProduct}
             >
-              ➕ Add Product
+              {isAddingProduct ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Adding Product...
+                </>
+              ) : (
+                '➕ Add Product'
+              )}
             </Button>
 
             {/* Order Items List */}
@@ -2878,11 +3182,28 @@ export default function AddOrder() {
                             )}
                           </div>
                           <button
+                            onClick={() => handleEditItem(index)}
+                            className="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 mr-2"
+                          >
+                            Edit
+                          </button>
+                          <button
                             onClick={() => handleRemoveItem(index)}
                             className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
                           >
                             Remove
                           </button>
+                          
+                          {/* Show loading indicator if this item is being updated */}
+                          {item.id && updatingItemIds.has(item.id) && (
+                            <div className="flex items-center ml-2 text-xs text-blue-600">
+                              <svg className="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Updating DB...
+                            </div>
+                          )}
                         </div>
                       </div>
                       

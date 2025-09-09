@@ -5,6 +5,7 @@ import ImageUploader from '../../components/ImageUploader';
 import CurrencySymbol from '../../components/CurrencySymbol';
 import RichTextEditor from '../../components/RichTextEditor';
 import TagSelector from '../../components/TagSelector';
+import VariantManager from '../../../components/VariantManager';
 import { formatPrice, generateSlug, isValidSlug } from '../../../utils/priceUtils';
 
 interface DatabaseVariationAttribute {
@@ -130,18 +131,7 @@ export default function AddProduct() {
     cbd: '',
     difficulty: '',
     floweringTime: '',
-    yieldAmount: '',
-    // Additional product identification fields
-    serialNumber: '',
-    listNumber: '',
-    bcNumber: '',
-    lotNumber: '',
-    expiryDate: '',
-    // Additional tax fields
-    fixedNotifiedValueOrRetailPrice: '',
-    saleType: 'Goods at standard rate',
-    // Unit of measurement
-    uom: ''
+    yieldAmount: ''
   });
   
   // Variable product specific states
@@ -207,11 +197,11 @@ export default function AddProduct() {
     try {
       const [categoriesRes, attributesRes, addonsRes, suppliersRes] = await Promise.all([
         fetch('/api/categories'),
-        fetch('/api/variation-attributes?includeValues=true'),
+        fetch('/api/variation-attributes'),
         fetch('/api/addons'),
         fetch('/api/suppliers')
       ]);
-      
+
       const categoriesData = await categoriesRes.json();
       const attributesData = await attributesRes.json();
       const addonsData = await addonsRes.json();
@@ -262,11 +252,11 @@ export default function AddProduct() {
       });
       return;
     }
-    
+
     if (type === 'checkbox') {
       const target = e.target as HTMLInputElement;
-    setFormData({
-      ...formData,
+      setFormData({
+        ...formData,
         [name]: target.checked
       });
     } else {
@@ -360,15 +350,15 @@ export default function AddProduct() {
     const variants: GeneratedVariant[] = combinations.map((combination, index) => {
       const attributes = Object.entries(combination).map(([attrName, valueObj]) => {
         const attribute = validAttributes.find(attr => attr.name === attrName);
-      return {
+        return {
           attributeId: attribute?.id || '',
-            attributeName: attrName,
-            valueId: valueObj.id,
-            value: valueObj.value,
+          attributeName: attrName,
+          valueId: valueObj.id,
+          value: valueObj.value,
           slug: valueObj.slug,
-            colorCode: valueObj.colorCode,
-            image: valueObj.image
-          };
+          colorCode: valueObj.colorCode,
+          image: valueObj.image
+        };
       });
 
       // Generate variant title and SKU
@@ -403,19 +393,19 @@ export default function AddProduct() {
         images,
         tags: selectedTags.length > 0 ? selectedTags : null,
         variationMatrix: formData.productType === 'variable' && generatedVariants.length > 0 ? {
-      attributes: selectedAttributes.map(attr => ({
-        id: attr.id,
-        name: attr.name,
-        type: attr.type,
-        slug: attr.slug,
-        values: attr.values
-      })),
-      variants: generatedVariants,
-      defaultSelections: selectedAttributes.reduce((acc, attr) => {
-        if (attr.values.length > 0) {
-          acc[attr.id] = attr.values[0].id; // Set first value as default
-        }
-        return acc;
+          attributes: selectedAttributes.map(attr => ({
+            id: attr.id,
+            name: attr.name,
+            type: attr.type,
+            slug: attr.slug,
+            values: attr.values
+          })),
+          variants: generatedVariants,
+          defaultSelections: selectedAttributes.reduce((acc, attr) => {
+            if (attr.values.length > 0) {
+              acc[attr.id] = attr.values[0].id; // Set first value as default
+            }
+            return acc;
           }, {} as { [key: string]: string })
         } : null,
         addons: selectedAddons.length > 0 ? selectedAddons : null
@@ -494,8 +484,8 @@ export default function AddProduct() {
               />
               Group Product (with addons)
             </label>
-              </div>
-              </div>
+          </div>
+        </div>
 
         {/* Stock Management Type Selection */}
         <div className="mb-6 p-4 border rounded-lg bg-blue-50">
@@ -571,7 +561,7 @@ export default function AddProduct() {
                     </select>
                   </div>
                 </div>
-                  </div>
+              </div>
             )}
           </div>
         </div>
@@ -668,12 +658,12 @@ export default function AddProduct() {
                   <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z" />
                   </svg>
-                  </div>
+                </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">Product Gallery</h3>
                   <p className="text-sm text-gray-600">Manage your product images</p>
-                  </div>
                 </div>
+              </div>
 
               {/* Gallery Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
@@ -685,7 +675,7 @@ export default function AddProduct() {
                         alt={`Gallery ${index + 1}`} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                       />
-                </div>
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleImageRemove(index)}
@@ -695,7 +685,7 @@ export default function AddProduct() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
-                    </div>
+                  </div>
                 ))}
                 
                 {/* Add New Image Card */}
@@ -716,16 +706,16 @@ export default function AddProduct() {
                         <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                         </svg>
-                        )}
-                      </div>
+                      )}
+                    </div>
                     <span className="text-sm font-medium text-purple-700 text-center px-2">
                       {uploadingGallery ? 'Uploading...' : 'Add Image'}
                     </span>
                   </label>
                 </div>
-                </div>
-                </div>
-                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Right Column - Pricing & Details */}
           <div className="space-y-4">
@@ -824,91 +814,6 @@ export default function AddProduct() {
                     </div>
 
                     <div>
-                      <label className="block text-gray-700 mb-2" htmlFor="priceIncludingTax">
-                        Price Including Tax
-                      </label>
-                      <input
-                        type="number"
-                        id="priceIncludingTax"
-                        name="priceIncludingTax"
-                        value={formData.priceIncludingTax}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-700 mb-2" htmlFor="priceExcludingTax">
-                        Price Excluding Tax
-                      </label>
-                      <input
-                        type="number"
-                        id="priceExcludingTax"
-                        name="priceExcludingTax"
-                        value={formData.priceExcludingTax}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-700 mb-2" htmlFor="extraTax">
-                        Extra Tax
-                      </label>
-                      <input
-                        type="number"
-                        id="extraTax"
-                        name="extraTax"
-                        value={formData.extraTax}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-700 mb-2" htmlFor="furtherTax">
-                        Further Tax
-                      </label>
-                      <input
-                        type="number"
-                        id="furtherTax"
-                        name="furtherTax"
-                        value={formData.furtherTax}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-700 mb-2" htmlFor="fedPayableTax">
-                        FED Payable Tax
-                      </label>
-                      <input
-                        type="number"
-                        id="fedPayableTax"
-                        name="fedPayableTax"
-                        value={formData.fedPayableTax}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
                       <label className="block text-gray-700 mb-2" htmlFor="discount">
                         Discount Amount
                       </label>
@@ -924,60 +829,28 @@ export default function AddProduct() {
                         placeholder="0.00"
                       />
                     </div>
-
-                    <div>
-                      <label className="block text-gray-700 mb-2" htmlFor="fixedNotifiedValueOrRetailPrice">
-                        Fixed Notified Value/Retail Price
-                      </label>
-                      <input
-                        type="number"
-                        id="fixedNotifiedValueOrRetailPrice"
-                        name="fixedNotifiedValueOrRetailPrice"
-                        value={formData.fixedNotifiedValueOrRetailPrice}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-700 mb-2" htmlFor="saleType">
-                        Sale Type
-                      </label>
-                      <input
-                        type="text"
-                        id="saleType"
-                        name="saleType"
-                        value={formData.saleType}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        placeholder="Goods at standard rate"
-                      />
-                    </div>
-                    </div>
-                    </div>
+                  </div>
+                </div>
               </>
             )}
 
             {/* Base price field for group products */}
             {formData.productType === 'group' && (
-                    <div>
+              <div>
                 <label className="block text-gray-700 mb-2" htmlFor="price">
                   Base Price <span className="text-sm text-gray-500">(Optional - can be 0 if all pricing comes from addons)</span>
-                      </label>
-                      <input
-                        type="number"
+                </label>
+                <input
+                  type="number"
                   id="price"
                   name="price"
                   value={formData.price}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        step="0.01"
-                        min="0"
-                      />
-                    </div>
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
             )}
 
             <div>
@@ -1076,157 +949,6 @@ export default function AddProduct() {
               </p>
             </div>
 
-            {/* Additional Product Identification Fields */}
-            <div className="mt-6 p-4 border rounded-lg bg-blue-50">
-              <h4 className="text-lg font-semibold mb-4 text-blue-800">📋 Product Identification Numbers</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-700 mb-2" htmlFor="serialNumber">
-                    Serial Number
-                  </label>
-                  <input
-                    type="text"
-                    id="serialNumber"
-                    name="serialNumber"
-                    value={formData.serialNumber}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., SN123456789"
-                  />
-          </div>
-
-                <div>
-                  <label className="block text-gray-700 mb-2" htmlFor="listNumber">
-                    List Number
-                  </label>
-                  <input
-                    type="text"
-                    id="listNumber"
-                    name="listNumber"
-                    value={formData.listNumber}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., LIST-001"
-                  />
-            </div>
-
-            <div>
-                  <label className="block text-gray-700 mb-2" htmlFor="bcNumber">
-                    BC Number
-                  </label>
-                  <input
-                    type="text"
-                    id="bcNumber"
-                    name="bcNumber"
-                    value={formData.bcNumber}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., BC123456"
-                  />
-          </div>
-
-                <div>
-                  <label className="block text-gray-700 mb-2" htmlFor="lotNumber">
-                    Lot Number
-                  </label>
-                  <input
-                    type="text"
-                    id="lotNumber"
-                    name="lotNumber"
-                    value={formData.lotNumber}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., LOT-2024-001"
-                  />
-                          </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-gray-700 mb-2" htmlFor="expiryDate">
-                    Expiry Date
-                  </label>
-                  <input
-                    type="date"
-                    id="expiryDate"
-                    name="expiryDate"
-                    value={formData.expiryDate}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Product expiration date for tracking and compliance
-                  </p>
-                </div>
-                </div>
-                </div>
-
-            {/* Unit of Measurement */}
-            <div className="mt-6 p-4 border rounded-lg bg-yellow-50">
-              <h4 className="text-lg font-semibold mb-4 text-yellow-800">📏 Unit of Measurement</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-700 mb-2" htmlFor="uom">
-                    Unit of Measurement (UOM)
-                  </label>
-                  <div className="flex gap-2">
-                    <select
-                      id="uom"
-                      name="uom"
-                      value={formData.uom}
-                      onChange={handleChange}
-                      className="flex-1 p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    >
-                      <option value="">Select UOM</option>
-                      <option value="MT">MT</option>
-                      <option value="Bill of lading">Bill of lading</option>
-                      <option value="SET">SET</option>
-                      <option value="KWH">KWH</option>
-                      <option value="40KG">40KG</option>
-                      <option value="Liter">Liter</option>
-                      <option value="SqY">SqY</option>
-                      <option value="Bag">Bag</option>
-                      <option value="KG">KG</option>
-                      <option value="MMBTU">MMBTU</option>
-                      <option value="Meter">Meter</option>
-                      <option value="Pcs">Pcs</option>
-                      <option value="Carat">Carat</option>
-                      <option value="Cubic Metre">Cubic Metre</option>
-                      <option value="Dozen">Dozen</option>
-                      <option value="Gram">Gram</option>
-                      <option value="Gallon">Gallon</option>
-                      <option value="Kilogram">Kilogram</option>
-                      <option value="Pound">Pound</option>
-                      <option value="Timber Logs">Timber Logs</option>
-                      <option value="Numbers, pieces, units">Numbers, pieces, units</option>
-                      <option value="Packs">Packs</option>
-                      <option value="Pair">Pair</option>
-                      <option value="Square Foot">Square Foot</option>
-                      <option value="Square Metre">Square Metre</option>
-                      <option value="Thousand Unit">Thousand Unit</option>
-                      <option value="Mega Watt">Mega Watt</option>
-                      <option value="Foot">Foot</option>
-                      <option value="Barrels">Barrels</option>
-                      <option value="NO">NO</option>
-                      <option value="1000 kWh">1000 kWh</option>
-                      <option value="custom">Custom (Enter below)</option>
-                    </select>
-                  </div>
-                  {formData.uom === 'custom' && (
-                    <div className="mt-2">
-                      <input
-                        type="text"
-                        placeholder="Enter custom UOM"
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        onChange={(e) => setFormData(prev => ({ ...prev, uom: e.target.value }))}
-                      />
-                    </div>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Select the unit of measurement for this product or enter a custom one
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* Product Settings */}
             <div className="mt-6 p-4 border rounded-lg bg-gray-50">
               <h4 className="text-lg font-semibold mb-4">Product Settings</h4>
@@ -1241,10 +963,10 @@ export default function AddProduct() {
                     className="mr-2"
                   />
                   <label htmlFor="isFeatured">Featured Product</label>
-              </div>
-            
+                </div>
+
                 <div className="flex items-center">
-              <input
+                  <input
                     type="checkbox"
                     id="isActive"
                     name="isActive"
@@ -1253,10 +975,10 @@ export default function AddProduct() {
                     className="mr-2"
                   />
                   <label htmlFor="isActive">Active</label>
-          </div>
-
+                </div>
+                
                 <div className="flex items-center">
-              <input
+                  <input
                     type="checkbox"
                     id="taxable"
                     name="taxable"
@@ -1265,11 +987,11 @@ export default function AddProduct() {
                     className="mr-2"
                   />
                   <label htmlFor="taxable">Taxable</label>
-          </div>
-        </div>
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div>
+                <div>
                   <label className="block text-gray-700 mb-2" htmlFor="metaTitle">
                     Meta Title <span className="text-sm text-gray-500">(SEO)</span>
                   </label>
@@ -1282,7 +1004,7 @@ export default function AddProduct() {
                     className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                     maxLength={60}
                   />
-          </div>
+                </div>
 
                 <div>
                   <label className="block text-gray-700 mb-2" htmlFor="metaDescription">
@@ -1296,180 +1018,28 @@ export default function AddProduct() {
                     className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
                     rows={2}
                     maxLength={160}
-                />
-              </div>
-              </div>
+                  />
+                </div>
               </div>
             </div>
-                </div>
+          </div>
+        </div>
 
         {/* Variable Product Variations */}
         {formData.productType === 'variable' && (
           <div className="mt-8 p-6 border rounded-lg bg-blue-50">
             <h3 className="text-lg font-semibold mb-4 text-blue-800">Product Variations</h3>
-            
-            {/* Attribute Selection */}
-            <div className="mb-6">
-              <label className="block text-gray-700 mb-2">Available Attributes</label>
-              <select
-                onChange={(e) => {
-                  const attributeId = e.target.value;
-                  if (attributeId && !selectedAttributes.find(sa => sa.id === attributeId)) {
-                    const attribute = availableAttributes.find(a => a.id === attributeId);
-                    if (attribute) {
-                      setSelectedAttributes([...selectedAttributes, {
-                        id: attribute.id,
-                        name: attribute.name,
-                        type: attribute.type,
-                        slug: attribute.slug,
-                        values: []
-                      }]);
-                    }
-                  }
-                  e.target.value = '';
-                }}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-              >
-                <option value="">Select an attribute to add</option>
-                {availableAttributes
-                  .filter(attr => !selectedAttributes.find(sa => sa.id === attr.id))
-                  .map(attr => (
-                    <option key={attr.id} value={attr.id}>
-                      {attr.name} ({attr.type})
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            {/* Selected Attributes */}
-            {selectedAttributes.length > 0 && (
-              <div className="space-y-4 mb-6">
-              {selectedAttributes.map((selectedAttr) => {
-                  const attribute = availableAttributes.find(a => a.id === selectedAttr.id);
-                return (
-                    <div key={selectedAttr.id} className="p-4 border rounded-lg bg-white">
-                    <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-medium">{selectedAttr.name}</h4>
-                      <button
-                        type="button"
-                          onClick={() => setSelectedAttributes(selectedAttributes.filter(attr => attr.id !== selectedAttr.id))}
-                        className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    
-                        <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Select Values for {selectedAttr.name}
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {attribute?.values && Array.isArray(attribute.values) ? attribute.values.map(value => (
-                            <label key={value.id} className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={selectedAttr.values.some(v => v.id === value.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    const updatedAttrs = selectedAttributes.map(attr =>
-                                      attr.id === selectedAttr.id
-                                        ? { ...attr, values: [...attr.values, value] }
-                                        : attr
-                                    );
-                                    setSelectedAttributes(updatedAttrs);
-                                  } else {
-                                    const updatedAttrs = selectedAttributes.map(attr =>
-                                      attr.id === selectedAttr.id
-                                        ? { ...attr, values: attr.values.filter(v => v.id !== value.id) }
-                                        : attr
-                                    );
-                                    setSelectedAttributes(updatedAttrs);
-                                  }
-                                }}
-                                className="mr-2"
-                              />
-                              <span className="text-sm">
-                                {value.value}
-                                {value.colorCode && (
-                                  <span 
-                                    className="inline-block w-4 h-4 ml-2 rounded-full border" 
-                                    style={{ backgroundColor: value.colorCode }}
-                                  ></span>
-                                )}
-                              </span>
-                            </label>
-                          )) : (
-                            <div className="text-sm text-gray-500">
-                              No values available for this attribute
-                        </div>
-                          )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            )}
-
-            {/* Generated Variants Preview */}
-            {generatedVariants.length > 0 && (
-              <div className="mt-6">
-                <h4 className="font-medium mb-3">Generated Variants ({generatedVariants.length})</h4>
-                <div className="space-y-3">
-                  {generatedVariants.map((variant, index) => (
-                    <div key={index} className="p-3 border rounded bg-white">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                        <div>
-                          <strong>Variant:</strong> {variant.attributes.map(attr => attr.value).join(' - ')}
-                </div>
-                                        <div>
-                                          <label className="block text-xs text-gray-600">Price</label>
-                                          <input
-                            type="number"
-                                            value={variant.price}
-                            onChange={(e) => {
-                              const updated = [...generatedVariants];
-                              updated[index] = { ...updated[index], price: e.target.value };
-                              setGeneratedVariants(updated);
-                            }}
-                            className="w-full p-1 text-sm border rounded focus:border-blue-500 focus:outline-none"
-                            step="0.01"
-                            min="0"
-                                          />
-                                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600">SKU</label>
-                          <input
-                            type="text"
-                            value={variant.sku}
-                            onChange={(e) => {
-                              const updated = [...generatedVariants];
-                              updated[index] = { ...updated[index], sku: e.target.value };
-                              setGeneratedVariants(updated);
-                            }}
-                            className="w-full p-1 text-sm border rounded focus:border-blue-500 focus:outline-none"
-                          />
-                                      </div>
-                        <div>
-                          <label className="block text-xs text-gray-600">Stock</label>
-                                        <input
-                            type="number"
-                            value={variant.inventoryQuantity}
-                            onChange={(e) => {
-                              const updated = [...generatedVariants];
-                              updated[index] = { ...updated[index], inventoryQuantity: parseInt(e.target.value) || 0 };
-                              setGeneratedVariants(updated);
-                            }}
-                            className="w-full p-1 text-sm border rounded focus:border-blue-500 focus:outline-none"
-                            min="0"
-                          />
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-              </div>
-            )}
+            <VariantManager 
+              availableAttributes={availableAttributes}
+              selectedAttributes={selectedAttributes}
+              onAttributeSelectionChange={setSelectedAttributes}
+              generatedVariants={generatedVariants}
+              onVariantUpdate={(index, field, value) => {
+                const updated = [...generatedVariants];
+                updated[index] = { ...updated[index], [field]: value };
+                setGeneratedVariants(updated);
+              }}
+            />
           </div>
         )}
 
@@ -1480,7 +1050,7 @@ export default function AddProduct() {
             <div className="space-y-4">
               <div>
                 <label className="block text-gray-700 mb-2">Available Addons</label>
-              <select
+                <select
                   onChange={(e) => {
                     const addonId = e.target.value;
                     if (addonId && !selectedAddons.find(sa => sa.addonId === addonId)) {
@@ -1498,44 +1068,44 @@ export default function AddProduct() {
                     }
                     e.target.value = '';
                   }}
-                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-              >
+                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                >
                   <option value="">Select an addon to add</option>
-                {availableAddons
+                  {availableAddons
                     .filter(addon => !selectedAddons.find(sa => sa.addonId === addon.id))
                     .map(addon => (
-                    <option key={addon.id} value={addon.id}>
+                      <option key={addon.id} value={addon.id}>
                         {addon.title} - <CurrencySymbol />{parseFloat(addon.price).toFixed(2)}
-                    </option>
-                  ))}
-              </select>
-            </div>
+                      </option>
+                    ))}
+                </select>
+              </div>
 
               {selectedAddons.length > 0 && (
-            <div className="space-y-4">
-              {selectedAddons.map((selectedAddon) => {
-                const addon = availableAddons.find(a => a.id === selectedAddon.addonId);
-                return (
-                  <div key={selectedAddon.addonId} className="p-4 border rounded-lg bg-white">
-                    <div className="flex justify-between items-center mb-3">
+                <div className="space-y-4">
+                  {selectedAddons.map((selectedAddon) => {
+                    const addon = availableAddons.find(a => a.id === selectedAddon.addonId);
+                    return (
+                      <div key={selectedAddon.addonId} className="p-4 border rounded-lg bg-white">
+                        <div className="flex justify-between items-center mb-3">
                           <h4 className="font-medium">{selectedAddon.addonTitle}</h4>
-                      <button
-                        type="button"
+                          <button
+                            type="button"
                             onClick={() => setSelectedAddons(selectedAddons.filter(addon => addon.addonId !== selectedAddon.addonId))}
-                        className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Override Price
-                        </label>
-                        <input
-                          type="number"
-                          value={selectedAddon.price}
+                            className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Override Price
+                            </label>
+                            <input
+                              type="number"
+                              value={selectedAddon.price}
                               onChange={(e) => {
                                 const updated = selectedAddons.map(addon => 
                                   addon.addonId === selectedAddon.addonId 
@@ -1544,20 +1114,20 @@ export default function AddProduct() {
                                 );
                                 setSelectedAddons(updated);
                               }}
-                          className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                          step="0.01"
-                          min="0"
-                        />
-                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                          Original price: <CurrencySymbol />{addon ? parseFloat(addon.price).toFixed(2) : '0.00'}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col justify-center space-y-2">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedAddon.isRequired}
+                              className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                              step="0.01"
+                              min="0"
+                            />
+                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                              Original price: <CurrencySymbol />{addon ? parseFloat(addon.price).toFixed(2) : '0.00'}
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col justify-center space-y-2">
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedAddon.isRequired}
                                 onChange={(e) => {
                                   const updated = selectedAddons.map(addon => 
                                     addon.addonId === selectedAddon.addonId 
@@ -1566,33 +1136,33 @@ export default function AddProduct() {
                                   );
                                   setSelectedAddons(updated);
                                 }}
-                            className="mr-2"
-                          />
-                          Required Addon
-                        </label>
+                                className="mr-2"
+                              />
+                              Required Addon
+                            </label>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
-              </div>
-            )}
-                  </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* Tags */}
         <div className="mt-8">
-            <TagSelector
-              selectedTags={selectedTags}
-              onTagsChange={setSelectedTags}
-            />
+          <TagSelector
+            selectedTags={selectedTags}
+            onTagsChange={setSelectedTags}
+          />
         </div>
 
         <div className="flex gap-4 pt-6 border-t mt-8">
           <button
             type="submit"
-                      disabled={submitting}
+            disabled={submitting}
             className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
             {submitting ? 'Creating...' : 'Create Product'}
@@ -1608,4 +1178,4 @@ export default function AddProduct() {
       </form>
     </div>
   );
-} 
+}

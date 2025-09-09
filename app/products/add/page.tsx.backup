@@ -1,20 +1,41 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import ImageUploader from '../../../components/ImageUploader';
-import CurrencySymbol from '../../../components/CurrencySymbol';
-import RichTextEditor from '../../../components/RichTextEditor';
-import TagSelector from '../../../components/TagSelector';
-import VariantManager from '../../../../components/VariantManager';
-import useProductVariants from '../../../../hooks/useProductVariants';
-import { formatPrice, calculatePriceRange, generateSlug, isValidSlug } from '../../../../utils/priceUtils';
-import { 
-  normalizeVariationAttributes, 
-  normalizeVariantOptions, 
-  normalizeProductImages, 
-  normalizeProductTags,
-  deepParseJSON 
-} from '../../../../utils/jsonUtils';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { PackagePlus, ArrowLeft, AlertCircle, Settings, Image as ImageIcon } from 'lucide-react';
+import CurrencySymbol from '../../components/CurrencySymbol';
+import RichTextEditor from '../../components/RichTextEditor';
+import TagSelector from '../../components/TagSelector';
+import { generateSlug, isValidSlug, formatPrice } from '../../../utils/priceUtils';
+
+/**
+ * Enhanced Variation System for E-commerce Products
+ * 
+ * This system provides a user-friendly way to handle product variations with:
+ * 1. Structured attribute storage with type information
+ * 2. Frontend-optimized data format for easy consumption
+ * 3. Automatic UI component selection based on attribute types
+ * 4. Comprehensive variant generation with detailed metadata
+ * 
+ * Data Structure:
+ * - VariationMatrix: Main container with attributes, variants, and defaults
+ * - Attributes: Store type info to determine UI rendering (color swatches, dropdowns, radio buttons)
+ * - Variants: Detailed variant info with complete attribute metadata
+ * 
+ * Frontend Rendering Logic:
+ * - Color attributes → Color swatches with visual feedback
+ * - Attributes with >5 values → Dropdown select
+ * - Attributes with ≤5 values → Radio button group
+ */
 
 interface DatabaseVariationAttribute {
   id: string;
@@ -30,18 +51,50 @@ interface DatabaseVariationAttribute {
   }>;
 }
 
+/**
+ * Enhanced VariationAttribute interface for internal use
+ * Stores selected attribute values with complete metadata
+ */
 interface VariationAttribute {
   id: string;
   name: string;
-  type: string;
-  slug: string;
+  type: string; // Used to determine frontend UI component
+  slug: string; // For URL-friendly attribute names
   values: Array<{
     id: string;
     value: string;
     slug: string;
+    colorCode?: string; // For color swatches
+    image?: string; // For image-based attributes
+  }>;
+}
+
+/**
+ * Enhanced GeneratedVariant interface with detailed attribute metadata
+ * Each variant stores complete information about its attribute combinations
+ */
+interface GeneratedVariant {
+  id?: string;
+  title: string;
+  attributes: Array<{
+    attributeId: string;
+    attributeName: string;
+    attributeType: string; // Critical for frontend rendering
+    attributeSlug: string;
+    valueId: string;
+    value: string;
+    valueSlug: string;
     colorCode?: string;
     image?: string;
   }>;
+  price: string;
+  comparePrice: string;
+  costPrice: string;
+  sku: string;
+  weight: string;
+  inventoryQuantity: number;
+  image: string;
+  isActive: boolean;
 }
 
 interface Addon {
@@ -65,6 +118,28 @@ interface SelectedAddon {
   isActive: boolean;
 }
 
+/**
+ * Frontend-optimized variation matrix
+ * This structure is specifically designed for easy frontend consumption
+ */
+interface VariationMatrix {
+  attributes: Array<{
+    id: string;
+    name: string;
+    type: string; // Determines UI component: 'color' | 'size' | 'material' | etc.
+    slug: string;
+    values: Array<{
+      id: string;
+      value: string;
+      slug: string;
+      colorCode?: string;
+      image?: string;
+    }>;
+  }>;
+  variants: GeneratedVariant[];
+  defaultSelections?: { [attributeId: string]: string }; // For setting default selections
+}
+
 interface SelectedTag {
   tagId: string;
   tagName: string;
@@ -74,25 +149,8 @@ interface SelectedTag {
   color?: string;
 }
 
-export default function EditProduct() {
+export default function AddProduct() {
   const router = useRouter();
-  const params = useParams();
-  const productId = params.id as string;
-  
-  // Use the custom hook for variants
-  const { data: variantData, loading: variantsLoading, error: variantError, refetch: refetchVariants } = useProductVariants(productId);
-  
-  // Debug variant data
-  useEffect(() => {
-    if (variantData) {
-      console.log('Variant data loaded:', variantData);
-      console.log('Number of variants:', variantData.variants?.length || 0);
-    }
-    if (variantError) {
-      console.error('Variant loading error:', variantError);
-    }
-  }, [variantData, variantError]);
-  
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -123,7 +181,7 @@ export default function EditProduct() {
     metaTitle: '',
     metaDescription: '',
     hsCode: '', // Harmonized System Code
-    productType: 'simple',
+    productType: 'simple', // 'simple' or 'variable'
     banner: '', // Banner image URL
     // Weight-based stock management fields
     stockManagementType: 'quantity', // 'quantity' or 'weight'
@@ -134,24 +192,15 @@ export default function EditProduct() {
     cbd: '',
     difficulty: '',
     floweringTime: '',
-    yieldAmount: '',
-    // Additional product identification fields
-    serialNumber: '',
-    listNumber: '',
-    bcNumber: '',
-    lotNumber: '',
-    expiryDate: '',
-    // Additional tax fields
-    fixedNotifiedValueOrRetailPrice: '',
-    saleType: 'Goods at standard rate',
-    // Unit of measurement
-    uom: ''
+    yieldAmount: ''
   });
   
   // Variable product specific states
   const [availableAttributes, setAvailableAttributes] = useState<DatabaseVariationAttribute[]>([]);
   const [selectedAttributes, setSelectedAttributes] = useState<VariationAttribute[]>([]);
-  const [variantsToDelete, setVariantsToDelete] = useState<string[]>([]);
+  const [generatedVariants, setGeneratedVariants] = useState<GeneratedVariant[]>([]);
+  const [showVariantGeneration, setShowVariantGeneration] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   
   // Group product specific states
   const [availableAddons, setAvailableAddons] = useState<Addon[]>([]);
@@ -172,18 +221,8 @@ export default function EditProduct() {
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
   useEffect(() => {
-    fetchProductAndInitialData();
-  }, [productId]);
-
-  // Mark slug as manually edited if it exists and differs from auto-generated
-  useEffect(() => {
-    if (formData.name && formData.slug) {
-      const autoGeneratedSlug = generateSlug(formData.name);
-      if (formData.slug !== autoGeneratedSlug) {
-        setIsSlugManuallyEdited(true);
-      }
-    }
-  }, [formData.name, formData.slug]);
+    fetchInitialData();
+  }, []);
 
   useEffect(() => {
     if (formData.categoryId) {
@@ -193,175 +232,50 @@ export default function EditProduct() {
     }
   }, [formData.categoryId]);
 
-  const fetchProductAndInitialData = async () => {
+  useEffect(() => {
+    if (formData.productType === 'variable' && selectedAttributes.length > 0) {
+      generateVariants();
+    } else {
+      setGeneratedVariants([]);
+    }
+  }, [selectedAttributes, formData.productType]);
+
+  // Show generated variants by default when they are created
+  useEffect(() => {
+    if (generatedVariants.length > 0) {
+      setShowVariantGeneration(true);
+      // Auto-expand all sections
+      const groupedVariants = generatedVariants.reduce((groups, variant) => {
+        const firstAttr = variant.attributes[0];
+        const groupKey = firstAttr ? `${firstAttr.attributeName}: ${firstAttr.value}` : 'Default';
+        groups[groupKey] = true;
+        return groups;
+      }, {} as { [key: string]: boolean });
+      setExpandedSections(new Set(Object.keys(groupedVariants)));
+    }
+  }, [generatedVariants.length]);
+
+  const fetchInitialData = async () => {
     try {
-      const [productRes, categoriesRes, attributesRes, addonsRes, productAddonsRes, productTagsRes, suppliersRes] = await Promise.all([
-        fetch(`/api/products/${productId}`),
+      const [categoriesRes, attributesRes, addonsRes, suppliersRes] = await Promise.all([
         fetch('/api/categories'),
         fetch('/api/variation-attributes?includeValues=true'),
         fetch('/api/addons'),
-        fetch(`/api/product-addons?productId=${productId}`),
-        fetch(`/api/product-tags?productId=${productId}`),
         fetch('/api/suppliers')
       ]);
       
-      const product = await productRes.json();
       const categoriesData = await categoriesRes.json();
       const attributesData = await attributesRes.json();
       const addonsData = await addonsRes.json();
-      const productAddonsData = await productAddonsRes.json();
-      const productTagsData = await productTagsRes.json();
       const suppliersData = await suppliersRes.json();
       
-      // Parse product data using deep parsing utilities
-      const productImages = normalizeProductImages(product.images);
-      const productTags = normalizeProductTags(product.tags);
-      const productVariationAttributes = normalizeVariationAttributes(product.variationAttributes);
-      
-      setFormData({
-        name: product.name || '',
-        slug: product.slug || '',
-        description: product.description || '',
-        shortDescription: product.shortDescription || '',
-        sku: product.sku || '',
-        price: product.price || '',
-        comparePrice: product.comparePrice || '',
-        costPrice: product.costPrice || '',
-        categoryId: product.categoryId || '',
-        subcategoryId: product.subcategoryId || '',
-        supplierId: product.supplierId || '',
-        weight: product.weight || '',
-        isFeatured: product.isFeatured || false,
-        isActive: product.isActive !== undefined ? product.isActive : true,
-        isDigital: product.isDigital || false,
-        requiresShipping: product.requiresShipping !== undefined ? product.requiresShipping : true,
-        taxable: product.taxable !== undefined ? product.taxable : true,
-        metaTitle: product.metaTitle || '',
-        metaDescription: product.metaDescription || '',
-        hsCode: product.hsCode || '',
-        productType: product.productType || 'simple',
-        banner: product.banner || '', // Banner image URL
-        // Weight-based stock management fields
-        stockManagementType: product.stockManagementType || 'quantity',
-        pricePerUnit: product.pricePerUnit || '',
-        baseWeightUnit: product.baseWeightUnit || 'grams',
-        // Cannabis-specific fields
-        thc: product.thc || '',
-        cbd: product.cbd || '',
-        difficulty: product.difficulty || '',
-        floweringTime: product.floweringTime || '',
-        yieldAmount: product.yieldAmount || '',
-        // Additional product identification fields
-        serialNumber: product.serialNumber || '',
-        listNumber: product.listNumber || '',
-        bcNumber: product.bcNumber || '',
-        lotNumber: product.lotNumber || '',
-        expiryDate: product.expiryDate || '',
-        // Additional tax fields
-        fixedNotifiedValueOrRetailPrice: product.fixedNotifiedValueOrRetailPrice || '',
-        saleType: product.saleType || 'Goods at standard rate',
-        // Unit of measurement
-        uom: product.uom || '',
-        // Tax and discount fields
-        taxAmount: product.taxAmount || '',
-        taxPercentage: product.taxPercentage || '',
-        priceIncludingTax: product.priceIncludingTax || '',
-        priceExcludingTax: product.priceExcludingTax || '',
-        extraTax: product.extraTax || '',
-        furtherTax: product.furtherTax || '',
-        fedPayableTax: product.fedPayableTax || '',
-        discount: product.discount || ''
-      });
-      
-      setImages(Array.isArray(productImages) ? productImages : []);
       setCategories(categoriesData);
       setAvailableAttributes(attributesData);
-      setSuppliers(suppliersData.filter((supplier: any) => supplier.isActive));
-      
-      // Auto-select attributes based on existing variants and saved variation attributes
-      const attributesFromVariants = new Map<string, Set<string>>();
-      
-      // First, get attributes from existing variants if available
-      if (variantData && variantData.variants.length > 0) {
-        variantData.variants.forEach(variant => {
-          // Normalize variant attributes using our utility
-          const normalizedAttributes = normalizeVariantOptions(variant.attributes);
-          Object.entries(normalizedAttributes).forEach(([attrName, attrValue]) => {
-            if (!attributesFromVariants.has(attrName)) {
-              attributesFromVariants.set(attrName, new Set());
-            }
-            attributesFromVariants.get(attrName)!.add(attrValue);
-          });
-        });
-      }
-      
-      // If no variants but we have saved variation attributes, use those
-      if (attributesFromVariants.size === 0 && productVariationAttributes.length > 0) {
-        productVariationAttributes.forEach((attr: any) => {
-          if (attr.name && attr.values && Array.isArray(attr.values)) {
-            attributesFromVariants.set(attr.name, new Set(attr.values.map((v: any) => v.value || v)));
-          }
-        });
-      }
-
-      // Build the selected attributes array
-      const autoSelectedAttributes: VariationAttribute[] = [];
-      attributesFromVariants.forEach((values, attrName) => {
-        const dbAttribute = attributesData.find((attr: any) => attr.name === attrName);
-        if (dbAttribute) {
-          const selectedValues = Array.from(values).map((value: string) => {
-            const dbValue = dbAttribute.values.find((v: any) => v.value === value);
-            return dbValue || {
-              id: `temp_${value}`,
-              value: value,
-              slug: value.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-              colorCode: undefined,
-              image: undefined
-            };
-          });
-          
-          autoSelectedAttributes.push({
-            id: dbAttribute.id,
-            name: dbAttribute.name,
-            type: dbAttribute.type,
-            slug: dbAttribute.slug,
-            values: selectedValues
-          });
-        }
-      });
-      
-      setSelectedAttributes(autoSelectedAttributes);
-      
-      // Set available addons
       setAvailableAddons(addonsData.filter((addon: any) => addon.isActive));
-      
-      // Convert existing product addons to our format
-      const formattedProductAddons = productAddonsData.map((item: any) => ({
-        addonId: item.productAddon.addonId,
-        addonTitle: item.addon.title,
-        price: item.productAddon.price,
-        isRequired: item.productAddon.isRequired,
-        sortOrder: item.productAddon.sortOrder,
-        isActive: item.productAddon.isActive
-      }));
-      
-      setSelectedAddons(formattedProductAddons);
-      
-      // Convert existing product tags to our format
-      const formattedProductTags = Array.isArray(productTagsData) ? productTagsData.map((item: any) => ({
-        tagId: item.tag.id,
-        tagName: item.tag.name,
-        groupId: item.tag.groupId,
-        groupName: item.tag.group.name,
-        customValue: item.customValue,
-        color: item.tag.color || item.tag.group.color,
-      })) : [];
-      
-      setSelectedTags(formattedProductTags);
-      
+      setSuppliers(suppliersData.filter((supplier: any) => supplier.isActive));
     } catch (err) {
       console.error(err);
-      setError('Failed to load product data');
+      setError('Failed to load initial data');
     } finally {
       setLoading(false);
     }
@@ -511,25 +425,40 @@ export default function EditProduct() {
     }
   };
 
-  // Variant management functions using our optimized hook
-  const handleVariantUpdate = async (variantId: string, field: string, value: any) => {
-    try {
-      const response = await fetch(`/api/product-variants/${variantId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value })
-      });
-      
-      if (response.ok) {
-        await refetchVariants(); // Refresh variant data
-      }
-    } catch (error) {
-      console.error('Error updating variant:', error);
-    }
+  // Variation attribute management
+  const addSelectedAttribute = (attributeId: string) => {
+    const attribute = availableAttributes.find(attr => attr.id === attributeId);
+    if (!attribute) return;
+
+    const isAlreadySelected = selectedAttributes.some(attr => attr.id === attributeId);
+    if (isAlreadySelected) return;
+
+    setSelectedAttributes([...selectedAttributes, {
+      id: attribute.id,
+      name: attribute.name,
+      type: attribute.type,
+      slug: attribute.slug,
+      values: []
+    }]);
   };
 
-  const handleVariantDelete = (variantId: string) => {
-    setVariantsToDelete([...variantsToDelete, variantId]);
+  const updateSelectedAttributeValues = (attributeId: string, selectedValueObjects: Array<{
+    id: string;
+    value: string;
+    slug: string;
+    colorCode?: string;
+    image?: string;
+  }>) => {
+    const updated = selectedAttributes.map(attr => 
+      attr.id === attributeId 
+        ? { ...attr, values: selectedValueObjects }
+        : attr
+    );
+    setSelectedAttributes(updated);
+  };
+
+  const removeSelectedAttribute = (attributeId: string) => {
+    setSelectedAttributes(selectedAttributes.filter(attr => attr.id !== attributeId));
   };
 
   // Addon management functions
@@ -563,6 +492,107 @@ export default function EditProduct() {
     setSelectedAddons(selectedAddons.filter(addon => addon.addonId !== addonId));
   };
 
+  // Generate all possible variant combinations
+  const generateVariants = () => {
+    if (selectedAttributes.length === 0) {
+      setGeneratedVariants([]);
+      return;
+    }
+
+    const validAttributes = selectedAttributes.filter(attr => attr.values.length > 0);
+    if (validAttributes.length === 0) {
+      setGeneratedVariants([]);
+      return;
+    }
+
+    // Generate cartesian product of all attribute values
+    const combinations: Array<{ [key: string]: { id: string; value: string; slug: string; colorCode?: string; image?: string; } }> = [];
+    
+    const generateCombinations = (index: number, current: { [key: string]: { id: string; value: string; slug: string; colorCode?: string; image?: string; } }) => {
+      if (index === validAttributes.length) {
+        combinations.push({ ...current });
+        return;
+      }
+
+      const attribute = validAttributes[index];
+      for (const valueObj of attribute.values) {
+        current[attribute.name] = valueObj;
+        generateCombinations(index + 1, current);
+      }
+    };
+
+    generateCombinations(0, {});
+
+    const variants: GeneratedVariant[] = combinations.map((combo, index) => {
+      const title = Object.entries(combo).map(([key, valueObj]) => `${key}: ${valueObj.value}`).join(' / ');
+      const skuSuffix = Object.values(combo).map(valueObj => valueObj.value).join('-').toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      return {
+        title,
+        attributes: Object.entries(combo).map(([attrName, valueObj]) => {
+          const selectedAttr = selectedAttributes.find(attr => attr.name === attrName);
+          return {
+            attributeId: selectedAttr?.id || '',
+            attributeName: attrName,
+            attributeType: selectedAttr?.type || '',
+            attributeSlug: selectedAttr?.slug || '',
+            valueId: valueObj.id,
+            value: valueObj.value,
+            valueSlug: valueObj.slug,
+            colorCode: valueObj.colorCode,
+            image: valueObj.image
+          };
+        }),
+        price: formData.price || '0',
+        comparePrice: formData.comparePrice || '',
+        costPrice: formData.costPrice || '',
+        sku: formData.sku ? `${formData.sku}-${skuSuffix}` : '',
+        weight: formData.weight || '',
+        inventoryQuantity: 0,
+        image: '',
+        isActive: true
+      };
+    });
+
+    setGeneratedVariants(variants);
+  };
+
+  const updateVariant = (index: number, field: keyof GeneratedVariant, value: any) => {
+    const updated = [...generatedVariants];
+    updated[index] = { ...updated[index], [field]: value };
+    setGeneratedVariants(updated);
+  };
+
+  const toggleSection = (sectionId: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(sectionId)) {
+      newExpanded.delete(sectionId);
+    } else {
+      newExpanded.add(sectionId);
+    }
+    setExpandedSections(newExpanded);
+  };
+
+  // Generate variation matrix for frontend consumption
+  const generateVariationMatrix = (): VariationMatrix => {
+    return {
+      attributes: selectedAttributes.map(attr => ({
+        id: attr.id,
+        name: attr.name,
+        type: attr.type,
+        slug: attr.slug,
+        values: attr.values
+      })),
+      variants: generatedVariants,
+      defaultSelections: selectedAttributes.reduce((acc, attr) => {
+        if (attr.values.length > 0) {
+          acc[attr.id] = attr.values[0].id; // Set first value as default
+        }
+        return acc;
+      }, {} as { [attributeId: string]: string })
+    };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -578,16 +608,16 @@ export default function EditProduct() {
     try {
       const submitData = {
         ...formData,
-        price: formData.price ? parseFloat(formData.price) : (formData.productType === 'group' ? 0 : parseFloat(formData.price)),
+        price: formData.price ? parseFloat(formData.price) : (formData.productType === 'group' ? 0 : 0),
         comparePrice: formData.comparePrice ? parseFloat(formData.comparePrice) : null,
         costPrice: formData.costPrice ? parseFloat(formData.costPrice) : null,
-        pricePerUnit: formData.pricePerUnit ? parseFloat(formData.pricePerUnit) : null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
-        // Cannabis-specific fields
+        pricePerUnit: formData.pricePerUnit ? parseFloat(formData.pricePerUnit) : null,
         thc: formData.thc ? parseFloat(formData.thc) : null,
         cbd: formData.cbd ? parseFloat(formData.cbd) : null,
         difficulty: formData.difficulty || null,
-        // Tax and discount fields
+        floweringTime: formData.floweringTime || null,
+        yieldAmount: formData.yieldAmount || null,
         taxAmount: formData.taxAmount ? parseFloat(formData.taxAmount) : null,
         taxPercentage: formData.taxPercentage ? parseFloat(formData.taxPercentage) : null,
         priceIncludingTax: formData.priceIncludingTax ? parseFloat(formData.priceIncludingTax) : null,
@@ -596,17 +626,16 @@ export default function EditProduct() {
         furtherTax: formData.furtherTax ? parseFloat(formData.furtherTax) : null,
         fedPayableTax: formData.fedPayableTax ? parseFloat(formData.fedPayableTax) : null,
         discount: formData.discount ? parseFloat(formData.discount) : null,
-        floweringTime: formData.floweringTime || null,
-        yieldAmount: formData.yieldAmount || null,
         images: images.length > 0 ? images : null,
         selectedTags: selectedTags.length > 0 ? selectedTags : null,
+        variationMatrix: formData.productType === 'variable' ? generateVariationMatrix() : null,
         variationAttributes: formData.productType === 'variable' ? selectedAttributes : null,
-        variantsToDelete: variantsToDelete.length > 0 ? variantsToDelete : null,
-        addons: selectedAddons.length > 0 ? selectedAddons : null,
+        variants: formData.productType === 'variable' ? generatedVariants : null,
+        addons: selectedAddons.length > 0 ? selectedAddons : null
       };
 
-      const response = await fetch(`/api/products/${productId}`, {
-        method: 'PUT',
+      const response = await fetch('/api/products', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -615,7 +644,7 @@ export default function EditProduct() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to update product');
+        throw new Error(data.error || 'Failed to create product');
       }
 
       router.push('/products');
@@ -626,114 +655,90 @@ export default function EditProduct() {
     }
   };
 
-  if (loading || variantsLoading) return <div className="p-8">Loading...</div>;
-
-  // Calculate price range for variable products
-  const priceRange = variantData ? calculatePriceRange(variantData.variants) : null;
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-6">Edit Product</h1>
+      <h1 className="text-2xl font-bold mb-6">Add New Product</h1>
       
       {error && (
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
           {error}
         </div>
       )}
-
-      {/* Price Range Display for Variable Products */}
-      {formData.productType === 'variable' && variantData && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-blue-900">Variable Product Pricing</h3>
-              <p className="text-blue-700">
-                {priceRange?.hasRange 
-                  ? `Price Range: ${priceRange.range}`
-                  : `Fixed Price: ${priceRange?.range}`
-                }
-              </p>
-            </div>
-            <div className="text-blue-700">
-              <span className="text-2xl font-bold">{variantData.totalVariants}</span>
-              <span className="text-sm ml-1">variants</span>
-            </div>
-          </div>
-        </div>
-      )}
       
       <form onSubmit={handleSubmit} className="max-w-6xl">
         {/* Product Type Selection */}
-        <div className="mb-6 p-4 border rounded-lg bg-gray-50 hidden">
-          <h3 className="text-lg font-semibold mb-4">Product Type</h3>
-          <div className="flex gap-4" >
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="productType"
-                value="simple"
-                checked={formData.productType === 'simple'}
-                onChange={handleChange}
-                className="mr-2"
-                disabled={true}
-              />
-              Simple Product
-            </label>
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="productType"
-                value="variable"
-                checked={formData.productType === 'variable'}
-                onChange={handleChange}
-                className="mr-2"
-                disabled={true}
-              />
-              Variable Product (with variations)
-            </label>
-            <label className="flex items-center">
-              <input
-                type="radio"
-                name="productType"
-                value="group"
-                checked={formData.productType === 'group'}
-                onChange={handleChange}
-                className="mr-2"
-                disabled={true}
-              />
-              Group Product (with addons)
-            </label>
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Product Type
+            </CardTitle>
+            <CardDescription>Choose the type of product you want to create</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RadioGroup
+              value={formData.productType}
+              onValueChange={(value) => setFormData({...formData, productType: value})}
+              className="grid grid-cols-1 md:grid-cols-3 gap-4"
+            >
+              <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent/50">
+                <RadioGroupItem value="simple" id="simple" />
+                <Label htmlFor="simple" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Simple Product</div>
+                  <div className="text-sm text-muted-foreground">Single product with fixed pricing</div>
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent/50">
+                <RadioGroupItem value="variable" id="variable" />
+                <Label htmlFor="variable" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Variable Product</div>
+                  <div className="text-sm text-muted-foreground">Product with variations (size, color, etc.)</div>
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent/50">
+                <RadioGroupItem value="group" id="group" />
+                <Label htmlFor="group" className="flex-1 cursor-pointer">
+                  <div className="font-medium">Group Product</div>
+                  <div className="text-sm text-muted-foreground">Product with customizable addons</div>
+                </Label>
+              </div>
+            </RadioGroup>
+          </CardContent>
+        </Card>
 
         {/* Stock Management Type Selection */}
-        <div className="mb-6 p-4 border rounded-lg bg-blue-50 hidden">
-          <h3 className="text-lg font-semibold mb-4">⚖️ Stock Management Type</h3>
-          <div className="space-y-4">
-            <div className="flex gap-6">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="stockManagementType"
-                  value="quantity"
-                  checked={formData.stockManagementType === 'quantity'}
-                  onChange={handleChange}
-                  className="mr-2"
-                />
-                <span className="font-medium">📦 Quantity-Based</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="stockManagementType"
-                  value="weight"
-                  checked={formData.stockManagementType === 'weight'}
-                  onChange={handleChange}
-                  className="mr-2"
-                />
-                <span className="font-medium">⚖️ Weight-Based</span>
-              </label>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              ⚖️ Stock Management Type
+            </CardTitle>
+            <CardDescription>Choose how inventory will be tracked for this product</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <RadioGroup
+              value={formData.stockManagementType}
+              onValueChange={(value) => setFormData({...formData, stockManagementType: value})}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
+              <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent/50">
+                <RadioGroupItem value="quantity" id="quantity" />
+                <Label htmlFor="quantity" className="flex-1 cursor-pointer">
+                  <div className="font-medium">📦 Quantity-Based</div>
+                  <div className="text-sm text-muted-foreground">Track inventory by individual units/pieces</div>
+                </Label>
             </div>
+              <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-accent/50">
+                <RadioGroupItem value="weight" id="weight" />
+                <Label htmlFor="weight" className="flex-1 cursor-pointer">
+                  <div className="font-medium">⚖️ Weight-Based</div>
+                  <div className="text-sm text-muted-foreground">Track inventory by weight (kg, grams)</div>
+                </Label>
+              </div>
+            </RadioGroup>
             
             <div className="text-sm text-gray-600">
               {formData.stockManagementType === 'quantity' ? (
@@ -743,126 +748,141 @@ export default function EditProduct() {
               )}
             </div>
 
-                         {/* Weight-based specific fields */}
-             {formData.stockManagementType === 'weight' && (
-               <div className="mt-4 p-4 bg-white border rounded-lg">
-                 <h4 className="font-medium mb-3">Weight-Based Pricing Configuration</h4>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                   <div>
-                     <label className="block text-gray-700 mb-2" htmlFor="pricePerUnit">
-                       Price per {formData.baseWeightUnit === 'kg' ? 'Kilogram' : 'Gram'} <span className="text-red-500">*</span>
-                       <span className="text-sm text-gray-500 block">
-                         {formData.baseWeightUnit === 'kg' 
-                           ? '(e.g., $50 per kg)' 
-                           : '(e.g., $0.05 per gram = $50 per kg)'
-                         }
-                       </span>
-                     </label>
-                     <input
-                       type="number"
-                       id="pricePerUnit"
-                       name="pricePerUnit"
-                       value={formData.pricePerUnit}
-                       onChange={handleChange}
-                       className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                       step={formData.baseWeightUnit === 'kg' ? '0.01' : '0.0001'}
-                       min="0"
-                       placeholder={formData.baseWeightUnit === 'kg' ? '50.00' : '0.0500'}
-                       required={formData.stockManagementType === 'weight'}
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-gray-700 mb-2" htmlFor="costPrice">
-                       Cost per {formData.baseWeightUnit === 'kg' ? 'Kilogram' : 'Gram'} <span className="text-sm text-gray-500">(For profit tracking)</span>
-                     </label>
-                     <input
-                       type="number"
-                       id="costPrice"
-                       name="costPrice"
-                       value={formData.costPrice}
-                       onChange={handleChange}
-                       className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                       step={formData.baseWeightUnit === 'kg' ? '0.01' : '0.0001'}
-                       min="0"
-                       placeholder={formData.baseWeightUnit === 'kg' ? '30.00' : '0.0300'}
-                     />
-                     <p className="text-xs text-gray-500 mt-1">
-                       Used to calculate profit margins for weight-based products
-                     </p>
-                   </div>
-                   <div>
-                     <label className="block text-gray-700 mb-2" htmlFor="baseWeightUnit">
-                       Base Weight Unit
-                     </label>
-                     <select
-                       id="baseWeightUnit"
-                       name="baseWeightUnit"
-                       value={formData.baseWeightUnit}
-                       onChange={handleChange}
-                       className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                     >
-                       <option value="grams">Grams (g)</option>
-                       <option value="kg">Kilograms (kg)</option>
-                     </select>
-                   </div>
-                 </div>
-                 
-                 {formData.pricePerUnit && (
-                   <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
-                     <p className="text-sm text-green-700">
-                       <strong>Price Preview:</strong> 
-                       {formData.baseWeightUnit === 'kg' ? (
-                         <>
-                           <CurrencySymbol />{parseFloat(formData.pricePerUnit || '0').toFixed(2)} per kg = 
-                           <CurrencySymbol />{(parseFloat(formData.pricePerUnit || '0') / 1000).toFixed(4)} per gram
-                         </>
-                       ) : (
-                         <>
-                           <CurrencySymbol />{parseFloat(formData.pricePerUnit || '0').toFixed(4)} per gram = 
-                           <CurrencySymbol />{(parseFloat(formData.pricePerUnit || '0') * 1000).toFixed(2)} per kg
-                         </>
-                       )}
-                     </p>
-                     {formData.costPrice && (
-                       <p className="text-sm text-orange-700 mt-1">
-                         <strong>Cost Preview:</strong> 
-                         {formData.baseWeightUnit === 'kg' ? (
-                           <>
-                             <CurrencySymbol />{parseFloat(formData.costPrice || '0').toFixed(2)} per kg = 
-                             <CurrencySymbol />{(parseFloat(formData.costPrice || '0') / 1000).toFixed(4)} per gram
-                           </>
-                         ) : (
-                           <>
-                             <CurrencySymbol />{parseFloat(formData.costPrice || '0').toFixed(4)} per gram = 
-                             <CurrencySymbol />{(parseFloat(formData.costPrice || '0') * 1000).toFixed(2)} per kg
-                           </>
-                         )}
-                       </p>
-                     )}
-                     {formData.pricePerUnit && formData.costPrice && (
-                       <p className="text-sm text-blue-700 mt-1">
-                         <strong>Profit Margin:</strong> 
-                         {(() => {
-                           const price = parseFloat(formData.pricePerUnit || '0');
-                           const cost = parseFloat(formData.costPrice || '0');
-                           const profit = price - cost;
-                           const margin = price > 0 ? (profit / price) * 100 : 0;
-                           return `${margin.toFixed(1)}% (${profit >= 0 ? '+' : ''}<CurrencySymbol />${profit.toFixed(formData.baseWeightUnit === 'kg' ? 2 : 4)} per ${formData.baseWeightUnit === 'kg' ? 'kg' : 'gram'})`;
-                         })()}
-                       </p>
-                     )}
-                   </div>
-                 )}
-               </div>
-             )}
-          </div>
-        </div>
+            {/* Weight-based specific fields */}
+            {formData.stockManagementType === 'weight' && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Weight-Based Pricing Configuration</CardTitle>
+                  <CardDescription>Configure pricing per weight unit</CardDescription>
+                </CardHeader>
+                <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pricePerUnit">
+                        Price per {formData.baseWeightUnit === 'kg' ? 'Kilogram' : 'Gram'} <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                      type="number"
+                      id="pricePerUnit"
+                      name="pricePerUnit"
+                      value={formData.pricePerUnit}
+                      onChange={handleChange}
+                      step={formData.baseWeightUnit === 'kg' ? '0.01' : '0.0001'}
+                      min="0"
+                      placeholder={formData.baseWeightUnit === 'kg' ? '50.00' : '0.0500'}
+                      required={formData.stockManagementType === 'weight'}
+                    />
+                      <p className="text-sm text-muted-foreground">
+                        {formData.baseWeightUnit === 'kg' 
+                          ? '(e.g., $50 per kg)' 
+                          : '(e.g., $0.05 per gram = $50 per kg)'
+                        }
+                      </p>
+                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="costPrice">
+                        Cost per {formData.baseWeightUnit === 'kg' ? 'Kilogram' : 'Gram'}
+                      </Label>
+                      <Input
+                      type="number"
+                      id="costPrice"
+                      name="costPrice"
+                      value={formData.costPrice}
+                      onChange={handleChange}
+                      step={formData.baseWeightUnit === 'kg' ? '0.01' : '0.0001'}
+                      min="0"
+                      placeholder={formData.baseWeightUnit === 'kg' ? '30.00' : '0.0300'}
+                    />
+                      <p className="text-sm text-muted-foreground">
+                      Used to calculate profit margins for weight-based products
+                    </p>
+                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="baseWeightUnit">Base Weight Unit</Label>
+                      <Select
+                      value={formData.baseWeightUnit}
+                        onValueChange={(value) => setFormData({...formData, baseWeightUnit: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="grams">Grams (g)</SelectItem>
+                          <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                  </div>
+                </div>
+                
+                {formData.pricePerUnit && (
+                  <Alert className="mt-4">
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">Price Preview:</p>
+                        <p>
+                      {formData.baseWeightUnit === 'kg' ? (
+                        <>
+                          <CurrencySymbol />{parseFloat(formData.pricePerUnit || '0').toFixed(2)} per kg = 
+                          <CurrencySymbol />{(parseFloat(formData.pricePerUnit || '0') / 1000).toFixed(4)} per gram
+                        </>
+                      ) : (
+                        <>
+                          <CurrencySymbol />{parseFloat(formData.pricePerUnit || '0').toFixed(4)} per gram = 
+                          <CurrencySymbol />{(parseFloat(formData.pricePerUnit || '0') * 1000).toFixed(2)} per kg
+                        </>
+                      )}
+                    </p>
+                    {formData.costPrice && (
+                      <p className="text-sm text-orange-700 mt-1">
+                        <strong>Cost Preview:</strong> 
+                        {formData.baseWeightUnit === 'kg' ? (
+                          <>
+                            <CurrencySymbol />{parseFloat(formData.costPrice || '0').toFixed(2)} per kg = 
+                            <CurrencySymbol />{(parseFloat(formData.costPrice || '0') / 1000).toFixed(4)} per gram
+                          </>
+                        ) : (
+                          <>
+                            <CurrencySymbol />{parseFloat(formData.costPrice || '0').toFixed(4)} per gram = 
+                            <CurrencySymbol />{(parseFloat(formData.costPrice || '0') * 1000).toFixed(2)} per kg
+                          </>
+                        )}
+                      </p>
+                    )}
+                    {formData.pricePerUnit && formData.costPrice && (
+                      <p className="text-sm text-blue-700 mt-1">
+                        <strong>Profit Margin:</strong> 
+                        {(() => {
+                          const price = parseFloat(formData.pricePerUnit || '0');
+                          const cost = parseFloat(formData.costPrice || '0');
+                          const profit = price - cost;
+                          const margin = price > 0 ? (profit / price) * 100 : 0;
+                          return (
+                            <>
+                              {margin.toFixed(1)}% ({profit >= 0 ? '+' : ''}
+                              <CurrencySymbol />
+                              {profit.toFixed(formData.baseWeightUnit === 'kg' ? 2 : 4)} per {formData.baseWeightUnit === 'kg' ? 'kg' : 'gram'})
+                            </>
+                          );
+                        })()}
+                      </p>
+                    )}
+                  </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+                </CardContent>
+              </Card>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Basic Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Basic Information</h3>
+
             
+            <div>
             <div>
               <label className="block text-gray-700 mb-2" htmlFor="name">
                 Product Name <span className="text-red-500">*</span>
@@ -942,6 +962,179 @@ export default function EditProduct() {
                 rows={2}
               />
             </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="categoryId">Category</Label>
+                    <Select
+                      value={formData.categoryId}
+                      onValueChange={(value) => setFormData({...formData, categoryId: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category: any) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="supplierId">Preferred Supplier</Label>
+                    <Select
+                      value={formData.supplierId}
+                      onValueChange={(value) => setFormData({...formData, supplierId: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a supplier (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suppliers.map((supplier: any) => (
+                          <SelectItem key={supplier.id} value={supplier.id}>
+                            {supplier.name} {supplier.companyName && `(${supplier.companyName})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      This will be used as the default supplier when restocking this product
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="hsCode">Product HS Code</Label>
+                  <Input
+                    type="text"
+                    id="hsCode"
+                    name="hsCode"
+                    value={formData.hsCode}
+                    onChange={handleChange}
+                    placeholder="e.g., 1234.56.78"
+                    maxLength={20}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Harmonized System Code for customs and tax classification
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="pricing" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pricing Information</CardTitle>
+                <CardDescription>Set up product pricing and costs</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Only show pricing fields for simple products and quantity-based */}
+                {formData.productType === 'simple' && formData.stockManagementType === 'quantity' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Price <span className="text-destructive">*</span></Label>
+                      <Input
+                        type="number"
+                        id="price"
+                        name="price"
+                        value={formData.price}
+                        onChange={handleChange}
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="comparePrice">Compare Price</Label>
+                      <Input
+                        type="number"
+                        id="comparePrice"
+                        name="comparePrice"
+                        value={formData.comparePrice}
+                        onChange={handleChange}
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-muted-foreground">Optional - for showing discounts</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="costPrice">Cost Price</Label>
+                      <Input
+                        type="number"
+                        id="costPrice"
+                        name="costPrice"
+                        value={formData.costPrice}
+                        onChange={handleChange}
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                      />
+                      <p className="text-xs text-muted-foreground">For profit tracking</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Weight-based pricing info */}
+                {formData.productType === 'simple' && formData.stockManagementType === 'weight' && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">⚖️ Weight-Based Product Pricing</p>
+                        <p>This product uses weight-based pricing. The price per gram is configured in the Stock Management section above.</p>
+                        {formData.pricePerUnit && (
+                          <p>Current Rate: <CurrencySymbol />{parseFloat(formData.pricePerUnit).toFixed(4)} per gram</p>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Variable product pricing info */}
+                {formData.productType === 'variable' && (
+                  <Alert>
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">Variable Product Pricing</p>
+                        <p>Prices will be set individually for each variant in the variations section.</p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Group product pricing info */}
+                {formData.productType === 'group' && (
+                  <Alert>
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">Group Product Pricing</p>
+                        <p>Product pricing will come from the selected addons. Customers will choose which addons they want.</p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="media" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Product Media
+                </CardTitle>
+                <CardDescription>Upload product images and banners</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
 
             {/* Cannabis-specific fields */}
             <div className="mt-6 p-4 border rounded-lg bg-green-50 hidden">
@@ -1029,11 +1222,18 @@ export default function EditProduct() {
                 </div>
               </div>
             </div>
-          </div>
+              </CardContent>
+            </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle>Product Images</CardTitle>
+                <CardDescription>Upload and manage product images</CardDescription>
+              </CardHeader>
+              <CardContent>
           {/* Right Column - Pricing & Details */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Pricing & Details</h3>
+            <h3 className="text-lg font-semibold">Pricing, Category & Images</h3>
             
             {/* Only show pricing fields for simple products and quantity-based */}
             {formData.productType === 'simple' && formData.stockManagementType === 'quantity' && (
@@ -1071,7 +1271,7 @@ export default function EditProduct() {
                   />
                 </div>
 
-                <div>
+                <div className="">
                   <label className="block text-gray-700 mb-2" htmlFor="costPrice">
                     Cost Price <span className="text-sm text-gray-500">(For profit tracking)</span>
                   </label>
@@ -1231,38 +1431,6 @@ export default function EditProduct() {
                         placeholder="0.00"
                       />
                     </div>
-
-                    <div>
-                      <label className="block text-gray-700 mb-2" htmlFor="fixedNotifiedValueOrRetailPrice">
-                        Fixed Notified Value/Retail Price
-                      </label>
-                      <input
-                        type="number"
-                        id="fixedNotifiedValueOrRetailPrice"
-                        name="fixedNotifiedValueOrRetailPrice"
-                        value={formData.fixedNotifiedValueOrRetailPrice}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-700 mb-2" htmlFor="saleType">
-                        Sale Type
-                      </label>
-                      <input
-                        type="text"
-                        id="saleType"
-                        name="saleType"
-                        value={formData.saleType}
-                        onChange={handleChange}
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        placeholder="Goods at standard rate"
-                      />
-                    </div>
                   </div>
                 </div>
               </>
@@ -1279,7 +1447,7 @@ export default function EditProduct() {
                 {formData.pricePerUnit && (
                   <div className="mt-2 text-sm">
                     <p className="text-yellow-800">
-                      <strong>Current Rate:</strong> <CurrencySymbol />{parseFloat(formData.pricePerUnit).toFixed(4)} per gram
+                                              <strong>Current Rate:</strong> <CurrencySymbol />{parseFloat(formData.pricePerUnit).toFixed(4)} per gram
                     </p>
                   </div>
                 )}
@@ -1291,7 +1459,7 @@ export default function EditProduct() {
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h4 className="font-medium text-blue-800 mb-2">Variable Product Pricing</h4>
                 <p className="text-sm text-blue-700">
-                  Prices will be set individually for each variant below. Each variant can have its own price, compare price, and cost price.
+                  Prices will be set individually for each variant below. Each variant can have its own price.
                 </p>
               </div>
             )}
@@ -1305,24 +1473,7 @@ export default function EditProduct() {
               </div>
             )}
 
-            {/* Base price field for group products */}
-            {formData.productType === 'group' && (
-              <div>
-                <label className="block text-gray-700 mb-2" htmlFor="price">
-                  Base Price <span className="text-sm text-gray-500">(Optional - can be 0 if all pricing comes from addons)</span>
-                </label>
-                <input
-                  type="number"
-                  id="price"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-            )}
+            
 
             <div>
               <label className="block text-gray-700 mb-2" htmlFor="categoryId">
@@ -1385,159 +1536,9 @@ export default function EditProduct() {
                 Harmonized System Code for customs and tax classification
               </p>
             </div>
+          </div>
 
-            {/* Additional Product Identification Fields */}
-            <div className="mt-6 p-4 border rounded-lg bg-blue-50">
-              <h4 className="text-lg font-semibold mb-4 text-blue-800">📋 Product Identification Numbers</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-700 mb-2" htmlFor="serialNumber">
-                    Serial Number
-                  </label>
-                  <input
-                    type="text"
-                    id="serialNumber"
-                    name="serialNumber"
-                    value={formData.serialNumber}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., SN123456789"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 mb-2" htmlFor="listNumber">
-                    List Number
-                  </label>
-                  <input
-                    type="text"
-                    id="listNumber"
-                    name="listNumber"
-                    value={formData.listNumber}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., LIST-001"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 mb-2" htmlFor="bcNumber">
-                    BC Number
-                  </label>
-                  <input
-                    type="text"
-                    id="bcNumber"
-                    name="bcNumber"
-                    value={formData.bcNumber}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., BC123456"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 mb-2" htmlFor="lotNumber">
-                    Lot Number
-                  </label>
-                  <input
-                    type="text"
-                    id="lotNumber"
-                    name="lotNumber"
-                    value={formData.lotNumber}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    placeholder="e.g., LOT-2024-001"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-gray-700 mb-2" htmlFor="expiryDate">
-                    Expiry Date
-                  </label>
-                  <input
-                    type="date"
-                    id="expiryDate"
-                    name="expiryDate"
-                    value={formData.expiryDate}
-                    onChange={handleChange}
-                    className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Product expiration date for tracking and compliance
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Unit of Measurement */}
-            <div className="mt-6 p-4 border rounded-lg bg-yellow-50">
-              <h4 className="text-lg font-semibold mb-4 text-yellow-800">📏 Unit of Measurement</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-700 mb-2" htmlFor="uom">
-                    Unit of Measurement (UOM)
-                  </label>
-                  <div className="flex gap-2">
-                    <select
-                      id="uom"
-                      name="uom"
-                      value={formData.uom}
-                      onChange={handleChange}
-                      className="flex-1 p-2 border rounded focus:border-blue-500 focus:outline-none"
-                    >
-                      <option value="">Select UOM</option>
-                      <option value="MT">MT</option>
-                      <option value="Bill of lading">Bill of lading</option>
-                      <option value="SET">SET</option>
-                      <option value="KWH">KWH</option>
-                      <option value="40KG">40KG</option>
-                      <option value="Liter">Liter</option>
-                      <option value="SqY">SqY</option>
-                      <option value="Bag">Bag</option>
-                      <option value="KG">KG</option>
-                      <option value="MMBTU">MMBTU</option>
-                      <option value="Meter">Meter</option>
-                      <option value="Pcs">Pcs</option>
-                      <option value="Carat">Carat</option>
-                      <option value="Cubic Metre">Cubic Metre</option>
-                      <option value="Dozen">Dozen</option>
-                      <option value="Gram">Gram</option>
-                      <option value="Gallon">Gallon</option>
-                      <option value="Kilogram">Kilogram</option>
-                      <option value="Pound">Pound</option>
-                      <option value="Timber Logs">Timber Logs</option>
-                      <option value="Numbers, pieces, units">Numbers, pieces, units</option>
-                      <option value="Packs">Packs</option>
-                      <option value="Pair">Pair</option>
-                      <option value="Square Foot">Square Foot</option>
-                      <option value="Square Metre">Square Metre</option>
-                      <option value="Thousand Unit">Thousand Unit</option>
-                      <option value="Mega Watt">Mega Watt</option>
-                      <option value="Foot">Foot</option>
-                      <option value="Barrels">Barrels</option>
-                      <option value="NO">NO</option>
-                      <option value="1000 kWh">1000 kWh</option>
-                      <option value="custom">Custom (Enter below)</option>
-                    </select>
-                  </div>
-                  {formData.uom === 'custom' && (
-                    <div className="mt-2">
-                      <input
-                        type="text"
-                        placeholder="Enter custom UOM"
-                        className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
-                        onChange={(e) => setFormData(prev => ({ ...prev, uom: e.target.value }))}
-                      />
-                    </div>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Select the unit of measurement for this product or enter a custom one
-                  </p>
-                </div>
-              </div>
-            </div>
-
-        {/* Product Gallery Manager */}
+            {/* Product Gallery Manager */}
         <div className="mt-6 bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl shadow-sm">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
@@ -1607,10 +1608,10 @@ export default function EditProduct() {
                 accept="image/*"
                 onChange={handleGalleryImageUpload}
                 className="hidden"
-                id="gallery-upload-edit"
+                id="gallery-upload"
                 disabled={submitting || uploadingGallery}
               />
-              <label htmlFor="gallery-upload-edit" className={`w-full h-full flex flex-col items-center justify-center ${uploadingGallery ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+              <label htmlFor="gallery-upload" className={`w-full h-full flex flex-col items-center justify-center ${uploadingGallery ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                 <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors">
                   {uploadingGallery ? (
                     <svg className="w-6 h-6 text-purple-600 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -1642,7 +1643,7 @@ export default function EditProduct() {
         </div>
 
         {/* Hero Banner Manager */}
-        <div className="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl shadow-sm hidden">
+        <div className="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl shadow-sm ">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
               <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1689,10 +1690,10 @@ export default function EditProduct() {
                 accept="image/*"
                 onChange={handleBannerImageUpload}
                 className="hidden"
-                id="banner-upload-edit"
+                id="banner-upload"
                 disabled={submitting || uploadingBanner}
               />
-              <label htmlFor="banner-upload-edit" className={`aspect-[16/9] md:aspect-[21/9] flex flex-col items-center justify-center ${uploadingBanner ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+              <label htmlFor="banner-upload" className={`aspect-[16/9] md:aspect-[21/9] flex flex-col items-center justify-center ${uploadingBanner ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
                   {uploadingBanner ? (
                     <svg className="w-8 h-8 text-emerald-600 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -1709,7 +1710,7 @@ export default function EditProduct() {
                   {uploadingBanner ? 'Uploading Banner...' : 'Upload Hero Banner'}
                 </h4>
                 <p className="text-gray-600 text-center max-w-md">
-                  {uploadingBanner ? 'Please wait while your banner is being uploaded.' : 'Choose a high-quality banner image that represents your product. Recommended size: 840x270px or larger.'}
+                  {uploadingBanner ? 'Please wait while your banner is being uploaded.' : 'Choose a high-quality banner image that represents your product. Recommended size: 840x270px • or larger.'}
                 </p>
                 <div className="mt-4 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium">
                   {uploadingBanner ? 'Uploading...' : 'Click to Browse Files'}
@@ -1722,99 +1723,247 @@ export default function EditProduct() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span> Recommended: 840x270px • Max 10MB • Stored in 'products/banner' directory</span>
+            <span>Recommended: 840x270px • Banner stored in 'products/banner' directory • Max 10MB</span>
           </div>
         </div>
 
-            
-          </div>
-        </div>
-
-
-        {/* Variable Product Variants - Using our optimized VariantManager */}
+        {/* Variable Product Variation Attributes */}
         {formData.productType === 'variable' && (
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-4">🔧 Product Variants</h3>
-            <p className="text-gray-600 mb-4">
-              Manage individual variant pricing, and settings. Variants are automatically organized by their attributes.
-            </p>
+          <div className="mt-6 mb-6 bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl shadow-sm">
+            <h3 className="text-lg font-semibold mb-4">🔧 Variation Attributes</h3>
             
-            {variantsLoading && (
-              <div className="p-4 text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-gray-600">Loading variants...</p>
-              </div>
-            )}
-            
-            {!variantsLoading && variantError && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800">Error loading variant data: {variantError}</p>
-                <button
-                  type="button"
-                  onClick={() => refetchVariants()}
-                  className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
-                >
-                  Retry Loading Variants
-                </button>
-              </div>
-            )}
-            
-            {!variantsLoading && !variantError && !variantData && (
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-yellow-800">No variant data available. This might be because:</p>
-                <ul className="mt-2 text-sm text-yellow-700 list-disc list-inside">
-                  <li>The product has no variants created yet</li>
-                  <li>There was an error loading the variant data</li>
-                  <li>The product type was recently changed to variable</li>
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => refetchVariants()}
-                  className="mt-2 px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
-                >
-                  Retry Loading Variants
-                </button>
-              </div>
-            )}
-            
-            {!variantsLoading && variantData && variantData.variants.length === 0 && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-blue-800">No variants found for this variable product.</p>
-                <p className="text-sm text-blue-700 mt-1">
-                  Variants are usually created when you first set up the product with variation attributes.
-                </p>
-                <div className="mt-4">
+            {/* Add New Attribute */}
+            <div className="mb-4 p-4 border rounded-lg bg-gray-50">
+              <h4 className="font-medium mb-3">Add Variation Attribute</h4>
+              <select
+                onChange={(e) => e.target.value && addSelectedAttribute(e.target.value)}
+                className="w-full p-2 border rounded focus:border-blue-500 focus:outline-none"
+                value=""
+              >
+                <option value="">Select an attribute to add...</option>
+                {availableAttributes
+                  .filter(attr => !selectedAttributes.some(selected => selected.id === attr.id))
+                  .map((attr) => (
+                    <option key={attr.id} value={attr.id}>
+                      {attr.name} ({attr.type})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Selected Attributes */}
+            <div className="space-y-3 max-h-96 overflow-y-auto flex gap-3 flex-wrap" style={{  display: 'flex', flexWrap: 'wrap', gap: '10px', margin: '10px 0 0 2%' }}>
+              {selectedAttributes.map((selectedAttr) => {
+                const dbAttribute = availableAttributes.find(attr => attr.id === selectedAttr.id);
+                if (!dbAttribute) return null;
+
+                return (
+                  <div key={selectedAttr.id} className="p-4 border rounded-lg bg-white" style={{  width: '49%', boxSizing: 'border-box', height: '100%' }}>
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="font-medium">
+                        {selectedAttr.name} 
+                        <span className="ml-2 text-sm text-gray-500">({dbAttribute.type})</span>
+                        <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                          Frontend: {dbAttribute.type === 'color' ? 'Color Swatches' : 
+                                   dbAttribute.values.length > 5 ? 'Dropdown' : 'Radio Buttons'}
+                        </span>
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => removeSelectedAttribute(selectedAttr.id)}
+                        className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      
+                      {/* Render different UI based on attribute type */}
+                      {dbAttribute.type === 'color' ? (
+                        // Color swatches preview
+                        <div>
+                        </div>
+                      ) : dbAttribute.values.length > 5 ? (
+                        // Dropdown preview
+                        <div>
+                        </div>
+                      ) : (
+                        // Radio buttons preview
+                        <div>
+                        </div>
+                      )}
+
+                      {/* Value selection checkboxes */}
+                      <div className="border-t pt-3">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-32 overflow-y-auto">
+                          {dbAttribute.values.map((value) => (
+                            <label key={value.id} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedAttr.values.some(v => v.id === value.id)}
+                                onChange={(e) => {
+                                  const newValues = e.target.checked
+                                    ? [...selectedAttr.values, value]
+                                    : selectedAttr.values.filter(v => v.id !== value.id);
+                                  updateSelectedAttributeValues(selectedAttr.id, newValues);
+                                }}
+                                className="rounded"
+                              />
+                              <span className="text-sm">
+                                {value.value}
+                                {value.colorCode && (
+                                  <span 
+                                    className="inline-block w-4 h-4 rounded-full ml-1 border"
+                                    style={{ backgroundColor: value.colorCode }}
+                                  ></span>
+                                )}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="text-sm text-gray-500 mt-2">
+                          {/* Selected: {selectedAttr.values.map(v => v.value).join(', ') || 'None'} */}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {generatedVariants.length > 0 && (
+              <div className="mt-8 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-semibold">Generated Variants ({generatedVariants.length})</h4>
                   <button
                     type="button"
-                    onClick={() => {
-                      // Redirect to a variant creation page or show variant creation form
-                      alert('Variant creation functionality would be implemented here. For now, please use the add product page to create products with variants.');
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onClick={() => setShowVariantGeneration(!showVariantGeneration)}
+                    className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
                   >
-                    Create Variants
+                    {showVariantGeneration ? 'Hide' : 'Show'} Variants
                   </button>
-                  <p className="text-xs text-blue-600 mt-2">
-                    Note: Currently, variants need to be created when first adding the product. This feature is under development.
-                  </p>
                 </div>
+
+                {showVariantGeneration && (
+                  <div className="space-y-4">
+                    {(() => {
+                      // Group variants by first attribute for collapsible sections
+                      const groupedVariants = generatedVariants.reduce((groups, variant, index) => {
+                        const firstAttr = variant.attributes[0];
+                        const groupKey = firstAttr ? `${firstAttr.attributeName}: ${firstAttr.value}` : 'Default';
+                        
+                        if (!groups[groupKey]) {
+                          groups[groupKey] = [];
+                        }
+                        groups[groupKey].push({ ...variant, index });
+                        return groups;
+                      }, {} as { [key: string]: (GeneratedVariant & { index: number })[] });
+
+                      return Object.entries(groupedVariants).map(([groupName, groupVariants]) => (
+                        <div key={groupName} className="border rounded-lg bg-white">
+                          {/* Group Header */}
+                          <div
+                            className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                            onClick={() => toggleSection(groupName)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <h3 className="font-semibold text-lg">{groupName}</h3>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                                {groupVariants.length} variant{groupVariants.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                              <div className="text-sm text-gray-600">
+                                Price Range: {(() => {
+                                  const prices = groupVariants.map(v => parseFloat(v.price) || 0);
+                                  const min = Math.min(...prices);
+                                  const max = Math.max(...prices);
+                                  return min === max ? formatPrice(min) : `${formatPrice(min)} - ${formatPrice(max)}`;
+                                })()}
+                              </div>
+                              
+                              <svg
+                                className={`w-5 h-5 transition-transform ${
+                                  expandedSections.has(groupName) ? 'rotate-180' : ''
+                                }`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                          </div>
+
+                          {/* Group Content */}
+                          {expandedSections.has(groupName) && (
+                            <div className="border-t">
+                              {groupVariants.map((variant) => (
+                                <div key={variant.index} className="p-4 border-b last:border-b-0 hover:bg-gray-50">
+                                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                                    {/* Variant Info */}
+                                    <div className="lg:col-span-4">
+                                      <div className="flex flex-wrap gap-1">
+                                        {variant.attributes.map((attr, attrIndex) => (
+                                          <span
+                                            key={attrIndex}
+                                            className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                                          >
+                                            {attr.attributeName}: {attr.value}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    {/* Pricing */}
+                                    <div className="lg:col-span-3">
+                                      <div className="space-y-2">
+                                        <div>
+                                          <label className="block text-xs text-gray-600">Price</label>
+                                          <input
+                                            type="text"
+                                            value={variant.price}
+                                            onChange={(e) => updateVariant(variant.index, 'price', e.target.value)}
+                                            className="w-full p-1 text-sm border rounded"
+                                            placeholder="0.00"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+
+
+                                    {/* Actions */}
+                                    <div className="lg:col-span-2 flex gap-2">
+                                      <label className="flex items-center">
+                                        <input
+                                          type="checkbox"
+                                          checked={variant.isActive}
+                                          onChange={(e) => updateVariant(variant.index, 'isActive', e.target.checked)}
+                                          className="mr-1"
+                                        />
+                                        <span className="text-sm">Active</span>
+                                      </label>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                )}
               </div>
-            )}
-            
-            {!variantsLoading && variantData && variantData.variants.length > 0 && (
-              <VariantManager
-                variants={variantData.variants}
-                onVariantUpdate={handleVariantUpdate}
-                onVariantDelete={handleVariantDelete}
-                isEditing={true}
-              />
             )}
           </div>
         )}
 
         {/* Product Addons - Available for all product types */}
         {(
-          <div className="mt-6 hidden">
+          <div className="mt-6 ">
             <h3 className="text-lg font-semibold mb-4">🧩 Product Addons</h3>
             
             {/* Add New Addon */}
@@ -2013,39 +2162,6 @@ export default function EditProduct() {
               />
               Active
             </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="isDigital"
-                checked={formData.isDigital}
-                onChange={handleChange}
-                className="mr-2"
-              />
-              Digital Product
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="requiresShipping"
-                checked={formData.requiresShipping}
-                onChange={handleChange}
-                className="mr-2"
-              />
-              Requires Shipping
-            </label>
-
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="taxable"
-                checked={formData.taxable}
-                onChange={handleChange}
-                className="mr-2"
-              />
-              Taxable
-            </label>
           </div>
         </div>
 
@@ -2094,22 +2210,114 @@ export default function EditProduct() {
             </div>
           </div>
         </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <Tabs defaultValue="settings" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-1">
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="settings" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Product Settings
+                </CardTitle>
+                <CardDescription>Configure product visibility and features</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="isFeatured"
+                      checked={formData.isFeatured}
+                      onCheckedChange={(checked) => setFormData({...formData, isFeatured: checked})}
+                    />
+                    <Label htmlFor="isFeatured">Featured Product</Label>
+          </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="isActive"
+                      checked={formData.isActive}
+                      onCheckedChange={(checked) => setFormData({...formData, isActive: checked})}
+                    />
+                    <Label htmlFor="isActive">Active</Label>
+        </div>
         
-        <div className="flex gap-4 mt-8">
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-            disabled={submitting}
-          >
-            {submitting ? 'Updating...' : 'Update Product'}
-          </button>
-          <button
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="taxable"
+                      checked={formData.taxable}
+                      onCheckedChange={(checked) => setFormData({...formData, taxable: checked})}
+                    />
+                    <Label htmlFor="taxable">Taxable</Label>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="metaTitle">Meta Title</Label>
+                      <Input
+                        type="text"
+                        id="metaTitle"
+                        name="metaTitle"
+                        value={formData.metaTitle}
+                        onChange={handleChange}
+                        placeholder="SEO meta title"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="metaDescription">Meta Description</Label>
+                      <Textarea
+                        id="metaDescription"
+                        name="metaDescription"
+                        value={formData.metaDescription}
+                        onChange={handleChange}
+                        placeholder="SEO meta description"
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Product Tags */}
+                <div className="space-y-4">
+                  <Label>Product Tags</Label>
+                  <div className="p-4 border rounded-lg bg-muted/50">
+                    <TagSelector
+                      selectedTags={selectedTags}
+                      onTagsChange={setSelectedTags}
+                      disabled={submitting}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex gap-4 pt-6 border-t">
+          <Button type="submit" disabled={submitting} className="min-w-[120px]">
+            <PackagePlus className="h-4 w-4 mr-2" />
+            {submitting ? 'Creating...' : 'Create Product'}
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             onClick={() => router.push('/products')}
-            className="px-6 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
           >
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>

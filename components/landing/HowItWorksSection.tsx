@@ -2,7 +2,6 @@ import { Section } from "@/components/ui/section";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import dashboardImage from "@/public/landing-assets/analytics-dashboard.jpg";
 
 const steps = [
   {
@@ -48,7 +47,7 @@ export function HowItWorksSection() {
             {steps.map((step, index) => (
               <Card key={index} className="border-0 shadow-soft hover:shadow-medium transition-all duration-300 rounded-3xl bg-white/10 backdrop-blur-sm">
                 <CardContent className="p-6 text-center space-y-4">
-                  <div className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+                  <div className="w-16 h-16 bg-white text-muted rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
                     {step.number}
                   </div>
                   <h3 className="text-xl font-semibold text-white">{step.title}</h3>
@@ -60,8 +59,10 @@ export function HowItWorksSection() {
         </div>
         <div className="relative">
           <Image 
-            src={dashboardImage} 
+            src="/landing-assets/analytics-dashboard.jpg" 
             alt="Analytics dashboard interface" 
+            width={600}
+            height={400}
             className="w-full h-auto rounded-3xl shadow-strong"
           />
           <div className="absolute inset-0 bg-black/20 rounded-3xl"></div>

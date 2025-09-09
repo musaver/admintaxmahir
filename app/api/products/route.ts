@@ -76,6 +76,7 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       metaDescription,
       productType,
       variationAttributes,
+      variationMatrix,
       variants,
       addons,
       // Weight-based stock management fields
@@ -90,6 +91,17 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       difficulty,
       floweringTime,
       yieldAmount,
+      // Additional product identification fields
+      serialNumber,
+      listNumber,
+      bcNumber,
+      lotNumber,
+      expiryDate,
+      // Additional tax fields
+      fixedNotifiedValueOrRetailPrice,
+      saleType,
+      // Unit of measurement
+      uom,
       // Tax and discount fields
       taxAmount,
       taxPercentage,
@@ -100,6 +112,14 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       fedPayableTax,
       discount
     } = await req.json();
+    
+    // Debug logging for variable products
+    if (productType === 'variable') {
+      console.log('Variable product creation data:');
+      console.log('variants:', variants);
+      console.log('variationMatrix:', variationMatrix);
+      console.log('variationMatrix?.variants:', variationMatrix?.variants);
+    }
     
     // Validate required fields
     if (!name) {
@@ -151,7 +171,7 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       metaTitle: metaTitle || null,
       metaDescription: metaDescription || null,
       productType: productType || 'simple',
-      variationAttributes: variationAttributes ? JSON.stringify(variationAttributes) : null,
+      variationAttributes: (variationMatrix?.attributes || variationAttributes) ? JSON.stringify(variationMatrix?.attributes || variationAttributes) : null,
       // Weight-based stock management fields
       stockManagementType: stockManagementType || 'quantity',
       pricePerUnit: pricePerUnit ? pricePerUnit.toString() : null,
@@ -162,6 +182,17 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       difficulty: difficulty || null,
       floweringTime: floweringTime || null,
       yieldAmount: yieldAmount || null,
+      // Additional product identification fields
+      serialNumber: serialNumber || null,
+      listNumber: listNumber || null,
+      bcNumber: bcNumber || null,
+      lotNumber: lotNumber || null,
+      expiryDate: expiryDate || null,
+      // Additional tax fields
+      fixedNotifiedValueOrRetailPrice: fixedNotifiedValueOrRetailPrice ? fixedNotifiedValueOrRetailPrice.toString() : null,
+      saleType: saleType || null,
+      // Unit of measurement
+      uom: uom || null,
       // Tax and discount fields
       taxAmount: taxAmount ? taxAmount.toString() : null,
       taxPercentage: taxPercentage ? taxPercentage.toString() : null,
@@ -177,9 +208,12 @@ export const POST = withTenant(async (req: NextRequest, context) => {
     await db.insert(products).values(newProduct);
     
     // If it's a variable product, create variants
-    if (productType === 'variable' && variants && variants.length > 0) {
-      const variantData = variants.map((variant: any) => ({
+    // Handle both old format (variants) and new format (variationMatrix.variants)
+    const variantsToCreate = variationMatrix?.variants || variants;
+    if (productType === 'variable' && variantsToCreate && variantsToCreate.length > 0) {
+      const variantData = variantsToCreate.map((variant: any) => ({
         id: uuidv4(),
+        tenantId: context.tenantId,
         productId: newProduct.id,
         title: variant.title,
         sku: variant.sku || null,
@@ -277,6 +311,7 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       // Create inventory record
       await db.insert(productInventory).values({
         id: inventoryId,
+        tenantId: context.tenantId,
         productId: newProduct.id,
         variantId: null, // For simple products, no variant
         quantity: parseInt(initialStock.toString()),
@@ -294,6 +329,7 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       // Create stock movement record
       await db.insert(stockMovements).values({
         id: stockMovementId,
+        tenantId: context.tenantId,
         inventoryId: inventoryId,
         productId: newProduct.id,
         variantId: null,

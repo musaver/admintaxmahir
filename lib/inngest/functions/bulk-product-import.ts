@@ -50,6 +50,20 @@ interface ProductImportRow {
   floweringTime?: string;
   yieldAmount?: string;
   
+  // Additional product identification fields
+  serialNumber?: string;
+  listNumber?: string;
+  bcNumber?: string;
+  lotNumber?: string;
+  expiryDate?: string;
+  
+  // Additional tax fields
+  fixedNotifiedValueOrRetailPrice?: string;
+  saleType?: string;
+  
+  // Unit of measurement
+  uom?: string;
+  
   // Stock fields
   stockQuantity?: string;
   stockStatus?: string;
@@ -136,6 +150,20 @@ function parseCSV(csvText: string): ProductImportRow[] {
     'difficulty': ['difficulty', 'growing difficulty'],
     'floweringTime': ['flowering time'],
     'yieldAmount': ['yield amount', 'expected yield'],
+    
+    // Additional product identification fields
+    'serialNumber': ['serial number', 'serial no', 'serial'],
+    'listNumber': ['list number', 'list no'],
+    'bcNumber': ['bc number', 'bc no'],
+    'lotNumber': ['lot number', 'lot no', 'batch number'],
+    'expiryDate': ['expiry date', 'expiry', 'expiration date', 'exp date'],
+    
+    // Additional tax fields
+    'fixedNotifiedValueOrRetailPrice': ['fixed notified value/retail price', 'fixed notified value', 'retail price', 'notified value'],
+    'saleType': ['sale type', 'type of sale'],
+    
+    // Unit of measurement
+    'uom': ['uom', 'unit of measurement', 'unit', 'measurement unit'],
     
     // Stock fields
     'stockQuantity': ['stock quantity', 'quantity', 'initial stock', 'stock qty'],
@@ -338,6 +366,20 @@ async function processProductChunk(
         difficulty: product.difficulty?.trim() || null,
         floweringTime: product.floweringTime?.trim() || null,
         yieldAmount: product.yieldAmount?.trim() || null,
+        
+        // Additional product identification fields
+        serialNumber: product.serialNumber?.trim() || null,
+        listNumber: product.listNumber?.trim() || null,
+        bcNumber: product.bcNumber?.trim() || null,
+        lotNumber: product.lotNumber?.trim() || null,
+        expiryDate: product.expiryDate?.trim() || null,
+        
+        // Additional tax fields
+        fixedNotifiedValueOrRetailPrice: parseDecimal(product.fixedNotifiedValueOrRetailPrice, null),
+        saleType: product.saleType?.trim() || null,
+        
+        // Unit of measurement
+        uom: product.uom?.trim() || null,
         
         createdAt: new Date(),
         updatedAt: new Date(),

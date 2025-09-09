@@ -71,8 +71,8 @@ export default function LoginPage() {
           <div className="flex items-center space-x-3">
             <div className="bg-card border rounded-lg p-2 shadow-sm">
               <Image
-                src="/taxmahirlogo.png"
-                alt="TaxMahir"
+                src="/logo.png"
+                alt="Hisaab360"
                 width={120}
                 height={32}
                 className="h-8 w-auto"
@@ -101,14 +101,14 @@ export default function LoginPage() {
           <div className="relative z-20 flex items-center text-lg font-medium">
             <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-2 mr-3">
               <Image
-                src="/taxmahirlogo.png"
-                alt="TaxMahir"
+                src="/logo.png"
+                alt="Hisaab360"
                 width={100}
                 height={28}
                 className="h-7 w-auto"
               />
             </div>
-            TaxMahir Admin
+            Hisaab360 Admin
           </div>
           <div className="relative z-20 mt-auto">
             <blockquote className="space-y-2">

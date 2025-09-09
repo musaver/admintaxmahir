@@ -101,6 +101,20 @@ This feature allows tenants to import large numbers of products with stock infor
 - `Flowering Time` - Time to flower
 - `Yield Amount` - Expected yield
 
+### Product Identification Columns (Optional)
+- `Serial Number` - Product serial number for tracking
+- `List Number` - Product list reference number
+- `BC Number` - BC identification number
+- `Lot Number` - Batch or lot number for tracking
+- `Expiry Date` - Product expiration date (YYYY-MM-DD format)
+
+### Additional Tax Columns (Optional)
+- `Fixed Notified Value/Retail Price` - Fixed notified value or retail price (decimal)
+- `Sale Type` - Type of sale (default: "Goods at standard rate")
+
+### Unit of Measurement Column (Optional)
+- `UOM` - Unit of measurement (select from predefined list or custom value)
+
 ### Valid Stock Status Values
 Based on the exact predefined reasons in the add stock movement form:
 - `Initial Stock` (default if not specified)
@@ -115,9 +129,9 @@ Based on the exact predefined reasons in the add stock movement form:
 
 ### Example CSV
 ```csv
-Name,Price,SKU,Description,Short Description,Compare Price,Cost Price,Category ID,Subcategory ID,Supplier ID,Tags,Weight,Is Featured,Is Active,Is Digital,Requires Shipping,Taxable,Meta Title,Meta Description,Tax Amount,Tax Percentage,HS Code,Product Type,Stock Management Type,Stock Quantity,Status,Location
-"Premium Product 1","29.99","PROD-001","High quality premium product with detailed description","Premium quality product","39.99","20.00","cat-123","subcat-456","sup-789","electronics,premium,new","0.5","true","true","false","true","true","Premium Product - Best Quality","Premium product with amazing features","2.50","8.5","1234567890","simple","quantity","100","Initial Stock","Warehouse A"
-"Digital Service","19.99","DIG-001","Digital download service","Instant download","","15.00","cat-456","","","digital,service,download","","false","true","true","false","true","Digital Service - Instant Access","Download digital service instantly","","","","simple","quantity","0","",""
+Name,Price,SKU,Description,Short Description,Compare Price,Cost Price,Category ID,Subcategory ID,Supplier ID,Tags,Weight,Is Featured,Is Active,Is Digital,Requires Shipping,Taxable,Meta Title,Meta Description,Tax Amount,Tax Percentage,HS Code,Product Type,Stock Management Type,Stock Quantity,Status,Location,Serial Number,List Number,BC Number,Lot Number,Expiry Date,Fixed Notified Value/Retail Price,Sale Type,UOM
+"Premium Product 1","29.99","PROD-001","High quality premium product with detailed description","Premium quality product","39.99","20.00","cat-123","subcat-456","sup-789","electronics,premium,new","0.5","true","true","false","true","true","Premium Product - Best Quality","Premium product with amazing features","2.50","8.5","1234567890","simple","quantity","100","Initial Stock","Warehouse A","SN123456789","LIST-001","BC123456","LOT-2024-001","2024-12-31","35.00","Goods at standard rate","Pcs"
+"Digital Service","19.99","DIG-001","Digital download service","Instant download","","15.00","cat-456","","","digital,service,download","","false","true","true","false","true","Digital Service - Instant Access","Download digital service instantly","","","","simple","quantity","0","","","","","","","","","",""
 ```
 
 ### Simplified Example (Required Fields Only)

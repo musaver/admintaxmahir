@@ -33,6 +33,9 @@ import {
   User,
   ChevronDown,
   PanelLeft,
+  Shield,
+  UserCog,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLayout } from '@/app/contexts/LayoutContext';
@@ -114,17 +117,8 @@ export function Header({ className }: HeaderProps) {
         {/* Logo and Brand */}
         <div className="flex items-center space-x-4">
           <Link href="/dashboard" className="flex items-center space-x-3">
-            <div className="bg-black border rounded-lg p-2 shadow-sm">
-              <Image
-                src="/taxmahirlogo.png"
-                alt="TaxMahir"
-                width={120}
-                height={32}
-                className="h-6 w-6"
-                priority
-              />
-            </div>
-            <span className="text-xl font-bold hidden sm:block">Tax Mahir</span>
+            
+            <span className="text-xl font-bold hidden sm:block">Hisaab360 Admin</span>
           </Link>
         </div>
 
@@ -193,7 +187,7 @@ export function Header({ className }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={toggleLayout}
-            className="h-8 w-8"
+            className="h-8 w-8 hidden"
           >
             <PanelLeft className="h-4 w-4" />
             <span className="sr-only">Switch to sidebar layout</span>
@@ -265,6 +259,25 @@ export function Header({ className }: HeaderProps) {
                 <Link href="/settings" className="flex items-center">
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/admins" className="flex items-center">
+                  <UserCog className="h-4 w-4 mr-2" />
+                  Admin Users
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/roles" className="flex items-center">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Admin Roles
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/reports" className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Reports
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

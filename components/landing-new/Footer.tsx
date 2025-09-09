@@ -23,9 +23,9 @@ const links = [
 ];
 
 const socialLinks = [
-  { icon: Facebook, target: '_blank', href: 'https://www.facebook.com/TaxMahir4u', color: 'from-blue-400 to-blue-600' },
-  { icon: Instagram, target: '_blank', href: 'https://www.instagram.com/TaxMahir4u', color: 'from-gray-400 to-gray-600' },
-  { icon: Linkedin, target: '_blank', href: 'https://www.linkedin.com/company/tax-mahir/', color: 'from-blue-600 to-blue-800' },
+  { icon: Facebook, target: '_blank', href: 'https://www.facebook.com/', color: 'from-blue-400 to-blue-600' },
+  { icon: Instagram, target: '_blank', href: 'https://www.instagram.com/', color: 'from-gray-400 to-gray-600' },
+  { icon: Linkedin, target: '_blank', href: 'https://www.linkedin.com/company/', color: 'from-blue-600 to-blue-800' },
 ];
 
 export default function Footer() {
@@ -43,7 +43,7 @@ export default function Footer() {
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
-                  <img src="/taxmahirlogo.png" alt="Tax Mahir" className="w-10 h-10 p-2" />
+                  <img src="/logo.png" alt="Tax Mahir" className="w-10 h-10 p-2" />
                 </div>
                 <span className="text-2xl font-bold text-white">Tax Mahir</span>
               </div>
@@ -100,8 +100,8 @@ export default function Footer() {
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Email</p>
-                    <a href="mailto:info@taxmahir.pk" className="text-white hover:text-blue-400 transition-colors">
-                      info@taxmahir.pk
+                    <a href="mailto:support@hisaab360.com" className="text-white hover:text-blue-400 transition-colors">
+                      support@hisaab360.com
                     </a>
                   </div>
                 </div>
@@ -114,7 +114,9 @@ export default function Footer() {
                   <div>
                     <p className="text-gray-400 text-sm">Address</p>
                     <p className="text-white leading-relaxed">
-                      Office #152, WBC, Ferozpur Road, Lahore
+                      Alrasheed arcade second floor
+Flat no 1 mujahid street ,
+Defence road , Rawalpindi
                     </p>
                   </div>
                 </div>
