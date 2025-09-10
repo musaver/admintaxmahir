@@ -2907,7 +2907,20 @@ export default function AddOrder() {
                       value={productSelection.taxPercentage === 0 ? '' : productSelection.taxPercentage}
                       onChange={(e) => {
                         const value = e.target.value;
-                        setProductSelection({...productSelection, taxPercentage: value === '' ? 0 : parseFloat(value) || 0});
+                        const taxPercentage = value === '' ? 0 : parseFloat(value) || 0;
+                        
+                        let updatedState = {...productSelection, taxPercentage};
+                        
+                        // Auto-calculate tax amount if price excluding tax is available
+                        if (taxPercentage > 0 && productSelection.priceExcludingTax > 0) {
+                          const taxAmount = (productSelection.priceExcludingTax * taxPercentage) / 100;
+                          updatedState = {
+                            ...updatedState,
+                            taxAmount: Math.round(taxAmount * 100) / 100 // Round to 2 decimal places
+                          };
+                        }
+                        
+                        setProductSelection(updatedState);
                       }}
                       placeholder="Enter percentage"
                           className="text-sm"
@@ -2926,8 +2939,8 @@ export default function AddOrder() {
                         
                         let updatedState = {...productSelection, priceIncludingTax};
                         
-                        // Auto-calculate tax amount and percentage if both prices are available
-                        if (priceIncludingTax > 0 && productSelection.priceExcludingTax > 0) {
+                        // Auto-calculate tax percentage if both prices are available but no existing tax percentage
+                        if (priceIncludingTax > 0 && productSelection.priceExcludingTax > 0 && productSelection.taxPercentage === 0) {
                           const taxAmount = priceIncludingTax - productSelection.priceExcludingTax;
                           const taxPercentage = (taxAmount / productSelection.priceExcludingTax) * 100;
                           updatedState = {
@@ -2956,8 +2969,16 @@ export default function AddOrder() {
                         
                         let updatedState = {...productSelection, priceExcludingTax};
                         
-                        // Auto-calculate tax amount and percentage if both prices are available
-                        if (priceExcludingTax > 0 && productSelection.priceIncludingTax > 0) {
+                        // Auto-calculate tax amount if tax percentage is available
+                        if (priceExcludingTax > 0 && productSelection.taxPercentage > 0) {
+                          const taxAmount = (priceExcludingTax * productSelection.taxPercentage) / 100;
+                          updatedState = {
+                            ...updatedState,
+                            taxAmount: Math.round(taxAmount * 100) / 100 // Round to 2 decimal places
+                          };
+                        }
+                        // Auto-calculate tax percentage if both prices are available but no existing tax percentage
+                        else if (priceExcludingTax > 0 && productSelection.priceIncludingTax > 0 && productSelection.taxPercentage === 0) {
                           const taxAmount = productSelection.priceIncludingTax - priceExcludingTax;
                           const taxPercentage = (taxAmount / priceExcludingTax) * 100;
                           updatedState = {
