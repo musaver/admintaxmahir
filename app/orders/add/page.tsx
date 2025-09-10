@@ -306,6 +306,9 @@ export default function AddOrder() {
   // Flag to prevent auto-population when editing an item
   const [isEditingItem, setIsEditingItem] = useState(false);
   
+  // Tax calculation loading state
+  const [isTaxCalculating, setIsTaxCalculating] = useState(false);
+  
   // Loading state for adding products
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   
@@ -548,6 +551,24 @@ export default function AddOrder() {
       return null;
     }
     return value;
+  };
+
+  // Function to calculate tax amount with loading indicator
+  const calculateTaxAmount = async (priceExcludingTax: number, taxPercentage: number) => {
+    if (priceExcludingTax <= 0 || taxPercentage <= 0) {
+      return 0;
+    }
+
+    setIsTaxCalculating(true);
+    
+    // Add a small delay to show loading indicator
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const taxAmount = (priceExcludingTax * taxPercentage) / 100;
+    const roundedTaxAmount = Math.round(taxAmount * 100) / 100; // Round to 2 decimal places
+    
+    setIsTaxCalculating(false);
+    return roundedTaxAmount;
   };
 
   // Function to update product data in database
@@ -2886,18 +2907,26 @@ export default function AddOrder() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="tax-amount-edit" className="text-sm">Tax Amount</Label>
-                        <Input
-                          id="tax-amount-edit"
-                      type="text"
-                      value={productSelection.taxAmount === 0 ? '' : productSelection.taxAmount}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setProductSelection({...productSelection, taxAmount: value === '' ? 0 : parseFloat(value) || 0});
-                      }}
-                      placeholder="Enter amount"
-                          className="text-sm"
-                    />
-                  </div>
+                        <div className="relative">
+                          <Input
+                            id="tax-amount-edit"
+                            type="text"
+                            value={productSelection.taxAmount === 0 ? '' : productSelection.taxAmount}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setProductSelection({...productSelection, taxAmount: value === '' ? 0 : parseFloat(value) || 0});
+                            }}
+                            placeholder="Enter amount"
+                            className="text-sm"
+                            disabled={isTaxCalculating}
+                          />
+                          {isTaxCalculating && (
+                            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                   
                       <div className="space-y-2">
                         <Label htmlFor="tax-percentage-edit" className="text-sm">Tax Percentage (%)</Label>
@@ -2905,9 +2934,18 @@ export default function AddOrder() {
                           id="tax-percentage-edit"
                       type="text"
                       value={productSelection.taxPercentage === 0 ? '' : productSelection.taxPercentage}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const value = e.target.value;
-                        setProductSelection({...productSelection, taxPercentage: value === '' ? 0 : parseFloat(value) || 0});
+                        const taxPercentage = value === '' ? 0 : parseFloat(value) || 0;
+                        
+                        // Update tax percentage immediately
+                        setProductSelection(prev => ({...prev, taxPercentage}));
+                        
+                        // Calculate tax amount if we have both values
+                        if (taxPercentage > 0 && productSelection.priceExcludingTax > 0) {
+                          const calculatedTaxAmount = await calculateTaxAmount(productSelection.priceExcludingTax, taxPercentage);
+                          setProductSelection(prev => ({...prev, taxAmount: calculatedTaxAmount}));
+                        }
                       }}
                       placeholder="Enter percentage"
                           className="text-sm"
@@ -2950,24 +2988,28 @@ export default function AddOrder() {
                           id="price-excluding-tax-edit"
                       type="text"
                       value={productSelection.priceExcludingTax === 0 ? '' : productSelection.priceExcludingTax}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const value = e.target.value;
                         const priceExcludingTax = value === '' ? 0 : parseFloat(value) || 0;
                         
-                        let updatedState = {...productSelection, priceExcludingTax};
+                        // Update price excluding tax immediately
+                        setProductSelection(prev => ({...prev, priceExcludingTax}));
                         
-                        // Auto-calculate tax amount and percentage if both prices are available
-                        if (priceExcludingTax > 0 && productSelection.priceIncludingTax > 0) {
+                        // Calculate tax amount if we have tax percentage
+                        if (priceExcludingTax > 0 && productSelection.taxPercentage > 0) {
+                          const calculatedTaxAmount = await calculateTaxAmount(priceExcludingTax, productSelection.taxPercentage);
+                          setProductSelection(prev => ({...prev, taxAmount: calculatedTaxAmount}));
+                        }
+                        // Auto-calculate tax percentage if both prices are available but no existing tax percentage
+                        else if (priceExcludingTax > 0 && productSelection.priceIncludingTax > 0 && productSelection.taxPercentage === 0) {
                           const taxAmount = productSelection.priceIncludingTax - priceExcludingTax;
                           const taxPercentage = (taxAmount / priceExcludingTax) * 100;
-                          updatedState = {
-                            ...updatedState,
+                          setProductSelection(prev => ({
+                            ...prev,
                             taxAmount: Math.round(taxAmount * 100) / 100, // Round to 2 decimal places
                             taxPercentage: Math.round(taxPercentage * 100) / 100 // Round to 2 decimal places
-                          };
+                          }));
                         }
-                        
-                        setProductSelection(updatedState);
                       }}
                       placeholder="Enter price"
                           className="text-sm"
