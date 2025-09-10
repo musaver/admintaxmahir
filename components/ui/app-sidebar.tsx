@@ -161,7 +161,7 @@ export function AppSidebar() {
               Hisaab360 Admin
             </h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 hidden">
            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -246,7 +246,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter>
+      <SidebarFooter className="sticky bottom-0 z-50 bg-sidebar border-t shadow-sm">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>

@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { CalendarIcon, Check, ChevronsUpDown, Plus, UserPlus, PackagePlus } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, Plus, UserPlus, PackagePlus, Loader } from "lucide-react";
 import { 
   formatWeightAuto, 
   isWeightBasedProduct, 
@@ -1574,9 +1574,9 @@ export default function AddOrder() {
       }
     } catch (err: any) {
       setError(err.message);
-    } finally {
-      setSubmitting(false);
+      setSubmitting(false); // Only set to false on error
     }
+    // Don't set submitting to false on success - let it stay until redirect
   };
 
   const selectedProduct = products.find(p => p.id === productSelection.selectedProductId);
@@ -2958,24 +2958,28 @@ export default function AddOrder() {
                           id="price-including-tax-edit"
                       type="text"
                       value={productSelection.priceIncludingTax === 0 ? '' : productSelection.priceIncludingTax}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const value = e.target.value;
                         const priceIncludingTax = value === '' ? 0 : parseFloat(value) || 0;
                         
-                        let updatedState = {...productSelection, priceIncludingTax};
+                        // Update price including tax immediately
+                        setProductSelection(prev => ({...prev, priceIncludingTax}));
                         
-                        // Auto-calculate tax amount and percentage if both prices are available
-                        if (priceIncludingTax > 0 && productSelection.priceExcludingTax > 0) {
+                        // If we have tax percentage and price excluding tax, use our calculation method
+                        if (productSelection.taxPercentage > 0 && productSelection.priceExcludingTax > 0) {
+                          const calculatedTaxAmount = await calculateTaxAmount(productSelection.priceExcludingTax, productSelection.taxPercentage);
+                          setProductSelection(prev => ({...prev, taxAmount: calculatedTaxAmount}));
+                        }
+                        // Otherwise, calculate tax percentage and amount from price difference (backward compatibility)
+                        else if (priceIncludingTax > 0 && productSelection.priceExcludingTax > 0) {
                           const taxAmount = priceIncludingTax - productSelection.priceExcludingTax;
                           const taxPercentage = (taxAmount / productSelection.priceExcludingTax) * 100;
-                          updatedState = {
-                            ...updatedState,
+                          setProductSelection(prev => ({
+                            ...prev,
                             taxAmount: Math.round(taxAmount * 100) / 100, // Round to 2 decimal places
                             taxPercentage: Math.round(taxPercentage * 100) / 100 // Round to 2 decimal places
-                          };
+                          }));
                         }
-                        
-                        setProductSelection(updatedState);
                       }}
                       placeholder="Enter price"
                           className="text-sm"
@@ -3598,6 +3602,7 @@ export default function AddOrder() {
                     className="w-full"
                     size="lg"
                 >
+                  {submitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                   {submitting ? 'Creating Order...' : 'Create Order'}
                   </Button>
                 
