@@ -2228,7 +2228,7 @@ export default function AddOrder() {
           </Card>
 
           {/* Seller Information - Auto-filled from environment variables */}
-          <Card>
+          <Card className='hidden'>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 🏪 Seller Information
