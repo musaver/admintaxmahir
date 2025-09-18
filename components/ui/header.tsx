@@ -118,7 +118,7 @@ export function Header({ className }: HeaderProps) {
         <div className="flex items-center space-x-4">
           <Link href="/dashboard" className="flex items-center space-x-3">
             
-            <span className="text-xl font-bold hidden sm:block">Hisaab360 Admin</span>
+            <span className="text-xl font-bold hidden sm:block">Taxmahir Admin</span>
           </Link>
         </div>
 

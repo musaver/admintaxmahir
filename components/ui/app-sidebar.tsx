@@ -158,7 +158,7 @@ export function AppSidebar() {
           <div className="flex items-center gap-2">
             
             <h2 className='text-xl font-bold tracking-tight'>
-              Hisaab360 Admin
+              Taxmahir Admin
             </h2>
           </div>
           <div className="flex items-center gap-2 hidden">

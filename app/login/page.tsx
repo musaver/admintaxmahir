@@ -70,7 +70,7 @@ export default function LoginPage() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-card border rounded-lg p-2 shadow-sm">
-             Hisaab 360 Admin
+             Taxmahir Admin
             </div>
           </div>
           
@@ -93,7 +93,7 @@ export default function LoginPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800" />
           <div className="relative z-20 flex items-center text-lg font-medium">
             
-            Hisaab360 Admin
+            Taxmahir Admin Panel
           </div>
           <div className="relative z-20 mt-auto">
             <blockquote className="space-y-2">

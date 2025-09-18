@@ -259,7 +259,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Good Morning!</h1>
           <p className="text-muted-foreground">
-            Welcome to Hisaab360
+            Welcome to Taxmahir
           </p>
         </div>
         <div className="flex items-center space-x-2">

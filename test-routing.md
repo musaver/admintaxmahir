@@ -5,12 +5,12 @@
 Your multi-tenant SaaS application is now configured to serve:
 
 ### 🏠 Main Domain (Landing Page)
-- **URL**: `hisaab360.com` 
+- **URL**: `taxmahir.pk` 
 - **Content**: Landing page with marketing content, features, pricing, etc.
 - **Location**: Served from `/app/page.tsx` (integrated landing page)
 
 ### 🏢 Tenant Subdomains (Admin Panels)
-- **URL**: `restaurant-a.hisaab360.com`, `store-b.hisaab360.com`, etc.
+- **URL**: `restaurant-a.taxmahir.pk`, `store-b.taxmahir.pk`, etc.
 - **Content**: Individual tenant admin panels
 - **Location**: Admin functionality preserved as-is
 
@@ -33,8 +33,8 @@ Your multi-tenant SaaS application is now configured to serve:
    Then visit: http://test-tenant.localhost:3000 → Admin login
 
 ### Production Testing:
-1. **Main Domain**: https://hisaab360.com → Landing page
-2. **Subdomain**: https://restaurant-a.hisaab360.com → Admin panel
+1. **Main Domain**: https://taxmahir.pk → Landing page
+2. **Subdomain**: https://restaurant-a.taxmahir.pk → Admin panel
 
 ## Key Files Modified:
 - ✅ `/app/page.tsx` - Now serves both landing and tenant logic
