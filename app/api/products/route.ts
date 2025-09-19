@@ -102,6 +102,8 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       saleType,
       // Unit of measurement
       uom,
+      // HS Code
+      hsCode,
       // Tax and discount fields
       taxAmount,
       taxPercentage,
@@ -193,6 +195,8 @@ export const POST = withTenant(async (req: NextRequest, context) => {
       saleType: saleType || null,
       // Unit of measurement
       uom: uom || null,
+      // HS Code
+      hsCode: hsCode || null,
       // Tax and discount fields
       taxAmount: taxAmount ? taxAmount.toString() : null,
       taxPercentage: taxPercentage ? taxPercentage.toString() : null,

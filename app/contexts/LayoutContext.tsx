@@ -13,7 +13,7 @@ interface LayoutContextType {
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
 
 export function LayoutProvider({ children }: { children: React.ReactNode }) {
-  const [layout, setLayoutState] = useState<LayoutType>('sidebar');
+  const [layout, setLayoutState] = useState<LayoutType>('header');
 
   // Load layout preference from localStorage on mount
   useEffect(() => {
